@@ -1,52 +1,107 @@
 ---
 import MembreApp from '../../layouts/MembreApp.astro';
+import Logo from '../../components/Logo.astro';
 import { url } from '../../lib/utils';
 // Sur Cloudflare, le vrai mot de passe est vérifié : on retire la mention « version d'essai ».
 const essai = !process.env.CF_PAGES;
 ---
 <MembreApp title="Connexion">
-  <section class="connexion">
-    <form class="boite" id="form" novalidate>
-      <img src={url('/icones/membre-192.png')} alt="" width="76" height="76" />
-      <h1>ACBT Pilotes</h1>
-      <p class="intro">Outils et documents des pilotes de l'ACBT.</p>
-      <label for="mdp">Mot de passe du club</label>
-      <div class="champ">
-        <input id="mdp" name="mdp" type="password" autocomplete="current-password" required />
-        <button type="button" class="voir" id="voir" aria-label="Afficher le mot de passe">Voir</button>
-      </div>
-      <p class="erreur" id="erreur" role="alert" hidden></p>
-      <button class="envoyer" type="submit" id="envoyer">Se connecter</button>
-      <p class="aide">Le mot de passe est donné par le bureau du club. Vous restez connecté sur cet appareil.</p>
-      {essai && <p class="maquette">Version d'essai : n'importe quel mot suffit (le vrai mot de passe sera activé avec Cloudflare).</p>}
+  <div class="ecran">
+    <header class="haut">
+      <Logo class="logo" />
+      <span>Espace membres</span>
+    </header>
 
-      <div class="installer">
-        <button type="button" class="btn-install" id="installer" hidden>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5" /><path d="M12 7v7M9 11l3 3 3-3M10.5 18.5h3" /></svg>
-          Installer l'appli sur ce téléphone
-        </button>
-        <p class="aide-ios" id="aide-ios" hidden>Sur iPhone : touchez <b>Partager</b> en bas de Safari, puis <b>Sur l'écran d'accueil</b>.</p>
-      </div>
-    </form>
-  </section>
+    <main class="corps">
+      <!-- Étape 1 : mot de passe -->
+      <form class="carte" id="form" novalidate>
+        <h1>Connexion</h1>
+        <label for="mdp">Mot de passe du club</label>
+        <div class="champ">
+          <input id="mdp" name="mdp" type="password" autocomplete="current-password" required />
+          <button type="button" class="voir" id="voir" aria-label="Afficher le mot de passe">Voir</button>
+        </div>
+        <p class="erreur" id="erreur" role="alert" hidden></p>
+        <button class="pri" type="submit" id="envoyer">Se connecter</button>
+        <p class="aide">Mot de passe donné par le bureau du club.</p>
+        {essai && <p class="maquette">Version d'essai : n'importe quel mot suffit.</p>}
+      </form>
+
+      <!-- Étape 2 (téléphone, dans le navigateur) : installer l'appli -->
+      <section class="carte" id="etape-installer" hidden>
+        <img class="icone" src={url('/icones/membre-192.png')} alt="" width="64" height="64" />
+        <h1>Installez l'appli</h1>
+        <p class="sous">L'espace membres s'utilise comme une appli : plein écran, hors ligne, mises à jour automatiques.</p>
+
+        <button type="button" class="pri" id="installer" hidden>Installer l'appli</button>
+
+        <ol class="etapes" id="aide-ios" hidden>
+          <li>Touchez <b>Partager</b>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" /></svg>
+            en bas de Safari</li>
+          <li>Choisissez <b>Sur l'écran d'accueil</b></li>
+          <li>Ouvrez <b>ACBT Membres</b> depuis l'écran d'accueil</li>
+        </ol>
+
+        <ol class="etapes" id="aide-android" hidden>
+          <li>Touchez le menu <b>⋮</b> du navigateur</li>
+          <li>Choisissez <b>Installer l'application</b> ou <b>Ajouter à l'écran d'accueil</b></li>
+          <li>Ouvrez <b>ACBT Membres</b> depuis l'écran d'accueil</li>
+        </ol>
+
+        <p class="deja" id="deja">Déjà installée ? Ouvrez-la depuis l'écran d'accueil.</p>
+        <button type="button" class="lien" id="navigateur">Continuer dans le navigateur</button>
+      </section>
+    </main>
+  </div>
 </MembreApp>
 
 <script>
-  import { seConnecter, estConnecte, enregistrer, boutonInstaller } from '../../scripts/membre-app';
+  import { seConnecter, estConnecte, enregistrer, installerAvant, iphone } from '../../scripts/membre-app';
   import { url } from '../../lib/utils';
+  const $ = (id: string) => document.getElementById(id)!;
   const retour = () => {
     const r = new URLSearchParams(location.search).get('retour') || '';
     return r.startsWith(url('/membre/')) ? r : url('/membre/');
   };
   enregistrer();
-  boutonInstaller(document.getElementById('installer') as HTMLButtonElement, document.getElementById('aide-ios'));
-  if (estConnecte()) location.replace(retour());
 
-  const form = document.getElementById('form') as HTMLFormElement;
-  const mdp = document.getElementById('mdp') as HTMLInputElement;
-  const erreur = document.getElementById('erreur')!;
-  const envoyer = document.getElementById('envoyer') as HTMLButtonElement;
-  document.getElementById('voir')!.addEventListener('click', (e) => {
+  // Invite d'installation du navigateur (Android / ordinateur), captée dès le chargement
+  let invite: (Event & { prompt: () => Promise<void>; userChoice?: Promise<{ outcome: string }> }) | null = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    invite = e as typeof invite;
+    $('installer').hidden = false;
+    $('aide-android').hidden = true;
+  });
+  window.addEventListener('appinstalled', () => {
+    $('installer').hidden = true;
+    $('deja').textContent = 'Appli installée : ouvrez « ACBT Membres » depuis l\'écran d\'accueil.';
+  });
+  $('installer').addEventListener('click', async () => {
+    if (!invite) return;
+    await invite.prompt();
+    invite = null;
+  });
+  $('navigateur').addEventListener('click', () => {
+    try { sessionStorage.setItem('acbt-navigateur', '1'); } catch { /* navigation privée */ }
+    location.replace(retour());
+  });
+
+  function suite() {
+    if (!installerAvant()) { location.replace(retour()); return; }
+    $('form').hidden = true;
+    $('etape-installer').hidden = false;
+    if (iphone()) $('aide-ios').hidden = false;
+    else if (!invite) $('aide-android').hidden = false;
+  }
+  if (estConnecte()) suite();
+
+  const form = $('form') as HTMLFormElement;
+  const mdp = $('mdp') as HTMLInputElement;
+  const erreur = $('erreur');
+  const envoyer = $('envoyer') as HTMLButtonElement;
+  $('voir').addEventListener('click', (e) => {
     const montrer = mdp.type === 'password';
     mdp.type = montrer ? 'text' : 'password';
     (e.currentTarget as HTMLElement).textContent = montrer ? 'Cacher' : 'Voir';
@@ -58,7 +113,7 @@ const essai = !process.env.CF_PAGES;
     envoyer.disabled = true;
     envoyer.textContent = 'Connexion…';
     const r = await seConnecter(mdp.value);
-    if (r === 'ok' || r === 'maquette') { location.replace(retour()); return; }
+    if (r === 'ok' || r === 'maquette') { suite(); return; }
     erreur.textContent = r === 'refuse' ? 'Mot de passe incorrect. Vérifiez auprès du bureau du club.' : 'Connexion impossible pour le moment. Réessayez dans un instant.';
     erreur.hidden = false;
     envoyer.disabled = false;
@@ -68,24 +123,32 @@ const essai = !process.env.CF_PAGES;
 </script>
 
 <style>
-  .connexion { min-height: 100svh; display: flex; justify-content: center; align-items: center; padding: 40px 16px; background: radial-gradient(ellipse at top, var(--accent-soft), var(--bg) 70%); }
-  .boite { width: 100%; max-width: 400px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 30px 24px; box-shadow: 0 24px 60px rgba(14,26,43,.10); text-align: center; }
-  .boite > img { border-radius: 18px; margin: 0 auto 14px; display: block; }
-  h1 { font-size: 1.5rem; margin: 0 0 4px; }
-  .intro { color: var(--muted); margin: 0 0 24px; font-size: .95rem; }
-  label { display: block; text-align: left; font-weight: 600; font-size: .9rem; margin-bottom: 6px; }
-  .champ { display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+  .ecran { min-height: 100svh; display: flex; flex-direction: column; background: var(--bg); }
+  .haut { display: flex; align-items: center; gap: 10px; height: 54px; padding: 0 16px; padding-top: env(safe-area-inset-top, 0px); background: var(--bar); color: var(--bar-ink); }
+  .haut :global(.logo) { --logo-h: 26px; --logo-rouge: #ff4d4d; color: #fff; }
+  .haut span { font-weight: 800; font-size: 1.05rem; letter-spacing: -.01em; color: #fff; }
+  .corps { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 32px 16px 40px; }
+  .carte { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px 20px; }
+  h1 { font-size: 1.35rem; margin: 0 0 18px; letter-spacing: -.01em; }
+  label { display: block; font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 7px; }
+  .champ { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface-2, var(--surface)); height: 48px; }
   .champ:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .champ input { flex: 1; min-width: 0; border: 0; padding: 13px 14px; font: inherit; font-size: 1.05rem; outline: none; background: transparent; }
-  .voir { border: 0; background: transparent; color: var(--accent); font: inherit; font-weight: 600; font-size: .88rem; padding: 0 14px; cursor: pointer; }
-  .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; text-align: left; }
-  .envoyer { width: 100%; margin-top: 18px; padding: 13px; border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
-  .envoyer:disabled { opacity: .7; cursor: wait; }
-  .aide { font-size: .84rem; color: var(--muted); margin: 14px 0 0; }
-  .maquette { font-size: .82rem; color: var(--muted); margin: 14px 0 0; text-align: left; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
-  .installer { margin-top: 18px; }
-  .btn-install { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
-  .btn-install svg { width: 19px; height: 19px; }
-  .aide-ios { font-size: .88rem; text-align: left; background: var(--surface-2); border-radius: 12px; padding: 12px 14px; margin: 10px 0 0; }
+  .champ input { flex: 1; min-width: 0; border: 0; padding: 0 14px; font: inherit; font-size: 1.05rem; outline: none; background: transparent; color: var(--ink); }
+  .voir { border: 0; background: transparent; color: var(--accent); font: inherit; font-weight: 700; font-size: .88rem; padding: 0 14px; cursor: pointer; }
+  .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; }
+  .pri { width: 100%; height: 50px; margin-top: 16px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; }
+  .pri:disabled { opacity: .7; cursor: wait; }
+  .aide { font-size: .85rem; color: var(--muted); margin: 12px 0 0; text-align: center; }
+  .maquette { font-size: .8rem; color: var(--muted); margin: 10px 0 0; text-align: center; }
+  #etape-installer { text-align: center; }
+  .icone { display: block; margin: 4px auto 14px; border-radius: 15px; }
+  #etape-installer h1 { margin-bottom: 6px; }
+  .sous { color: var(--muted); font-size: .93rem; margin: 0 0 4px; }
+  .etapes { text-align: left; margin: 18px 0 0; padding: 0; list-style: none; counter-reset: e; display: grid; gap: 8px; }
+  .etapes li { counter-increment: e; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; background: var(--surface-2, var(--bg)); border-radius: 10px; padding: 11px 12px 11px 44px; position: relative; font-size: .95rem; }
+  .etapes li::before { content: counter(e); position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border-radius: 50%; background: var(--navy); color: #fff; font-weight: 800; font-size: .8rem; display: grid; place-items: center; }
+  .etapes svg { width: 18px; height: 18px; color: var(--accent); }
+  .deja { font-size: .85rem; color: var(--muted); margin: 16px 0 0; }
+  .lien { margin-top: 10px; border: 0; background: transparent; color: var(--muted); font: inherit; font-size: .82rem; text-decoration: underline; cursor: pointer; padding: 6px; }
   [hidden] { display: none !important; }
 </style>

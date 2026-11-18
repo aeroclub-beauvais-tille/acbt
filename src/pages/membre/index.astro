@@ -47,7 +47,15 @@ const onglets = [
 ---
 <MembreApp title="Espace membres">
   <script slot="head" is:inline define:vars={{ connexion }}>
-    try { if (!localStorage.getItem('acbt-membre')) location.replace(connexion + '?retour=' + encodeURIComponent(location.pathname + location.hash)); } catch (e) {}
+    try {
+      var ret = '?retour=' + encodeURIComponent(location.pathname + location.hash);
+      if (!localStorage.getItem('acbt-membre')) location.replace(connexion + ret);
+      // Sur téléphone, ouvert dans le navigateur (et pas dans l'appli installée) : on propose d'abord d'installer l'appli
+      else if (/android|iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+        var appli = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+        if (!appli && !sessionStorage.getItem('acbt-navigateur')) location.replace(connexion + ret);
+      }
+    } catch (e) {}
   </script>
 
   <header class="topbar">
