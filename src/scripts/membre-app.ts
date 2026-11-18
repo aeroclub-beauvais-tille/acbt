@@ -79,6 +79,85 @@ export function boutonInstaller(bouton: HTMLButtonElement | null, aide: HTMLElem
   });
 }
 
+/**
+ * Badges de validité, recalculés dans le navigateur à chaque ouverture (justes même hors ligne,
+ * contrairement à un calcul figé au moment de la publication). Alimente aussi le bandeau d'alerte.
+ * Chaque badge porte data-fin (AAAA-MM-JJ), éventuellement data-debut, ou data-sansfin.
+ */
+export function badges(racine: ParentNode = document) {
+  const PREAVIS = 30;
+  const auj = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' }); // AAAA-MM-JJ du jour à Paris
+  const midi = (iso: string) => Date.parse(iso + 'T12:00:00Z');
+  const jours = (iso: string) => Math.round((midi(iso) - midi(auj)) / 86_400_000);
+  const fmt = (iso: string) =>
+    new Date(iso + 'T12:00:00Z')
+      .toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', year: 'numeric' })
+      .replace(/^1 /, '1er ');
+  const alertes: { titre: string; code: string; txt: string; vers?: string }[] = [];
+
+  racine.querySelectorAll<HTMLElement>('.badge').forEach((b) => {
+    const fin = b.dataset.fin;
+    const debut = b.dataset.debut;
+    let code = 'sans-fin';
+    let txt = 'N’expire pas';
+    if (debut && jours(debut) > 0) {
+      code = 'a-venir';
+      txt = 'Valide à partir du ' + fmt(debut);
+    } else if (fin) {
+      const j = jours(fin);
+      if (j < 0) { code = 'expire'; txt = 'Expiré le ' + fmt(fin); }
+      else if (j === 0) { code = 'bientot'; txt = 'Expire aujourd’hui'; }
+      else if (j <= PREAVIS) { code = 'bientot'; txt = `Expire dans ${j} jour${j > 1 ? 's' : ''}`; }
+      else { code = 'valide'; txt = 'Valide jusqu’au ' + fmt(fin); }
+    }
+    b.dataset.code = code;
+    b.textContent = txt;
+    b.hidden = false;
+    if ((code === 'expire' || code === 'bientot') && b.dataset.titre && !alertes.some((a) => a.titre === b.dataset.titre))
+      alertes.push({ titre: b.dataset.titre, code, txt, vers: b.dataset.vers });
+  });
+
+  const zone = racine.querySelector<HTMLElement>('#alerte-docs');
+  if (zone) {
+    const liste = zone.querySelector('[data-liste]');
+    const vide = zone.querySelector<HTMLElement>('[data-vide]');
+    alertes.sort((a, b) => (a.code === b.code ? 0 : a.code === 'expire' ? -1 : 1));
+    if (liste) liste.innerHTML = alertes
+      .map((a) => `<li class="al al-${a.code}"><span class="pt"></span><span><b>${a.titre}</b> — ${a.txt}</span></li>`)
+      .join('');
+    zone.dataset.n = String(alertes.length);
+    if (vide) vide.hidden = alertes.length > 0;
+    zone.querySelector<HTMLElement>('[data-pleine]')!.hidden = alertes.length === 0;
+  }
+}
+
+/**
+ * Onglets de l'espace membre (Accueil, Avions, Club…). Une seule page : évite de recharger
+ * et de recacher chaque sous-page dans l'appli. L'onglet choisi est gardé dans l'adresse (#avions).
+ */
+export function onglets() {
+  const barre = document.getElementById('onglets');
+  if (!barre) return;
+  const boutons = [...barre.querySelectorAll<HTMLButtonElement>('[data-onglet]')];
+  const sections = new Map(boutons.map((b) => [b.dataset.onglet!, document.getElementById(b.dataset.onglet!)]));
+  const montrer = (id: string, defiler = true) => {
+    if (!sections.has(id)) id = boutons[0].dataset.onglet!;
+    boutons.forEach((b) => {
+      const on = b.dataset.onglet === id;
+      b.setAttribute('aria-selected', String(on));
+      b.classList.toggle('actif', on);
+    });
+    sections.forEach((s, k) => { if (s) s.hidden = k !== id; });
+    try { history.replaceState(null, '', '#' + id); } catch { /* navigation privée */ }
+    if (defiler) scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  };
+  boutons.forEach((b) => b.addEventListener('click', () => montrer(b.dataset.onglet!)));
+  document.querySelectorAll<HTMLElement>('[data-vers]').forEach((a) =>
+    a.addEventListener('click', (e) => { e.preventDefault(); montrer(a.dataset.vers!); }));
+  montrer(location.hash.replace('#', '') || boutons[0].dataset.onglet!, false);
+  return montrer;
+}
+
 /** Encadré « Hors ligne » : compte les documents déjà gardés et permet de tout télécharger d'un coup. */
 export async function horsLigne(zone: HTMLElement | null) {
   if (!zone || !('caches' in window)) { if (zone) zone.hidden = true; return; }
