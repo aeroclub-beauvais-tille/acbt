@@ -287,6 +287,41 @@ export function avions() {
 }
 
 /**
+ * Ouverture « embarquée » des outils maison (ex. Préparation des vols / Perfs ACBT) : au lieu d'ouvrir
+ * un lien externe (qui affiche le bandeau d'URL du navigateur du téléphone), l'outil s'affiche dans une
+ * vue plein écran de l'appli (flèche retour + titre + « Ouvrir ↗ »). Les sites tiers restent des liens.
+ */
+export function embedOutil() {
+  const vue = document.getElementById('embed-view');
+  if (!vue) return;
+  const frame = vue.querySelector<HTMLIFrameElement>('.ev-frame');
+  const titre = vue.querySelector<HTMLElement>('.ev-ti');
+  const ext = vue.querySelector<HTMLAnchorElement>('.ev-ext');
+  const retour = vue.querySelector<HTMLButtonElement>('.ev-back');
+
+  const ouvrir = (url: string, nom: string) => {
+    if (titre) titre.textContent = nom;
+    if (ext) ext.href = url;
+    if (frame) frame.src = url;
+    vue.hidden = false;
+    document.body.style.overflow = 'hidden';
+  };
+  const fermer = () => {
+    vue.hidden = true;
+    document.body.style.overflow = '';
+    if (frame) frame.removeAttribute('src'); // libère l'outil et le recharge frais à la prochaine ouverture
+  };
+
+  retour?.addEventListener('click', fermer);
+  addEventListener('keydown', (e) => { if (e.key === 'Escape' && !vue.hidden) fermer(); });
+  document.querySelectorAll<HTMLAnchorElement>('[data-embed]').forEach((a) =>
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      ouvrir(a.dataset.url || a.href, a.dataset.titre || a.textContent?.trim() || 'Outil du club');
+    }));
+}
+
+/**
  * Signalement d'un problème technique sur un avion, avec photos possibles.
  * La saisie se fait dans une fenêtre ; à l'envoi, le signalement est gardé sur l'appareil.
  * La transmission automatique par mail et notification aux responsables sera branchée côté serveur (Cloudflare).
