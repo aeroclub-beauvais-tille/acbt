@@ -55,7 +55,6 @@ const onglets = [
   { id: 'avions', nom: 'Avions', svg: 'M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z' },
   { id: 'club', nom: 'Club', svg: 'M3 21h18M5 21V7l8-4v18M19 21V11l-6-3M9 9v.01M9 12v.01M9 15v.01M9 18v.01' },
   { id: 'preparer', nom: 'Préparer', svg: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4v12m10-6H2' },
-  { id: 'formation', nom: 'Formation', svg: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c0 1 3 3 6 3s6-2 6-3v-5M22 10v6' },
 ];
 ---
 <MembreApp title="Espace membres">
@@ -201,22 +200,6 @@ const onglets = [
       ))}
       {vivants('Documentation pilote').length > 0 && <div class="bloc"><h5 class="sep">Terrain et espace aérien</h5><div class="liste">{vivants('Documentation pilote').map((d) => <DocLien doc={d} />)}</div></div>}
       {memos.map((x) => <div class="bloc"><h5 class="sep">{x.c}</h5><div class="liste">{x.docs.map((d) => <DocLien doc={d} />)}</div></div>)}
-    </section>
-
-    <!-- FORMATION -->
-    <section class="panneau" id="formation" hidden>
-      <h1 class="titre">Formation</h1>
-      {membre.parcours.map((e) => {
-        const liste = e.categorie_docs ? vivants(e.categorie_docs) : [];
-        const liens = e.liens.filter((l) => l.lien);
-        return (
-          <div class="bloc">
-            <h5 class="sep">{e.titre}</h5>
-            {liste.length > 0 && <div class="liste">{liste.map((d) => <DocLien doc={d} />)}</div>}
-            {liens.length > 0 && <div class="liens">{liens.map((l) => <a class="lien-o" href={l.lien} target="_blank" rel="noopener">{l.libelle} ↗</a>)}</div>}
-          </div>
-        );
-      })}
     </section>
   </main>
 
