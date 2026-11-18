@@ -135,20 +135,29 @@ const onglets = [
           <ul class="liste-alerte" data-liste></ul>
         </div>
       </div>
-      <div class="selecteur" id="selecteur" role="group" aria-label="Choisir un avion">
-        {flotte.map((x) => (
-          <button type="button" data-avion={x.im} aria-pressed="false">{x.photo && <img src={asset(x.photo)} alt="" loading="lazy" />}<span><b>{x.im}</b><small>{x.modele}</small></span></button>
-        ))}
+      <span class="av-lbl">Avion</span>
+      <div class="av-select" id="selecteur">
+        <button type="button" class="av-trig" id="av-trig" data-vide="oui" aria-haspopup="listbox" aria-expanded="false" aria-label="Choisir un avion">
+          <span class="av-trig-dot av-dot" aria-hidden="true"></span>
+          <svg class="av-trig-plane" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" /></svg>
+          <span class="av-trig-main"><span class="av-trig-txt">Choisir un avion</span><span class="av-trig-sub"></span></span>
+          <span class="av-trig-st av-st" aria-hidden="true"></span>
+          <svg class="av-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+        </button>
+        <div class="av-menu" id="av-menu" role="listbox" aria-label="Avions du club" hidden>
+          {flotte.map((x) => (
+            <button type="button" class="av-opt" data-avion={x.im} role="option" aria-selected="false">
+              <span class="av-dot" aria-hidden="true"></span>
+              <span class="av-id"><b>{x.im}</b><small>{x.modele}</small></span>
+              <span class="av-st" aria-hidden="true"></span>
+            </button>
+          ))}
+        </div>
       </div>
-      <p class="choisir" id="choisir">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" /></svg>
-        Sélectionnez un avion pour voir ses documents.
-      </p>
       <div class="fiches" id="fiches">
         {flotte.map((x) => (
           <article class="fiche cache" data-ims={x.im}>
             <header>
-              {x.photo && <img class="av-photo" src={asset(x.photo)} alt="" loading="lazy" />}
               <div><h3>{x.im}</h3><span class="av-mod">{x.modele}</span></div>
             </header>
             <button type="button" class="signaler" data-signaler data-avion={x.im}>
@@ -248,11 +257,12 @@ const onglets = [
 </MembreApp>
 
 <script>
-  import { enregistrer, horsLigne, boutonInstaller, seDeconnecter, badges, maa, onglets, signalement, theme } from '../../scripts/membre-app';
+  import { enregistrer, horsLigne, boutonInstaller, seDeconnecter, badges, maa, onglets, signalement, theme, avions } from '../../scripts/membre-app';
   enregistrer();
   theme(document.getElementById('btn-theme'));
   const montrer = onglets();
   badges();
+  avions();
   maa();
   setInterval(maa, 60_000); // le MAA peut commencer ou se terminer pendant la consultation
   signalement();
@@ -263,20 +273,6 @@ const onglets = [
   });
   document.querySelectorAll<HTMLElement>('.liste-alerte').forEach((ul) =>
     ul.addEventListener('click', (ev) => { const li = (ev.target as HTMLElement).closest<HTMLElement>('[data-vers]'); if (li?.dataset.vers) montrer?.(li.dataset.vers); }));
-
-  // Sélecteur d'avion : rien ne s'affiche tant qu'aucun avion n'est choisi
-  const fichesEl = document.getElementById('fiches');
-  const choisir = document.getElementById('choisir');
-  const boutonsAvion = [...document.querySelectorAll<HTMLButtonElement>('#selecteur [data-avion]')];
-  const choisirAvion = (im: string) => {
-    if (im && !boutonsAvion.some((b) => b.dataset.avion === im)) im = '';
-    boutonsAvion.forEach((b) => b.setAttribute('aria-pressed', String(!!im && b.dataset.avion === im)));
-    fichesEl?.querySelectorAll<HTMLElement>('[data-ims]').forEach((el) => el.classList.toggle('cache', el.dataset.ims !== im));
-    if (choisir) choisir.hidden = !!im;
-    try { im ? localStorage.setItem('acbt-avion', im) : localStorage.removeItem('acbt-avion'); } catch { /* privé */ }
-  };
-  boutonsAvion.forEach((b) => b.addEventListener('click', () => choisirAvion(b.dataset.avion || '')));
-  try { const a = localStorage.getItem('acbt-avion'); if (a) choisirAvion(a); } catch { /* rien */ }
 
   // Recherche (derrière une icône, ne masque pas la barre d'onglets)
   const sw = document.getElementById('searchwrap');
@@ -383,19 +379,33 @@ const onglets = [
   .btn-o { border: 1px solid var(--accent); color: var(--accent); background: var(--surface); border-radius: 10px; padding: 9px 14px; font: inherit; font-weight: 600; font-size: .88rem; cursor: pointer; }
   .aide-ios { font-size: .88rem; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 10px 0 0; }
 
-  /* Sélecteur avion */
-  .selecteur { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -14px 18px; padding: 0 14px 4px; }
-  .selecteur::-webkit-scrollbar { display: none; }
-  .selecteur button { flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 6px 13px 6px 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; }
-  .selecteur button:first-child { padding: 8px 15px; font-weight: 650; font-size: .9rem; }
-  .selecteur button[aria-pressed='true'] { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .selecteur img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex: none; }
-  .selecteur b { font-size: .88rem; display: block; }
-  .selecteur small { font-size: .7rem; opacity: .75; }
-  .selecteur span { text-align: left; line-height: 1.1; }
+  /* Sélecteur avion — menu déroulant façon « vue flotte » */
+  .av-lbl { display: block; font-size: .74rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 2px 0 8px; }
+  .av-select { position: relative; margin: 0 0 18px; }
+  .av-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .av-dot.av-ok { background: var(--ok); } .av-dot.av-warn { background: var(--warn); } .av-dot.av-bad { background: var(--bad); }
+  .av-st { font-size: .82rem; font-weight: 700; flex: none; }
+  .av-st.av-ok { color: var(--ok); } .av-st.av-warn { color: var(--warn); } .av-st.av-bad { color: var(--bad); }
 
-  .choisir { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed var(--line); border-radius: 18px; padding: 34px 20px; margin: 0; font-size: .95rem; }
-  .choisir svg { width: 34px; height: 34px; color: var(--accent); opacity: .75; }
+  .av-trig { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 13px 14px; box-shadow: var(--shadow); color: var(--ink); font: inherit; cursor: pointer; }
+  .av-trig:active { transform: scale(.995); }
+  .av-trig-plane { width: 22px; height: 22px; flex: none; color: var(--muted); }
+  .av-trig-main { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.2; }
+  .av-trig-txt { font-family: var(--mono); font-weight: 600; font-size: 1.02rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .av-trig[data-vide='oui'] .av-trig-txt { font-family: var(--font); font-weight: 700; color: var(--muted); }
+  .av-trig-sub { font-size: .82rem; color: var(--muted); }
+  .av-trig-sub:empty { display: none; }
+  .av-chev { width: 20px; height: 20px; flex: none; color: var(--muted); transition: transform .15s ease; }
+  .av-trig[aria-expanded='true'] .av-chev { transform: rotate(180deg); }
+  .av-trig[data-vide='oui'] .av-trig-dot, .av-trig[data-vide='oui'] .av-trig-st { display: none; }
+  .av-trig[data-vide='non'] .av-trig-plane { display: none; }
+
+  .av-menu { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; display: flex; flex-direction: column; gap: 2px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 10px 30px rgba(11,30,79,.16); padding: 6px; }
+  .av-opt { display: flex; align-items: center; gap: 11px; width: 100%; text-align: left; background: none; border: 0; border-radius: 10px; padding: 11px 10px; color: var(--ink); font: inherit; cursor: pointer; }
+  .av-opt:hover, .av-opt[aria-selected='true'] { background: var(--surface-2); }
+  .av-id { flex: 1; min-width: 0; }
+  .av-id b { display: block; font-family: var(--mono); font-weight: 600; font-size: 1rem; }
+  .av-id small { color: var(--muted); font-size: .82rem; }
 
   .signaler { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 9px; margin-bottom: 16px; padding: 11px 14px; border: 1px solid var(--bad-line); background: var(--bad-bg); color: var(--bad); border-radius: 12px; font: inherit; font-weight: 650; font-size: .92rem; cursor: pointer; }
   .signaler svg { width: 18px; height: 18px; flex: none; }
@@ -406,7 +416,6 @@ const onglets = [
   .fiche { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 15px; }
   .fiche.cache { display: none; }
   .fiche header { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
-  .av-photo { width: 58px; height: 44px; object-fit: cover; border-radius: 10px; flex: none; }
   .fiche h3 { margin: 0; font-size: 1.2rem; }
   .av-mod { font-size: .82rem; color: var(--muted); }
   .liste { display: grid; gap: 8px; }

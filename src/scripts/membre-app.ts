@@ -210,6 +210,83 @@ export function onglets() {
 }
 
 /**
+ * Sélecteur d'avion (menu déroulant). Fermé par défaut : « Choisir un avion », rien d'affiché dessous.
+ * Chaque ligne porte une pastille d'état (vert à jour / orange bientôt / rouge expiré) calculée à partir
+ * des badges de la fiche de l'avion (donc après badges()). Le choix est gardé sur l'appareil.
+ */
+export function avions() {
+  const trig = document.getElementById('av-trig');
+  const menu = document.getElementById('av-menu');
+  const fiches = document.getElementById('fiches');
+  if (!trig || !menu || !fiches) return;
+  const opts = [...menu.querySelectorAll<HTMLElement>('.av-opt')];
+
+  // jours restants (même logique que badges)
+  const jour = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
+  const auj = jour(new Date().toISOString());
+  const midi = (d: string) => Date.parse(d + 'T12:00:00Z');
+  const joursDe = (iso: string) => Math.round((midi(jour(iso)) - midi(auj)) / 86_400_000);
+
+  const RANG: Record<string, number> = { expire: 0, bientot: 1, 'a-venir': 2, valide: 3, 'sans-fin': 3 };
+  const etat = (im: string) => {
+    let pire = 3, nExp = 0, minJ = Infinity;
+    fiches.querySelectorAll<HTMLElement>(`[data-ims="${im}"] .badge`).forEach((b) => {
+      const code = b.dataset.code || 'sans-fin';
+      pire = Math.min(pire, RANG[code] ?? 3);
+      if (code === 'expire') nExp++;
+      if (code === 'bientot' && b.dataset.fin) minJ = Math.min(minJ, joursDe(b.dataset.fin));
+    });
+    if (pire === 0) return { dot: 'bad', txt: `${nExp} expiré${nExp > 1 ? 's' : ''}` };
+    if (pire === 1) return { dot: 'warn', txt: isFinite(minJ) ? (minJ <= 0 ? 'Aujourd’hui' : `${minJ} j`) : 'Bientôt' };
+    return { dot: 'ok', txt: 'À jour' };
+  };
+
+  // remplit la pastille et le libellé d'état de chaque ligne
+  opts.forEach((o) => {
+    const e = etat(o.dataset.avion!);
+    const dot = o.querySelector<HTMLElement>('.av-dot');
+    const st = o.querySelector<HTMLElement>('.av-st');
+    if (dot) dot.className = `av-dot av-${e.dot}`;
+    if (st) { st.textContent = e.txt; st.className = `av-st av-${e.dot}`; }
+  });
+
+  const txt = trig.querySelector<HTMLElement>('.av-trig-txt');
+  const sub = trig.querySelector<HTMLElement>('.av-trig-sub');
+  const dot = trig.querySelector<HTMLElement>('.av-trig-dot');
+  const stTrig = trig.querySelector<HTMLElement>('.av-trig-st');
+
+  const choisir = (im: string) => {
+    const ok = !!im && opts.some((o) => o.dataset.avion === im);
+    opts.forEach((o) => o.setAttribute('aria-selected', String(ok && o.dataset.avion === im)));
+    fiches.querySelectorAll<HTMLElement>('[data-ims]').forEach((el) => el.classList.toggle('cache', el.dataset.ims !== im));
+    trig.dataset.vide = ok ? 'non' : 'oui';
+    if (ok) {
+      const o = opts.find((x) => x.dataset.avion === im)!;
+      const e = etat(im);
+      if (txt) txt.textContent = o.querySelector('b')?.textContent || im;
+      if (sub) sub.textContent = o.querySelector('small')?.textContent || '';
+      if (dot) dot.className = `av-trig-dot av-dot av-${e.dot}`;
+      if (stTrig) { stTrig.textContent = e.txt; stTrig.className = `av-trig-st av-st av-${e.dot}`; }
+    } else {
+      if (txt) txt.textContent = 'Choisir un avion';
+      if (sub) sub.textContent = '';
+      if (stTrig) stTrig.textContent = '';
+    }
+    try { ok ? localStorage.setItem('acbt-avion', im) : localStorage.removeItem('acbt-avion'); } catch { /* privé */ }
+  };
+
+  const ouvrir = (o: boolean) => { menu.hidden = !o; trig.setAttribute('aria-expanded', String(o)); };
+  trig.addEventListener('click', (e) => { e.stopPropagation(); ouvrir(menu.hidden); });
+  opts.forEach((o) => o.addEventListener('click', () => { choisir(o.dataset.avion!); ouvrir(false); }));
+  document.addEventListener('click', (e) => { if (!menu.hidden && !(e.target as HTMLElement).closest('#selecteur')) ouvrir(false); });
+  addEventListener('keydown', (e) => { if (e.key === 'Escape') ouvrir(false); });
+
+  let init = '';
+  try { init = localStorage.getItem('acbt-avion') || ''; } catch { /* rien */ }
+  choisir(init);
+}
+
+/**
  * Signalement d'un problème technique sur un avion, avec photos possibles.
  * La saisie se fait dans une fenêtre ; à l'envoi, le signalement est gardé sur l'appareil.
  * La transmission automatique par mail et notification aux responsables sera branchée côté serveur (Cloudflare).
