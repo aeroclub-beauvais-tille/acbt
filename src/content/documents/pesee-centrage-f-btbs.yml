@@ -3,4 +3,5 @@ avions:
 - F-BTBS
 type: Fiche de pesée et centrage
 debut: 2025-06-15
+description: "Exemple de démonstration — n'expire pas."
 ordre: 1
