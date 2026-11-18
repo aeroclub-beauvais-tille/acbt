@@ -36,7 +36,7 @@ function remplacer(texte, avant, apres, fichier) {
   return texte.split(avant).join(apres);
 }
 
-const RETOUR = '<a class="icon-btn" href="../#preparer" aria-label="Retour à l\'espace membres" title="Espace membres" style="margin-right:2px">'
+const RETOUR = '<a class="icon-btn perfs-retour" href="../#preparer" aria-label="Retour à l\'espace membres" title="Espace membres">'
   + '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></a>\n    ';
 
 try {
@@ -49,6 +49,10 @@ try {
   index = remplacer(index, '`/openaip?', '`' + SERVEUR + '/openaip?', 'index.html');
   index = remplacer(index, "'/api/fiches'", `'${SERVEUR}/api/fiches'`, 'index.html');
   index = remplacer(index, '<div class="brand-wrap">', RETOUR + '<div class="brand-wrap">', 'index.html');
+  // Place pour la flèche retour : le titre ne doit jamais passer sous les boutons (gros textes du téléphone).
+  index = index.replace('</head>', '<style>.topbar-in .perfs-retour{width:26px;margin-left:-4px}'
+    + '.brand-wrap{overflow:hidden}.brand{overflow:hidden;text-overflow:ellipsis}'
+    + '@media (max-width:440px){.brand-logo{height:28px}.brand-wrap{gap:7px}}</style>\n</head>');
 
   let doc = lire('documentation.html').split('href="/icons/').join('href="icons/');
   let archives = lire('archives.html').split("fetch('/api/fiches").join(`fetch('${SERVEUR}/api/fiches`);
