@@ -33,6 +33,8 @@ jobs:
           path: public/opt
           key: photos-${{ hashFiles('public/uploads/**', 'scripts/optimiser-images.mjs') }}
           restore-keys: photos-
+      # Appli « Performances » intégrée dans l'espace membre (/membre/perfs/), toujours à sa dernière version.
+      - run: node scripts/importer-perfs.mjs
       - run: npm run build
         env:
           AVWX_TOKEN: ${{ secrets.AVWX_TOKEN }}

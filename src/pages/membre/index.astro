@@ -153,14 +153,14 @@ const onglets = [
         <div class="bloc">
           <h5 class="sep">{c.titre}</h5>
           <div class="outils">
-            {c.outils.map((o) => (
-              <a class="outil" href={o.lien} target="_blank" rel="noopener" data-q={`${o.nom} ${o.description}`.toLowerCase()}>
+            {c.outils.map((o) => { const interne = (o as { membre?: string }).membre; return (
+              <a class="outil" href={interne ? url(interne) : o.lien} target={interne ? undefined : '_blank'} rel={interne ? undefined : 'noopener'} data-q={`${o.nom} ${o.description}`.toLowerCase()}>
                 <span class="o-logo" data-init={o.nom.replace(/[^A-Za-zÀ-ÿ0-9]/g, '').slice(0, 2).toUpperCase()}>
                   <img src={(o as { logo?: string }).logo ? asset((o as { logo?: string }).logo!) : `https://www.google.com/s2/favicons?domain=${host(o.lien)}&sz=128`} alt="" width="34" height="34" loading="lazy" onerror="this.remove()" />
                 </span>
-                <span class="o-txt"><b>{o.nom} ↗</b><small>{o.description}</small></span>
+                <span class="o-txt"><b>{o.nom}{interne ? '' : ' ↗'}</b><small>{o.description}</small></span>
               </a>
-            ))}
+            ); })}
           </div>
         </div>
       ))}
