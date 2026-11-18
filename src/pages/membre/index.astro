@@ -112,6 +112,7 @@ const onglets = [
         </div>
       </div>
       <span class="av-lbl">Avion</span>
+      <div class="av-voile" aria-hidden="true"></div>
       <div class="av-select" id="selecteur">
         <button type="button" class="av-trig" id="av-trig" data-vide="oui" aria-haspopup="listbox" aria-expanded="false" aria-label="Choisir un avion">
           <span class="av-trig-dot av-dot" aria-hidden="true"></span>
@@ -331,6 +332,10 @@ const onglets = [
   /* Sélecteur avion — menu déroulant façon « vue flotte » */
   .av-lbl { display: block; font-size: .74rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 2px 0 8px; }
   .av-select { position: relative; margin: 0 0 18px; }
+  /* Liste ouverte : le reste de l'écran est flouté et assombri pour faire ressortir la liste */
+  .av-voile { position: fixed; inset: 0; z-index: 40; background: rgba(8,16,36,.32); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); opacity: 0; pointer-events: none; transition: opacity .15s ease; }
+  .av-voile:has(+ .av-select .av-trig[aria-expanded='true']) { opacity: 1; pointer-events: auto; }
+  .av-select:has(.av-trig[aria-expanded='true']) { z-index: 41; }
   .av-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
   .av-dot.av-ok { background: var(--ok); } .av-dot.av-warn { background: var(--warn); } .av-dot.av-bad { background: var(--bad); }
   .av-st { font-size: .82rem; font-weight: 700; flex: none; }
