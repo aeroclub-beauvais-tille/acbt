@@ -8,8 +8,6 @@ import { getCollection } from 'astro:content';
 import { RUBRIQUES_AVION, TYPES_AVION } from '../../content.config';
 import { titreDoc, marquerHistorique, estOfficiel, type Doc } from '../../lib/documents';
 import outils from '../../data/outils.json';
-import membre from '../../data/membre.json';
-import club from '../../data/club.json';
 import { asset, url } from '../../lib/utils';
 
 const brut = await getCollection('documents');
@@ -36,9 +34,6 @@ const flotte = avions.map((a) => {
 
 // Bulletins météo (MAA) — gérés à part (horaires précis, pas « à renouveler »)
 const meteo = docs.filter((d) => d.type === 'Bulletin météo' && !d.archive).sort((a, b) => (a.debut?.getTime() ?? 0) - (b.debut?.getTime() ?? 0));
-const generaux = docs.filter((d) => d.avions.length === 0 && estOfficiel(d) && !d.archive && d.type !== 'Bulletin météo');
-const historiqueGen = docs.filter((d) => d.avions.length === 0 && estOfficiel(d) && d.archive);
-const docsClub = vivants('Vie du club').filter((d) => !estOfficiel(d));
 const memos = ['Sécurité', 'Préparation des vols', 'Météo', 'Formulaires']
   .map((c) => ({ c, docs: vivants(c).filter((d) => !estOfficiel(d)) })).filter((x) => x.docs.length);
 const host = (l: string) => new URL(l).hostname.replace(/^www\./, '');
@@ -47,7 +42,7 @@ const connexion = url('/membre/connexion/');
 const onglets = [
   { id: 'accueil', nom: 'Météo', svg: 'M17.5 19a4.5 4.5 0 1 0-.9-8.9A6 6 0 1 0 6 19h11.5z' },
   { id: 'avions', nom: 'Avions', svg: 'M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z' },
-  { id: 'club', nom: 'Club', svg: 'M3 21h18M5 21V7l8-4v18M19 21V11l-6-3M9 9v.01M9 12v.01M9 15v.01M9 18v.01' },
+  { id: 'notam', nom: 'NOTAM', svg: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 13h6M9 17h4' },
   { id: 'preparer', nom: 'Préparer', svg: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4v12m10-6H2' },
 ];
 ---
@@ -152,15 +147,15 @@ const onglets = [
       </div>
     </section>
 
-    <!-- CLUB -->
-    <section class="panneau" id="club" hidden>
-      <h1 class="titre">Documents du club</h1>
-      {generaux.length > 0 && <div class="liste">{generaux.map((d) => <DocLien doc={d} sansBadge />)}</div>}
-      {docsClub.length > 0 && <><h5 class="sep">Documentation de l'association</h5><div class="liste">{docsClub.map((d) => <DocLien doc={d} sansBadge />)}</div></>}
-      <div class="liens">
-        <a class="lien-o" href={club.aerogest} rel="noopener" target="_blank">Aerogest ↗</a>
-        {membre.liens_club.filter((l) => l.lien).map((l) => <a class="lien-o" href={l.lien} rel="noopener" target="_blank">{l.libelle} ↗</a>)}
-      </div>
+    <!-- NOTAM -->
+    <section class="panneau" id="notam" hidden>
+      <h1 class="titre">NOTAM — LFOB</h1>
+      <a class="notam-off" href="https://sofia-briefing.aviation-civile.gouv.fr/" rel="noopener" target="_blank">
+        <span class="notam-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h4" /></svg></span>
+        <span class="notam-tx"><b>Briefing officiel SOFIA</b><small>NOTAM en vigueur à LFOB — mis à jour en direct ↗</small></span>
+        <svg class="notam-fl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+      </a>
+      <p class="notam-note">La liste automatique des NOTAM actifs à LFOB sera ajoutée ici dès qu'une source de données fiable sera branchée. En attendant, le briefing officiel ci-dessus est à consulter avant chaque vol — lui seul fait foi.</p>
     </section>
 
     <!-- PRÉPARER -->
@@ -330,6 +325,17 @@ const onglets = [
   .ok svg { width: 20px; height: 20px; flex: none; }
 
   .aide-ios { font-size: .88rem; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 10px 0 0; }
+
+  /* NOTAM */
+  .notam-off { display: flex; align-items: center; gap: 13px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 15px 16px; text-decoration: none; color: inherit; box-shadow: var(--shadow); }
+  .notam-off:active { transform: scale(.995); }
+  .notam-ic { flex: none; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); }
+  .notam-ic svg { width: 22px; height: 22px; }
+  .notam-tx { flex: 1; min-width: 0; }
+  .notam-tx b { display: block; font-size: 1rem; }
+  .notam-tx small { color: var(--muted); font-size: .84rem; }
+  .notam-fl { width: 20px; height: 20px; flex: none; color: var(--muted); }
+  .notam-note { margin: 14px 2px 0; font-size: .86rem; color: var(--muted); line-height: 1.5; }
 
   /* Sélecteur avion — menu déroulant façon « vue flotte » */
   .av-lbl { display: block; font-size: .74rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin: 2px 0 8px; }
