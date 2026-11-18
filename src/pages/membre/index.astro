@@ -70,7 +70,7 @@ const onglets = [
   </script>
 
   <header class="topbar">
-    <a class="marque" href={url('/membre/')} aria-label="Accueil espace membre"><Logo class="logo" /><span>Pilotes</span></a>
+    <a class="marque" href={url('/membre/')} aria-label="Accueil espace membre"><Logo class="logo" /><span>Espace membre</span></a>
     <div class="actions">
       <button type="button" class="ic" id="btn-recherche" aria-label="Rechercher un document">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="M21 21l-4-4" /></svg>
@@ -143,18 +143,25 @@ const onglets = [
     <section class="panneau" id="avions" hidden>
       <h1 class="titre">Documents par avion</h1>
       <div class="selecteur" id="selecteur" role="group" aria-label="Choisir un avion">
-        <button type="button" data-avion="" aria-pressed="true">Tous</button>
         {flotte.map((x) => (
           <button type="button" data-avion={x.im} aria-pressed="false">{x.photo && <img src={asset(x.photo)} alt="" loading="lazy" />}<span><b>{x.im}</b><small>{x.modele}</small></span></button>
         ))}
       </div>
+      <p class="choisir" id="choisir">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" /></svg>
+        Sélectionnez un avion pour voir ses documents.
+      </p>
       <div class="fiches" id="fiches">
         {flotte.map((x) => (
-          <article class="fiche" data-ims={x.im}>
+          <article class="fiche cache" data-ims={x.im}>
             <header>
               {x.photo && <img class="av-photo" src={asset(x.photo)} alt="" loading="lazy" />}
               <div><h3>{x.im}</h3><span class="av-mod">{x.modele}</span></div>
             </header>
+            <button type="button" class="signaler" data-signaler data-avion={x.im}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></svg>
+              Signaler un problème technique
+            </button>
             <h5 class="sep">Documents officiels</h5>
             {x.officiels.length > 0
               ? <div class="liste">{x.officiels.map((d) => <DocLien doc={d} vers="avions" />)}</div>
@@ -172,26 +179,12 @@ const onglets = [
     <!-- CLUB -->
     <section class="panneau" id="club" hidden>
       <h1 class="titre">Documents du club</h1>
-      {generaux.length > 0 && <div class="liste">{generaux.map((d) => <DocLien doc={d} vers="club" />)}</div>}
-      {meteo.length > 0 && (
-        <>
-          <h5 class="sep">Bulletins météo (MAA)</h5>
-          <div class="liste">
-            {meteo.map((m) => (
-              <a class="maa-row" data-maa data-debut={m.debut?.toISOString()} data-fin={m.fin?.toISOString()} href={m.fichier ? asset(m.fichier) : (m.lien || undefined)} target="_blank" rel="noopener">
-                <span class="type t-pdf">PDF</span>
-                <span class="txt"><strong>{m.motif ?? 'Bulletin météo'}{m.numero ? ` · n°${m.numero}` : ''}</strong><span class="maa-sub"><span class="maa-chip" data-maa-etat>À venir</span><span class="ech">{fenetreUTC(m.debut, m.fin)}</span></span></span>
-              </a>
-            ))}
-          </div>
-        </>
-      )}
-      {docsClub.length > 0 && <><h5 class="sep">Documentation de l'association</h5><div class="liste">{docsClub.map((d) => <DocLien doc={d} />)}</div></>}
+      {generaux.length > 0 && <div class="liste">{generaux.map((d) => <DocLien doc={d} sansBadge />)}</div>}
+      {docsClub.length > 0 && <><h5 class="sep">Documentation de l'association</h5><div class="liste">{docsClub.map((d) => <DocLien doc={d} sansBadge />)}</div></>}
       <div class="liens">
         <a class="lien-o" href={club.aerogest} rel="noopener" target="_blank">Aerogest ↗</a>
         {membre.liens_club.filter((l) => l.lien).map((l) => <a class="lien-o" href={l.lien} rel="noopener" target="_blank">{l.libelle} ↗</a>)}
       </div>
-      {historiqueGen.length > 0 && <details class="histo"><summary>Historique ({historiqueGen.length})</summary><div class="liste">{historiqueGen.map((d) => <DocLien doc={d} vers="club" />)}</div></details>}
     </section>
 
     <!-- PRÉPARER -->
@@ -241,15 +234,50 @@ const onglets = [
       </button>
     ))}
   </nav>
+
+  <dialog class="modale" id="signalement" aria-label="Signaler un problème technique">
+    <form method="dialog">
+      <div class="m-head">
+        <h3>Signaler un problème</h3>
+        <button type="button" class="m-x" data-fermer aria-label="Fermer">✕</button>
+      </div>
+
+      <div class="m-corps" data-etape="saisie">
+        <div class="m-avion"><span class="m-av-lbl">Avion</span><span class="m-av-im" id="sig-avion">—</span></div>
+        <label for="sig-desc">Problème constaté</label>
+        <textarea id="sig-desc" rows="4" placeholder="Ex. pneu principal droit usé, radio qui grésille…"></textarea>
+        <label>Photos <span class="m-opt">facultatif</span></label>
+        <div class="m-photos" id="sig-photos" hidden></div>
+        <button type="button" class="m-ajout" id="sig-ajout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1h-3l-2.5-3z" /><circle cx="12" cy="13" r="3.2" /></svg>
+          Ajouter des photos
+        </button>
+        <input type="file" id="sig-fichiers" accept="image/*" multiple hidden />
+      </div>
+
+      <div class="m-corps m-reussi" data-etape="ok" hidden>
+        <span class="m-ok-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5" /></svg></span>
+        <strong>Signalement enregistré</strong>
+        <span>Les responsables techniques seront prévenus.</span>
+        <button type="button" class="m-pri" data-fermer>Fermer</button>
+      </div>
+
+      <div class="m-pied" id="sig-pied">
+        <button type="button" class="m-sec" data-fermer>Annuler</button>
+        <button type="button" class="m-pri" id="sig-envoyer">Envoyer</button>
+      </div>
+    </form>
+  </dialog>
 </MembreApp>
 
 <script>
-  import { enregistrer, horsLigne, boutonInstaller, seDeconnecter, badges, maa, onglets } from '../../scripts/membre-app';
+  import { enregistrer, horsLigne, boutonInstaller, seDeconnecter, badges, maa, onglets, signalement } from '../../scripts/membre-app';
   enregistrer();
   const montrer = onglets();
   badges();
   maa();
   setInterval(maa, 60_000); // le MAA peut commencer ou se terminer pendant la consultation
+  signalement();
   horsLigne(document.getElementById('hors-ligne'));
   boutonInstaller(document.getElementById('installer') as HTMLButtonElement, document.getElementById('aide-ios'));
   document.getElementById('deconnexion')?.addEventListener('click', () => {
@@ -258,13 +286,15 @@ const onglets = [
   document.querySelectorAll<HTMLElement>('.liste-alerte').forEach((ul) =>
     ul.addEventListener('click', (ev) => { const li = (ev.target as HTMLElement).closest<HTMLElement>('[data-vers]'); if (li?.dataset.vers) montrer?.(li.dataset.vers); }));
 
-  // Sélecteur d'avion
+  // Sélecteur d'avion : rien ne s'affiche tant qu'aucun avion n'est choisi
   const fichesEl = document.getElementById('fiches');
+  const choisir = document.getElementById('choisir');
   const boutonsAvion = [...document.querySelectorAll<HTMLButtonElement>('#selecteur [data-avion]')];
   const choisirAvion = (im: string) => {
     if (im && !boutonsAvion.some((b) => b.dataset.avion === im)) im = '';
-    boutonsAvion.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.avion === im)));
-    fichesEl?.querySelectorAll<HTMLElement>('[data-ims]').forEach((el) => el.classList.toggle('cache', !!im && el.dataset.ims !== im));
+    boutonsAvion.forEach((b) => b.setAttribute('aria-pressed', String(!!im && b.dataset.avion === im)));
+    fichesEl?.querySelectorAll<HTMLElement>('[data-ims]').forEach((el) => el.classList.toggle('cache', el.dataset.ims !== im));
+    if (choisir) choisir.hidden = !!im;
     try { im ? localStorage.setItem('acbt-avion', im) : localStorage.removeItem('acbt-avion'); } catch { /* privé */ }
   };
   boutonsAvion.forEach((b) => b.addEventListener('click', () => choisirAvion(b.dataset.avion || '')));
@@ -296,7 +326,7 @@ const onglets = [
   .topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 54px; padding: 0 14px; padding-top: env(safe-area-inset-top, 0px); background: var(--bar); color: var(--bar-ink); }
   .marque { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: #fff; }
   .marque .logo { --logo-h: 26px; --logo-rouge: #ff4d4d; color: #fff; }
-  .marque span { font-weight: 700; font-size: 1.02rem; letter-spacing: .02em; }
+  .marque span { font-weight: 800; font-size: 1.05rem; letter-spacing: -.01em; }
   .actions { display: flex; gap: 4px; }
   .ic { width: 40px; height: 40px; border: 0; background: transparent; color: var(--bar-ink); display: grid; place-items: center; border-radius: 10px; cursor: pointer; }
   .ic svg { width: 21px; height: 21px; }
@@ -315,10 +345,11 @@ const onglets = [
   :global(body.recherche) .panneau { margin-bottom: 8px; }
 
   .tabbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; display: flex; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: var(--safe-b); box-shadow: 0 -2px 14px rgba(14,26,43,.06); }
-  .tabbar button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: none; color: var(--muted); font: inherit; font-size: .68rem; font-weight: 600; padding: 9px 2px; cursor: pointer; min-height: var(--tab-h); }
+  .tabbar button { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: none; color: var(--muted); font: inherit; font-size: .68rem; font-weight: 600; padding: 9px 2px; cursor: pointer; min-height: var(--tab-h); }
   .tabbar svg { width: 23px; height: 23px; }
-  .tabbar button[aria-selected='true'] { color: var(--accent); }
+  .tabbar button[aria-selected='true'] { color: var(--accent); font-weight: 800; }
   .tabbar button[aria-selected='true'] svg { stroke-width: 2.3; }
+  .tabbar button[aria-selected='true']::before { content: ''; position: absolute; top: 0; left: 28%; right: 28%; height: 3px; border-radius: 0 0 3px 3px; background: var(--yellow); }
 
   /* MAA */
   #maa-zone { margin-bottom: 18px; display: grid; gap: 10px; }
@@ -380,6 +411,13 @@ const onglets = [
   .selecteur small { font-size: .7rem; opacity: .75; }
   .selecteur span { text-align: left; line-height: 1.1; }
 
+  .choisir { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed var(--line); border-radius: 18px; padding: 34px 20px; margin: 0; font-size: .95rem; }
+  .choisir svg { width: 34px; height: 34px; color: var(--accent); opacity: .75; }
+
+  .signaler { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 9px; margin-bottom: 16px; padding: 11px 14px; border: 1px solid var(--bad-line); background: var(--bad-bg); color: var(--bad); border-radius: 12px; font: inherit; font-weight: 650; font-size: .92rem; cursor: pointer; }
+  .signaler svg { width: 18px; height: 18px; flex: none; }
+  .signaler:active { transform: scale(.99); }
+
   .fiches { display: grid; gap: 14px; }
   @media (min-width: 620px) { .fiches { grid-template-columns: 1fr 1fr; align-items: start; } }
   .fiche { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 15px; }
@@ -417,4 +455,38 @@ const onglets = [
   .liens { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
   .lien-o { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 13px; font-weight: 600; font-size: .88rem; text-decoration: none; color: var(--ink); }
   .lien-o:active { transform: scale(.99); }
+
+  /* Fenêtre « Signaler un problème » */
+  .modale { width: min(440px, calc(100vw - 24px)); max-height: calc(100dvh - 40px); border: 0; border-radius: 20px; padding: 0; background: var(--surface); color: var(--ink); box-shadow: 0 30px 70px rgba(14,26,43,.35); overflow: visible; }
+  .modale::backdrop { background: rgba(14,26,43,.5); backdrop-filter: blur(2px); }
+  .modale form { display: flex; flex-direction: column; max-height: calc(100dvh - 40px); }
+  .m-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+  .m-head h3 { margin: 0; font-size: 1.12rem; }
+  .m-x { border: 0; background: var(--surface-2); color: var(--muted); width: 34px; height: 34px; border-radius: 10px; font-size: 1rem; cursor: pointer; }
+  .m-corps { padding: 18px; overflow-y: auto; display: grid; gap: 7px; }
+  .m-corps label { font-weight: 650; font-size: .88rem; margin-top: 8px; }
+  .m-opt { font-weight: 500; color: var(--muted); font-size: .8rem; }
+  .m-avion { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--accent-soft); border-radius: 12px; padding: 11px 14px; margin-bottom: 4px; }
+  .m-av-lbl { font-size: .82rem; color: var(--accent); font-weight: 600; }
+  .m-av-im { font-weight: 800; font-size: 1.08rem; letter-spacing: .02em; }
+  .modale textarea { width: 100%; border: 1px solid var(--line); border-radius: 12px; padding: 12px 13px; font: inherit; font-size: 1rem; resize: vertical; background: var(--surface); }
+  .modale textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+  .modale textarea.vide { border-color: var(--bad); outline-color: var(--bad); }
+  .m-photos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .m-vig { position: relative; width: 70px; height: 70px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+  .m-vig img { width: 100%; height: 100%; object-fit: cover; }
+  .m-vig button { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border: 0; border-radius: 50%; background: rgba(14,26,43,.72); color: #fff; font-size: .72rem; cursor: pointer; display: grid; place-items: center; }
+  .m-ajout { display: inline-flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px; padding: 11px; border: 1px dashed var(--line); background: var(--surface-2); color: var(--ink); border-radius: 12px; font: inherit; font-weight: 600; font-size: .9rem; cursor: pointer; }
+  .m-ajout svg { width: 19px; height: 19px; color: var(--accent); }
+  .m-reussi { text-align: center; justify-items: center; padding: 28px 18px 22px; gap: 10px; }
+  .m-reussi strong { font-size: 1.1rem; }
+  .m-reussi span { color: var(--muted); }
+  .m-ok-ic { width: 54px; height: 54px; border-radius: 50%; background: var(--ok-bg); color: var(--ok); display: grid; place-items: center; }
+  .m-ok-ic svg { width: 28px; height: 28px; }
+  .m-reussi .m-pri { margin-top: 10px; min-width: 140px; }
+  .m-pied { display: flex; gap: 10px; padding: 14px 18px; border-top: 1px solid var(--line); padding-bottom: calc(14px + var(--safe-b)); }
+  .m-sec, .m-pri { flex: 1; padding: 13px; border-radius: 12px; font: inherit; font-weight: 700; font-size: .98rem; cursor: pointer; }
+  .m-sec { border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  .m-pri { border: 0; background: var(--accent); color: #fff; }
+  .m-pri:disabled { opacity: .7; cursor: wait; }
 </style>

@@ -177,6 +177,77 @@ export function onglets() {
   return montrer;
 }
 
+/**
+ * Signalement d'un problème technique sur un avion, avec photos possibles.
+ * La saisie se fait dans une fenêtre ; à l'envoi, le signalement est gardé sur l'appareil.
+ * La transmission automatique par mail et notification aux responsables sera branchée côté serveur (Cloudflare).
+ */
+export function signalement() {
+  const dlg = document.getElementById('signalement') as HTMLDialogElement | null;
+  if (!dlg) return;
+  const avionOut = dlg.querySelector<HTMLElement>('#sig-avion');
+  const desc = dlg.querySelector<HTMLTextAreaElement>('#sig-desc');
+  const photos = dlg.querySelector<HTMLElement>('#sig-photos');
+  const input = dlg.querySelector<HTMLInputElement>('#sig-fichiers');
+  const envoyer = dlg.querySelector<HTMLButtonElement>('#sig-envoyer');
+  const pied = dlg.querySelector<HTMLElement>('#sig-pied');
+  const etapes = dlg.querySelectorAll<HTMLElement>('[data-etape]');
+  let avion = '';
+  let fichiers: File[] = [];
+
+  const dessiner = () => {
+    if (!photos) return;
+    photos.innerHTML = fichiers.map((f, i) =>
+      `<span class="m-vig"><img src="${URL.createObjectURL(f)}" alt=""><button type="button" data-i="${i}" aria-label="Retirer la photo">✕</button></span>`).join('');
+    photos.hidden = fichiers.length === 0;
+  };
+  photos?.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-i]');
+    if (!b) return;
+    fichiers.splice(Number(b.dataset.i), 1);
+    dessiner();
+  });
+  dlg.querySelector('#sig-ajout')?.addEventListener('click', () => input?.click());
+  input?.addEventListener('change', () => {
+    if (input.files) fichiers = [...fichiers, ...input.files].slice(0, 6);
+    input.value = '';
+    dessiner();
+  });
+  desc?.addEventListener('input', () => desc.classList.remove('vide'));
+
+  const etape = (n: string) => etapes.forEach((e) => { e.hidden = e.dataset.etape !== n; });
+  const fermer = () => { try { dlg.close(); } catch { dlg.removeAttribute('open'); } };
+  const ouvrir = (im: string) => {
+    avion = im;
+    if (avionOut) avionOut.textContent = im || '—';
+    if (desc) { desc.value = ''; desc.classList.remove('vide'); }
+    fichiers = [];
+    dessiner();
+    etape('saisie');
+    if (pied) pied.hidden = false;
+    if (envoyer) envoyer.disabled = false;
+    if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+  };
+
+  document.querySelectorAll<HTMLButtonElement>('[data-signaler]').forEach((b) =>
+    b.addEventListener('click', () => ouvrir(b.dataset.avion || '')));
+  dlg.querySelectorAll<HTMLElement>('[data-fermer]').forEach((b) => b.addEventListener('click', fermer));
+  dlg.addEventListener('cancel', (e) => { e.preventDefault(); fermer(); });
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) fermer(); }); // clic sur le fond
+
+  envoyer?.addEventListener('click', () => {
+    if (!desc?.value.trim()) { desc?.classList.add('vide'); desc?.focus(); return; }
+    envoyer.disabled = true;
+    try {
+      const liste = JSON.parse(localStorage.getItem('acbt-signalements') || '[]');
+      liste.push({ avion, probleme: desc.value.trim(), photos: fichiers.length, date: new Date().toISOString() });
+      localStorage.setItem('acbt-signalements', JSON.stringify(liste));
+    } catch { /* navigation privée */ }
+    etape('ok');
+    if (pied) pied.hidden = true;
+  });
+}
+
 /** Encadré « Hors ligne » : compte les documents déjà gardés et permet de tout télécharger d'un coup. */
 export async function horsLigne(zone: HTMLElement | null) {
   if (!zone || !('caches' in window)) { if (zone) zone.hidden = true; return; }

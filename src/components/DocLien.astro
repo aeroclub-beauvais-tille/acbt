@@ -5,9 +5,10 @@ interface Props {
   doc: { titre?: string; type?: string; avions?: string[]; fichier?: string; lien?: string; description?: string; mis_a_jour?: Date; debut?: Date; fin?: Date };
   court?: string;
   badge?: boolean;      // force l'affichage d'un badge de validité
+  sansBadge?: boolean;  // n'affiche jamais de badge (ex. documents du club, toujours valables)
   vers?: string;        // onglet cible de l'alerte d'expiration
 }
-const { doc, court, badge, vers } = Astro.props;
+const { doc, court, badge, sansBadge, vers } = Astro.props;
 const titre = titreDoc(doc);
 const cible = doc.fichier ? asset(doc.fichier) : doc.lien || '';
 const ext = (doc.fichier || '').split('?')[0].split('.').pop()?.toLowerCase() || '';
@@ -16,7 +17,7 @@ const kind = doc.fichier
   : /youtu|vimeo/.test(doc.lien || '') ? 'VIDÉO' : 'LIEN';
 const recherche = `${titre} ${doc.type ?? ''} ${doc.description ?? ''}`.toLowerCase();
 
-const avecBadge = badge || !!(doc.debut || doc.fin || doc.type);
+const avecBadge = !sansBadge && (badge || !!(doc.debut || doc.fin || doc.type));
 const e = avecBadge ? etatValidite(doc) : null;
 const court2 = (d?: Date) => d ? d.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: '2-digit' }) : '';
 // Repli calculé au build ; le navigateur le remet à jour (reste juste même hors ligne).

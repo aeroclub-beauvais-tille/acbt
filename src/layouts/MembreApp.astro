@@ -1,10 +1,14 @@
 ---
 // Coquille autonome de l'appli « Espace membre » : sa propre identité, sans l'en-tête ni le pied du site public.
-import '@fontsource-variable/inter/wght.css';
-import policeTexte from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+// Même langage visuel que « Perfs ACBT » (le calculateur de performances) : police Manrope, codes en JetBrains Mono,
+// palette bleu/marine, accent jaune, mode sombre automatique.
+import manropeUrl from '../fonts/membre/manrope-var.woff2?url';
+import monoUrl from '../fonts/membre/jetbrains-mono-500.woff2?url';
 import { url } from '../lib/utils';
 interface Props { title: string; description?: string }
 const { title, description = "Espace réservé aux membres de l'aéroclub de Beauvais-Tillé." } = Astro.props;
+const policesFaces = `@font-face{font-family:'Manrope';font-style:normal;font-weight:300 800;font-display:swap;src:url(${manropeUrl}) format('woff2')}` +
+  `@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:500;font-display:swap;src:url(${monoUrl}) format('woff2')}`;
 ---
 <!doctype html>
 <html lang="fr">
@@ -16,8 +20,9 @@ const { title, description = "Espace réservé aux membres de l'aéroclub de Bea
     <meta name="robots" content="noindex" />
     <link rel="icon" href={url('/favicon.png')} type="image/png" />
     <link rel="apple-touch-icon" href={url('/icones/membre-192.png')} />
-    <link rel="preload" href={policeTexte} as="font" type="font/woff2" crossorigin />
-    <meta name="theme-color" content="#0e1a2b" />
+    <link rel="preload" href={manropeUrl} as="font" type="font/woff2" crossorigin />
+    <meta name="theme-color" content="#0b1e4f" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a1124" media="(prefers-color-scheme: dark)" />
     <link rel="manifest" href={url('/membre/manifest.webmanifest')} />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -29,39 +34,78 @@ const { title, description = "Espace réservé aux membres de l'aéroclub de Bea
     <slot />
   </body>
 </html>
+<style is:global set:html={policesFaces}></style>
 <style is:global>
   :root {
-    /* Identité propre à l'appli membre : palette froide « instrument », le rouge/ambre réservés aux alertes */
-    --bg: #eef2f7;
-    --surface: #ffffff;
-    --surface-2: #f5f8fc;
-    --ink: #0e1a2b;
+    /* Thème « Perfs ACBT » — clair */
+    --bg: #eef1f4;
+    --surface: #ffffff;        /* = card */
+    --surface-2: #f4f6f8;      /* = field */
+    --ink: #15212c;
     --ink-2: #334155;
-    --muted: #64748b;
-    --line: #dde5ef;
-    --accent: #0b5cff;      /* bleu signal (froid) */
+    --muted: #5d6b78;
+    --line: #d5dce2;
+    --accent: #1f6fd1;         /* bleu signal */
     --accent-ink: #ffffff;
-    --accent-soft: #e7efff;
-    --bar: #0e1a2b;         /* barre du haut, sombre */
-    --bar-ink: #eaf1fb;
+    --accent-soft: #eaf2fd;
+    --accent-line: #bcd0ee;
+    --accent-text: #1a4c91;
+    --navy: #0b1e4f;           /* marine : bandeau du haut, boutons forts */
+    --on-navy: #ffffff;
+    --on-navy-dim: #9aa8cc;
+    --yellow: #ffad00;         /* accent de l'onglet actif */
+    --bar: var(--navy);
+    --bar-ink: #ffffff;
     /* États */
-    --ok: #0f7a3d; --ok-bg: #e6f6ec; --ok-line: #bfe6cc;
-    --warn: #a85a00; --warn-bg: #fff2dc; --warn-line: #f3d199;
-    --bad: #c4161c; --bad-bg: #fdeaea; --bad-line: #f4b9bb;
-    --font: 'Inter Variable', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --ok: #1d8a4e; --ok-bg: #e8f5ee; --ok-line: #a9d6bc;
+    --warn: #c98300; --warn-bg: #fff4d9; --warn-line: #f2d58f;
+    --bad: #b3261e; --bad-bg: #fdecea; --bad-line: #f1b3ad;
+    --shadow: 0 1px 2px rgba(11,30,79,.06), 0 4px 14px rgba(11,30,79,.05);
+    --font: 'Manrope', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --tab-h: 62px;
     --safe-b: env(safe-area-inset-bottom, 0px);
     color-scheme: light;
   }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      /* Thème « Perfs ACBT » — sombre */
+      --bg: #0a1124;
+      --surface: #121b33;
+      --surface-2: #18233f;
+      --ink: #eef2fa;
+      --ink-2: #c7d0e4;
+      --muted: #8792ad;
+      --line: #202c4a;
+      --accent: #8fa6ff;
+      --accent-ink: #0a1124;
+      --accent-soft: rgba(143,166,255,.14);
+      --accent-line: #2e3c60;
+      --accent-text: #afc0ff;
+      --navy: #16245a;
+      --on-navy: #ffffff;
+      --on-navy-dim: #9aa8cc;
+      --yellow: #ffb81f;
+      --bar: #0a1124;
+      --bar-ink: #eef2fa;
+      --ok: #40c97f; --ok-bg: rgba(64,201,127,.14); --ok-line: #22543a;
+      --warn: #ffb81f; --warn-bg: rgba(255,184,31,.14); --warn-line: #5a4618;
+      --bad: #ff6464; --bad-bg: rgba(255,100,100,.14); --bad-line: #5e2723;
+      --shadow: none;
+      color-scheme: dark;
+    }
+  }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
+  html { scroll-padding-top: 64px; }  /* la barre bleue ne masque pas la cible d'un lien interne */
   body {
     background: var(--bg);
     color: var(--ink);
     font-family: var(--font);
     font-size: 16px;
-    line-height: 1.5;
+    line-height: 1.45;
+    letter-spacing: -.003em;
+    font-variant-numeric: tabular-nums;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     overflow-x: hidden;
