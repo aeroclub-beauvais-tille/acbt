@@ -98,27 +98,28 @@ const pg = pages.formations;
         <span class="eyebrow">Une fois breveté</span>
         <h2 data-split>{f.maintien_titre}</h2>
         <p class="lead lead-large" data-reveal>{f.maintien_intro}</p>
-        <div class="maintien" data-stagger>
+        <div class="regles" data-stagger>
           {f.maintien.map((m) => (
-            <div class="card"><div class="card-body">
-              <span class="pour">{m.pour}</span>
-              <h3>{m.titre}</h3>
-              {m.chiffre && (
-                <p class="chiffre"><strong>{m.chiffre}</strong>{m.chiffre_legende && <span>{m.chiffre_legende}</span>}</p>
-              )}
-              {m.conditions?.length ? (
-                <>
-                  {m.conditions_intro && <p class="cond-intro">{m.conditions_intro}</p>}
-                  <ul class="conditions">{m.conditions.map((c) => <li>{c}</li>)}</ul>
-                </>
-              ) : <p>{m.texte}</p>}
-              {m.sinon && (
-                <p class="sinon"><b>{m.sinon_label || 'Sinon'} :</b> {m.sinon}</p>
-              )}
-            </div></div>
+            <article class="regle">
+              <div class="r-chiffre">
+                <span class="pour">{m.pour}</span>
+                {m.chiffre && <strong>{m.chiffre}</strong>}
+                {m.chiffre_legende && <small>{m.chiffre_legende}</small>}
+              </div>
+              <div class="r-corps">
+                <h3>{m.titre}</h3>
+                {m.conditions?.length ? (
+                  <>
+                    {m.conditions_intro && <p class="cond-intro">{m.conditions_intro}</p>}
+                    <ul class="conditions">{m.conditions.map((c) => <li>{c}</li>)}</ul>
+                  </>
+                ) : <p>{m.texte}</p>}
+              </div>
+              {m.sinon ? <p class="r-sinon"><b>{m.sinon_label || 'Sinon'} :</b> {m.sinon}</p> : <span class="r-vide" aria-hidden="true"></span>}
+            </article>
           ))}
         </div>
-        <p class="notice" style="margin-top:24px;max-width:80ch" data-reveal>{f.maintien_note}</p>
+        <p class="notice regles-note" data-reveal>{f.maintien_note}</p>
       </div>
     </section>
   )}
@@ -195,19 +196,29 @@ const pg = pages.formations;
   .big { font-family: var(--font-title); font-size: 2.4rem; font-weight: 700; color: var(--sun); }
   ul { padding-left: 1.1em; margin: 0; }
   li { margin-bottom: 6px; }
-  .maintien { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
-  .maintien h3 { font-size: 1.15rem; margin: 6px 0 12px; }
-  .maintien p { margin: 0; color: #3f4652; font-size: .97rem; }
-  .chiffre { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; padding: 10px 14px; margin: 0 0 14px !important; border-radius: 12px; background: var(--paper); }
-  .chiffre strong { font-family: var(--font-title); font-size: 1.6rem; line-height: 1.1; color: var(--accent); }
-  .chiffre span { font-size: .85rem; color: #4d5460; }
-  .cond-intro { font-weight: 600; color: var(--ink) !important; margin-bottom: 6px !important; }
-  .conditions { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; color: #2c333e; font-size: .97rem; line-height: 1.45; }
-  .conditions li { position: relative; padding-left: 26px; }
+  /* Garder sa licence valide : une règle par ligne, chiffre clé / conditions / plan B, tout aligné */
+  .regles { background: #fff; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; margin-top: 8px; }
+  .regle { display: grid; grid-template-columns: 190px minmax(0, 1fr) minmax(0, 300px); gap: 32px; align-items: start; padding: 26px 30px; border-top: 1px solid var(--line); }
+  .regle:first-child { border-top: 0; }
+  .r-chiffre strong { display: block; margin-top: 8px; font-family: var(--font-title); font-size: 2rem; line-height: 1.05; color: var(--accent); }
+  .r-chiffre small { display: block; margin-top: 4px; font-size: .85rem; color: #4d5460; }
+  .r-corps h3 { font-size: 1.12rem; margin: 0 0 10px; }
+  .r-corps p { margin: 0; color: #3f4652; font-size: .97rem; }
+  .cond-intro { font-weight: 600; color: var(--ink) !important; margin-bottom: 8px !important; }
+  .conditions { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; color: #2c333e; font-size: .97rem; line-height: 1.45; }
+  .conditions li { position: relative; padding-left: 26px; margin: 0; }
   .conditions li::before { content: ''; position: absolute; left: 0; top: .2em; width: 17px; height: 17px; border-radius: 50%; background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.5l2.5 2.5L12 5.5' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px no-repeat; }
-  .sinon { margin-top: auto !important; padding-top: 14px; font-size: .9rem !important; }
-  .sinon::before { content: ''; display: block; border-top: 1px dashed var(--line); margin-bottom: 12px; }
-  .sinon b { color: var(--ink); }
+  .r-sinon { margin: 0; padding: 14px 16px; border-radius: 12px; background: var(--paper); font-size: .92rem; line-height: 1.5; color: #3f4652; }
+  .r-sinon b { display: block; margin-bottom: 2px; color: var(--ink); }
+  .regles-note { margin-top: 18px; }
+  @media (max-width: 860px) {
+    .regle { grid-template-columns: 1fr; gap: 12px; padding: 20px 18px; }
+    .r-chiffre { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+    .r-chiffre .pour { flex-basis: 100%; }
+    .r-chiffre strong { margin-top: 2px; font-size: 1.7rem; }
+    .r-chiffre small { margin-top: 0; }
+    .r-vide { display: none; }
+  }
   .lead-large { max-width: 62ch; }
   @media (min-width: 1000px) { .lead-large { max-width: 78ch; } }
   .pour { display: inline-block; font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--accent, var(--sun)); }
