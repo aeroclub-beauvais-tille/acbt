@@ -3,5 +3,4 @@ type: Bulletin météo
 debut: 2026-11-18
 fin: 2026-11-19
 fichier: /uploads/membre/bulletin-meteo-maa-exemple.pdf
-description: "MAA de Beauvais (LFOB) — exemple reçu de l'aéroport. En vrai, ces bulletins arriveront tout seuls."
 ordre: 1
