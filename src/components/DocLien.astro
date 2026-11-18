@@ -2,7 +2,7 @@
 import { asset } from '../lib/utils';
 import { titreDoc, etatValidite } from '../lib/documents';
 interface Props {
-  doc: { titre?: string; type?: string; avions?: string[]; fichier?: string; lien?: string; description?: string; mis_a_jour?: Date; debut?: Date; fin?: Date };
+  doc: { id?: string; titre?: string; type?: string; avions?: string[]; fichier?: string; lien?: string; description?: string; mis_a_jour?: Date; debut?: Date; fin?: Date };
   court?: string;
   badge?: boolean;      // force l'affichage d'un badge de validité
   sansBadge?: boolean;  // n'affiche jamais de badge (ex. documents du club, toujours valables)
@@ -28,7 +28,7 @@ const ech = !e ? '' : e.code === 'sans-fin' ? 'n’expire pas' : e.code === 'a-v
 const iso = (d?: Date) => d ? d.toISOString() : undefined;
 const noFichier = !cible;
 ---
-<a class:list={['doc', { vide: noFichier }]} href={cible || undefined} target={cible ? '_blank' : undefined} rel="noopener" data-q={recherche} role={noFichier ? 'group' : undefined}>
+<a class:list={['doc', { vide: noFichier }]} href={cible || undefined} target={cible ? '_blank' : undefined} rel="noopener" data-q={recherche} data-doc={doc.id} role={noFichier ? 'group' : undefined}>
   <span class:list={['type', `t-${kind.toLowerCase().replace('é', 'e')}`, { attente: noFichier }]}>{noFichier ? '—' : kind}</span>
   <span class="txt">
     <strong>{court ?? titre}</strong>

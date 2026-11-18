@@ -6,6 +6,7 @@ import Taf from '../../components/Taf.astro';
 import Logo from '../../components/Logo.astro';
 import { getCollection } from 'astro:content';
 import { RUBRIQUES_AVION, TYPES_AVION } from '../../content.config';
+import AdminDocs from '../../components/AdminDocs.astro';
 import { titreDoc, marquerHistorique, estOfficiel, type Doc } from '../../lib/documents';
 import outils from '../../data/outils.json';
 import { asset, url } from '../../lib/utils';
@@ -36,6 +37,13 @@ const flotte = avions.map((a) => {
 const meteo = docs.filter((d) => d.type === 'Bulletin météo' && !d.archive).sort((a, b) => (a.debut?.getTime() ?? 0) - (b.debut?.getTime() ?? 0));
 const memos = ['Sécurité', 'Préparation des vols', 'Météo', 'Formulaires']
   .map((c) => ({ c, docs: vivants(c).filter((d) => !estOfficiel(d)) })).filter((x) => x.docs.length);
+// Données pour le mode admin (mêmes informations que les fiches, déjà publiques)
+const jour = (d?: Date) => d ? d.toISOString().slice(0, 10) : undefined;
+const adminDonnees = {
+  version: process.env.GITHUB_SHA || '',
+  types: [...TYPES_AVION], rubriques: [...RUBRIQUES_AVION],
+  docs: docs.map((d) => ({ id: d.id, titre: d.titre, type: d.type, rubrique: d.rubrique, avions: d.avions, debut: jour(d.debut), fin: jour(d.fin), fichier: d.fichier, lien: d.lien, ordre: d.ordre, remplace: d.remplace, archive: d.archive })),
+};
 const host = (l: string) => new URL(l).hostname.replace(/^www\./, '');
 const connexion = url('/membre/connexion/');
 
@@ -105,6 +113,12 @@ const onglets = [
     <!-- AVIONS -->
     <section class="panneau" id="avions" hidden>
       <h1 class="titre">Documents par avion</h1>
+      <div class="adm-barre" id="adm-barre">
+        <span class="adm-pill">Mode admin</span>
+        <span class="adm-barre-txt"></span>
+        <button type="button" id="adm-quitter">Quitter</button>
+      </div>
+      <p class="adm-attente" id="adm-attente" hidden>Publication en cours : l'appli sera à jour d'ici 2 à 3 minutes.</p>
       <div class="alerte-docs" id="alerte-docs">
         <div data-pleine hidden>
           <h2 class="bt bt-rouge"><span class="pt-alerte" aria-hidden="true">!</span>Documents à renouveler</h2>
@@ -141,6 +155,10 @@ const onglets = [
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></svg>
               Signaler un problème technique
             </button>
+            <button type="button" class="adm-depot" data-depot={x.im} hidden>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg>
+              <span><b>Ajouter un document</b><small>Glissez un fichier ici ou touchez pour choisir</small></span>
+            </button>
             <div class="fiche-cols"><div>
             <h5 class="sep">Documents officiels</h5>
             {x.officiels.length > 0
@@ -156,6 +174,7 @@ const onglets = [
           </article>
         ))}
       </div>
+      <a class="adm-lien" href={url('/membre/admin/')}>Administration</a>
     </section>
 
     <!-- PRÉPARER -->
@@ -224,6 +243,8 @@ const onglets = [
     </form>
   </dialog>
 
+  <AdminDocs />
+  <script type="application/json" id="admin-donnees" set:html={JSON.stringify(adminDonnees).replace(/</g, '\\u003c')} />
 </MembreApp>
 
 <script>
@@ -236,6 +257,7 @@ const onglets = [
   maa();
   setInterval(maa, 60_000); // le MAA peut commencer ou se terminer pendant la consultation
   signalement();
+  try { if (localStorage.getItem('acbt-admin-jeton')) import('../../scripts/membre-admin').then((m) => m.modeAdmin()); } catch { /* privé */ }
   boutonInstaller(document.getElementById('installer') as HTMLButtonElement, document.getElementById('aide-ios'));
   document.getElementById('deconnexion')?.addEventListener('click', () => {
     if (confirm('Se déconnecter sur cet appareil ? Les documents gardés hors ligne seront effacés.')) seDeconnecter();
