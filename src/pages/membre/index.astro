@@ -1,50 +1,70 @@
 ---
 import Base from '../../layouts/Base.astro';
-import PageHead from '../../components/PageHead.astro';
 import DocLien from '../../components/DocLien.astro';
 import Metar from '../../components/Metar.astro';
+import MembreTete from '../../components/MembreTete.astro';
 import { getCollection } from 'astro:content';
-import { RUBRIQUES_AVION } from '../../content.config';
+import { RUBRIQUES_AVION, TYPES_AVION } from '../../content.config';
+import { titreDoc, marquerHistorique, estOfficiel, type Doc } from '../../lib/documents';
 import outils from '../../data/outils.json';
 import membre from '../../data/membre.json';
 import club from '../../data/club.json';
-import { asset } from '../../lib/utils';
+import { asset, url } from '../../lib/utils';
+import { fichiersMembre } from '../../lib/membre';
 
-const docs = (await getCollection('documents')).map((d) => d.data)
-  .sort((a, b) => a.ordre - b.ordre || a.titre.localeCompare(b.titre, 'fr'));
-const parCat = (c: string) => docs.filter((d) => d.categorie === c);
+const brut = await getCollection('documents');
+const docs = marquerHistorique(brut.map((d) => ({ id: d.id, ...d.data } as Doc)))
+  .sort((a, b) => a.ordre - b.ordre || titreDoc(a).localeCompare(titreDoc(b), 'fr'));
+const vivants = (c: string) => docs.filter((d) => d.categorie === c && !d.archive);
+
 const avions = (await getCollection('avions', (a) => a.data.actif)).sort((a, b) => a.data.ordre - b.data.ordre);
 const docsAvion = docs.filter((d) => d.categorie === 'Documentation avion');
-const PROPRES = ['Manuel de vol', 'Centrage'];
-const ordreRub = (d: { rubrique?: string }) => RUBRIQUES_AVION.indexOf((d.rubrique ?? 'Autre') as (typeof RUBRIQUES_AVION)[number]);
+const rangType = (d: Doc) => { const i = TYPES_AVION.indexOf((d.type ?? '') as (typeof TYPES_AVION)[number]); return i < 0 ? 99 : i; };
+const rangRub = (d: Doc) => RUBRIQUES_AVION.indexOf((d.rubrique ?? 'Autre') as (typeof RUBRIQUES_AVION)[number]);
 const modele = (t: string) => t.replace(/-\d+.*$| Petit Prince| Paris-Nice/g, '').trim();
-const fiches = Object.values(
-  avions.reduce<Record<string, { titre: string; avions: { id: string; im: string; photo?: string }[] }>>((acc, a) => {
-    const m = modele(a.data.type);
-    (acc[m] ??= { titre: m, avions: [] }).avions.push({ id: a.id, im: a.data.immatriculation ?? a.data.nom, photo: a.data.photos[0] });
-    return acc;
-  }, {}),
-).map((g) => {
-  const ims = g.avions.map((x) => x.im);
-  const propres = g.avions.map((x) => ({ ...x, docs: docsAvion.filter((d) => d.avions.includes(x.im) && PROPRES.includes(d.rubrique ?? '')).sort((p, q) => ordreRub(p) - ordreRub(q)) }));
-  const communs = docsAvion.filter((d) => !PROPRES.includes(d.rubrique ?? '') && ims.some((i) => d.avions.includes(i))).sort((p, q) => ordreRub(p) - ordreRub(q));
-  return { ...g, ims, propres, communs };
+
+const flotte = avions.map((a) => {
+  const im = a.data.immatriculation ?? a.data.nom;
+  const mine = docsAvion.filter((d) => d.avions.includes(im));
+  return {
+    id: a.id,
+    im,
+    modele: modele(a.data.type),
+    photo: a.data.photos[0],
+    officiels: mine.filter((d) => estOfficiel(d) && !d.archive).sort((p, q) => rangType(p) - rangType(q)),
+    techniques: mine.filter((d) => !estOfficiel(d) && !d.archive).sort((p, q) => rangRub(p) - rangRub(q)),
+    historique: mine.filter((d) => d.archive).sort((p, q) => rangType(p) - rangType(q)),
+  };
 });
-const court = (t: string) => t.replace(/ F-[A-Z]{4}/, '');
-const autres = ['Sécurité', 'Préparation des vols', 'Météo', 'Formulaires'].map((c) => ({ c, docs: parCat(c) })).filter((x) => x.docs.length);
+
+// Documents généraux / club à durée de validité (météo, règlement, statuts…)
+const generaux = docs.filter((d) => d.avions.length === 0 && estOfficiel(d) && !d.archive);
+const historiqueGen = docs.filter((d) => d.avions.length === 0 && estOfficiel(d) && d.archive);
+const meteo = generaux.filter((d) => d.type === 'Bulletin météo');
+const autresGen = generaux.filter((d) => d.type !== 'Bulletin météo');
+
+// Mémos et formulaires pour « Préparer son vol » (hors documents officiels à validité, montrés ailleurs)
+const memos = ['Sécurité', 'Préparation des vols', 'Météo', 'Formulaires']
+  .map((c) => ({ c, docs: vivants(c).filter((d) => !estOfficiel(d)) }))
+  .filter((x) => x.docs.length);
+const docsClub = vivants('Vie du club').filter((d) => !estOfficiel(d));
 const host = (l: string) => new URL(l).hostname.replace(/^www\./, '');
-import pages from '../../data/pages.json';
-import MembreTete from '../../components/MembreTete.astro';
-import { url } from '../../lib/utils';
-import { fichiersMembre } from '../../lib/membre';
+
 const hors = await fichiersMembre();
 const mo = Math.round(hors.taille / 1e6);
 const connexion = url('/membre/connexion/');
+
+const onglets = [
+  { id: 'accueil', nom: 'Accueil', svg: 'M3 11l9-8 9 8M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10' },
+  { id: 'avions', nom: 'Avions', svg: 'M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z' },
+  { id: 'club', nom: 'Club', svg: 'M3 21h18M5 21V7l8-4v18M19 21V11l-6-3M9 9v.01M9 12v.01M9 15v.01M9 18v.01' },
+  { id: 'preparer', nom: 'Préparer', svg: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 0v4m0 12v4m10-10h-4M6 12H2m14.9-4.9l-2.8 2.8M9.9 14.1l-2.8 2.8m0-9.8l2.8 2.8m4.2 4.2l2.8 2.8' },
+  { id: 'formation', nom: 'Formation', svg: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c0 1 3 3 6 3s6-2 6-3v-5M22 10v6' },
+];
 ---
-<Base univers="membres" title="Espace membre" description="Espace réservé aux membres de l'aéroclub de Beauvais-Tillé : préparation des vols et documentation." noindex>
+<Base univers="membres" title="Espace membre" description="Espace réservé aux membres de l'aéroclub de Beauvais-Tillé : météo, documents des avions et du club, préparation des vols." noindex>
   <Fragment slot="head">
     <MembreTete />
-    <!-- Pas encore connecté sur cet appareil : direction l'écran de connexion -->
     <script is:inline define:vars={{ connexion }}>
       try { if (!localStorage.getItem('acbt-membre')) location.replace(connexion + '?retour=' + encodeURIComponent(location.pathname + location.hash)); } catch (e) {}
     </script>
@@ -57,14 +77,27 @@ const connexion = url('/membre/connexion/');
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /></svg>
     </button>
   </div>
-  <PageHead eyebrow="Espace membre" image={pages.membre.image} title={pages.membre.titre} lead={pages.membre.texte}>
-    <div class="btns" style="margin-top:20px">
+
+  <header class="tete">
+    <div class="container tete-in">
+      <div><span class="label">Espace membre</span><h1>ACBT Pilotes</h1></div>
       <a class="btn btn-primary" href={club.aerogest} rel="noopener">Réserver sur Aerogest</a>
     </div>
-  </PageHead>
+  </header>
 
-  <div class="outilbar">
-    <div class="container outilbar-in">
+  <nav id="onglets" class="onglets" aria-label="Sections de l'espace membre">
+    <div class="container onglets-in" role="tablist">
+      {onglets.map((o) => (
+        <button type="button" role="tab" data-onglet={o.id} aria-selected={o.id === 'accueil'} aria-controls={o.id}>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={o.svg} /></svg>
+          <span>{o.nom}</span>
+        </button>
+      ))}
+    </div>
+  </nav>
+
+  <div class="recherchebar">
+    <div class="container">
       <label class="cherche"><span class="sr">Rechercher un document</span>
         <input type="search" id="q" placeholder="Rechercher un document…" autocomplete="off" />
       </label>
@@ -72,11 +105,38 @@ const connexion = url('/membre/connexion/');
   </div>
   <p class="container aucun" id="aucun" hidden>Aucun document ne correspond à votre recherche.</p>
 
-  <section class="section" id="outils" data-bloc>
+  <!-- ACCUEIL -->
+  <section class="section panneau" id="accueil" role="tabpanel">
     <div class="container">
+      <div class="metar-bloc" data-bloc>
+        <h2 class="titre-bloc">Météo du terrain — Beauvais LFOB</h2>
+        <div class="carte-metar"><Metar /></div>
+      </div>
+
+      <div class="alerte-docs" id="alerte-docs" data-n="0">
+        <div data-pleine hidden>
+          <h2 class="titre-bloc"><span class="pt-alerte" aria-hidden="true">!</span>Documents à renouveler</h2>
+          <ul class="liste-alerte" data-liste></ul>
+          <p class="note">Rendez-vous dans l'onglet <button type="button" class="lien-onglet" data-vers="avions">Avions</button> ou <button type="button" class="lien-onglet" data-vers="club">Club</button> pour le document concerné.</p>
+        </div>
+        <p class="ok" data-vide>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>
+          Tous les documents à échéance sont à jour.
+        </p>
+      </div>
+
+      {meteo.length > 0 && (
+        <div class="bloc-accueil" data-bloc>
+          <h2 class="titre-bloc">Dernier bulletin météo</h2>
+          <div class="docs">{meteo.map((d) => <DocLien doc={d} vers="club" />)}</div>
+        </div>
+      )}
+
       <div class="appli" data-bloc>
         <div class="hors-ligne" id="hors-ligne" data-fichiers={JSON.stringify(hors.liste)}>
-          <span class="pastille" aria-hidden="true">✈</span>
+          <span class="pastille" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" /></svg>
+          </span>
           <div>
             <strong>Documents hors ligne</strong>
             <span data-etat>Chaque document ouvert reste disponible sans réseau.</span>
@@ -86,8 +146,82 @@ const connexion = url('/membre/connexion/');
         </div>
         <p class="aide-ios" id="aide-ios" hidden>Sur iPhone : touchez le bouton <b>Partager</b> (le carré avec une flèche) en bas de Safari, puis <b>Sur l'écran d'accueil</b>.</p>
       </div>
+    </div>
+  </section>
+
+  <!-- AVIONS -->
+  <section class="section panneau" id="avions" role="tabpanel" hidden>
+    <div class="container">
+      <div class="section-head"><div><span class="label">Nos avions</span><h2>Documents par avion</h2></div></div>
+      <div class="selecteur" id="selecteur" role="group" aria-label="Choisir un avion">
+        <button type="button" data-avion="" aria-pressed="true">Tous</button>
+        {flotte.map((x) => (
+          <button type="button" data-avion={x.im} aria-pressed="false">{x.photo && <img src={asset(x.photo)} alt="" loading="lazy" />}<span><b>{x.im}</b><small>{x.modele}</small></span></button>
+        ))}
+      </div>
+      <div class="fiches" id="fiches">
+        {flotte.map((x) => (
+          <article class="fiche" id={`doc-${x.id}`} data-ims={x.im} data-bloc>
+            <header>
+              <div class="photos">{x.photo && <img src={asset(x.photo)} alt="" loading="lazy" />}</div>
+              <div><h3>{x.im}</h3><div class="chips"><span>{x.modele}</span></div></div>
+            </header>
+
+            <h5 class="sep">Documents officiels</h5>
+            {x.officiels.length > 0
+              ? <div class="liste">{x.officiels.map((d) => <DocLien doc={d} vers="avions" />)}</div>
+              : <p class="rien">Aucun document officiel pour le moment.</p>}
+
+            {x.techniques.length > 0 && <h5 class="sep">Manuels et check-lists</h5>}
+            <div class="liste">{x.techniques.map((d) => <DocLien doc={d} court={titreDoc(d).replace(` ${x.im}`, '')} />)}</div>
+
+            {x.historique.length > 0 && (
+              <details class="histo">
+                <summary>Historique ({x.historique.length})</summary>
+                <div class="liste">{x.historique.map((d) => <DocLien doc={d} vers="avions" />)}</div>
+              </details>
+            )}
+          </article>
+        ))}
+      </div>
+      <p class="alerte-info"><b>!</b><span>{membre.avertissement_avion}</span></p>
+    </div>
+  </section>
+
+  <!-- CLUB -->
+  <section class="section panneau" id="club" role="tabpanel" hidden>
+    <div class="container">
+      <div class="section-head"><div><span class="label">Vie du club</span><h2>Documents du club</h2></div></div>
+      {autresGen.length > 0 && <div class="docs" data-bloc>{autresGen.map((d) => <DocLien doc={d} vers="club" />)}</div>}
+      {meteo.length > 0 && (
+        <div data-bloc>
+          <h3 class="sous-titre">Bulletins météo</h3>
+          <div class="docs">{meteo.map((d) => <DocLien doc={d} vers="club" />)}</div>
+        </div>
+      )}
+      {docsClub.length > 0 && (
+        <div data-bloc>
+          <h3 class="sous-titre">Documentation de l'association</h3>
+          <div class="docs">{docsClub.map((d) => <DocLien doc={d} />)}</div>
+        </div>
+      )}
+      <div class="liens" data-bloc>
+        <a class="btn btn-outline" href={club.aerogest} rel="noopener">Aerogest</a>
+        {membre.liens_club.filter((l) => l.lien).map((l) => <a class="btn btn-outline" href={l.lien} rel="noopener">{l.libelle}</a>)}
+      </div>
+      {historiqueGen.length > 0 && (
+        <details class="histo" data-bloc>
+          <summary>Historique des documents du club ({historiqueGen.length})</summary>
+          <div class="docs">{historiqueGen.map((d) => <DocLien doc={d} vers="club" />)}</div>
+        </details>
+      )}
+    </div>
+  </section>
+
+  <!-- PRÉPARER SON VOL -->
+  <section class="section panneau" id="preparer" role="tabpanel" hidden>
+    <div class="container">
       <div class="section-head"><div><span class="label">Préparer son vol</span><h2>Les outils du pilote</h2></div></div>
-      <div class="carte-metar"><Metar /></div>
       <div class="cats-outils">
       {outils.categories.map((c) => (
         <div class="bloc" data-bloc>
@@ -108,11 +242,17 @@ const connexion = url('/membre/connexion/');
         </div>
       ))}
       </div>
-      {autres.length > 0 && (
+      {vivants('Documentation pilote').length > 0 && (
+        <div class="bloc" data-bloc>
+          <h3 class="sous-titre">Terrain, espace aérien et réglementation</h3>
+          <div class="docs docs-2">{vivants('Documentation pilote').map((d) => <DocLien doc={d} />)}</div>
+        </div>
+      )}
+      {memos.length > 0 && (
         <div class="bloc" data-bloc>
           <h3 class="sous-titre">Mémos et formulaires</h3>
           <div class="cats-outils cats-docs">
-            {autres.map((x) => (
+            {memos.map((x) => (
               <div data-bloc>
                 <h4 class="cat-doc">{x.c}</h4>
                 <div class="pile">{x.docs.map((d) => <DocLien doc={d} />)}</div>
@@ -124,88 +264,40 @@ const connexion = url('/membre/connexion/');
     </div>
   </section>
 
-  <section class="section soft" id="avions" data-bloc>
+  <!-- FORMATION -->
+  <section class="section panneau" id="formation" role="tabpanel" hidden>
     <div class="container">
-      <div class="section-head"><div><span class="label">Nos avions</span><h2>Documentation avion</h2></div></div>
-      <p class="alerte"><b>!</b><span>{membre.avertissement_avion}</span></p>
-      <div class="selecteur" id="selecteur" role="group" aria-label="Choisir un avion">
-        <button type="button" data-avion="" aria-pressed="true">Tous</button>
-        {fiches.flatMap((g) => g.avions.map((x) => (
-          <button type="button" data-avion={x.im} aria-pressed="false">{x.photo && <img src={asset(x.photo)} alt="" loading="lazy" />}<span><b>{x.im}</b><small>{g.titre}</small></span></button>
-        )))}
-      </div>
-      <div class="fiches" id="fiches">
-        {fiches.map((g) => (
-          <article class="fiche" id={`doc-${g.avions[0].id}`} data-ims={g.ims.join(' ')} data-bloc>
-            <header>
-              <div class="photos">{g.avions.map((x) => x.photo && <img src={asset(x.photo)} alt="" loading="lazy" data-im={x.im} />)}</div>
-              <div><h3>{g.titre}</h3><div class="chips">{g.ims.map((i) => <span data-im={i}>{i}</span>)}</div></div>
-            </header>
-            <div class="propres" style={`--n:${g.avions.length}`} data-bloc>
-              {g.propres.map((x) => (
-                <div id={`doc-${x.id}`} data-im={x.im} data-bloc><h5>{x.im}</h5>{x.docs.map((d) => <DocLien doc={d} court={court(d.titre)} />)}</div>
-              ))}
-            </div>
-            {g.communs.length > 0 && <h5 class="sep" data-un="Équipements et check-list">{g.avions.length > 1 ? `Communs aux ${g.avions.length} avions` : 'Équipements et check-list'}</h5>}
-            <div class="liste" data-bloc>{g.communs.map((d) => <div data-ims={d.avions.join(' ')}><DocLien doc={d} court={court(d.titre)} /></div>)}</div>
-          </article>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <section class="section" id="club" data-bloc>
-    <div class="container cols2">
-      <div><span class="label">Vie du club</span><h2>Les documents de l'association</h2>
-        <p class="lead">Livret d'accueil, règlement, statuts et lettres d'information.</p>
-        <div class="liens">
-          <a class="btn btn-outline" href={club.aerogest} rel="noopener">Aerogest</a>
-          {membre.liens_club.filter((l) => l.lien).map((l) => <a class="btn btn-outline" href={l.lien} rel="noopener">{l.libelle}</a>)}
-        </div>
-      </div>
-      <div class="docs" data-bloc>{parCat('Vie du club').map((d) => <DocLien doc={d} />)}</div>
-    </div>
-  </section>
-
-  <section class="section soft" id="pilote" data-bloc>
-    <div class="container">
-      <div class="section-head"><div><span class="label">Documentation pilote</span><h2>Terrain, espace aérien et réglementation</h2></div></div>
-      <div class="docs docs-2" data-bloc>{parCat('Documentation pilote').map((d) => <DocLien doc={d} />)}</div>
-    </div>
-  </section>
-
-  <section class="section" id="eleves" data-bloc>
-    <div class="container">
-      <div class="section-head"><div><span class="label">Parcours élève</span><h2>De la première leçon à la licence</h2></div></div>
-      <ol class="parcours">
-        {membre.parcours.map((e, i) => {
-          const liste = e.categorie_docs ? parCat(e.categorie_docs) : [];
+      <div class="section-head"><div><span class="label">Formation</span><h2>Livrets, progression et examens</h2></div></div>
+      <p class="intro-form">Les documents et outils de la formation : livrets de briefing et de progression, théorique et examen pratique.</p>
+      <div class="form-blocs">
+        {membre.parcours.map((e) => {
+          const liste = e.categorie_docs ? vivants(e.categorie_docs) : [];
           const liens = e.liens.filter((l) => l.lien);
           return (
-            <li class="etape" data-bloc>
-              <span class="num">{i + 1}</span>
-              <div>
-                <h3>{e.titre}</h3>
-                <p>{e.texte}</p>
-                {liste.length > 0 && <div class="docs">{liste.map((d) => <DocLien doc={d} />)}</div>}
-                {liens.length > 0 && <div class="liens">{liens.map((l) => <a class="btn btn-outline" href={l.lien} target="_blank" rel="noopener">{l.libelle} ↗</a>)}</div>}
-              </div>
-            </li>
+            <div class="form-bloc" data-bloc>
+              <h3>{e.titre}</h3>
+              <p>{e.texte}</p>
+              {liste.length > 0 && <div class="docs">{liste.map((d) => <DocLien doc={d} />)}</div>}
+              {liens.length > 0 && <div class="liens">{liens.map((l) => <a class="btn btn-outline" href={l.lien} target="_blank" rel="noopener">{l.libelle} ↗</a>)}</div>}
+            </div>
           );
         })}
-      </ol>
+      </div>
     </div>
   </section>
 </Base>
 
 <script>
-  import { enregistrer, horsLigne, boutonInstaller, seDeconnecter } from '../../scripts/membre-app';
+  import { enregistrer, horsLigne, boutonInstaller, seDeconnecter, badges, onglets } from '../../scripts/membre-app';
   enregistrer();
+  const montrer = onglets();
+  badges();
   horsLigne(document.getElementById('hors-ligne'));
   boutonInstaller(document.getElementById('installer') as HTMLButtonElement, document.getElementById('aide-ios'));
   document.getElementById('deconnexion')?.addEventListener('click', () => {
     if (confirm('Se déconnecter de l\'espace membre sur cet appareil ? Les documents gardés hors ligne seront effacés.')) seDeconnecter();
   });
+  document.querySelectorAll<HTMLElement>('.lien-onglet[data-vers]').forEach((b) => b.addEventListener('click', () => montrer?.(b.dataset.vers!)));
 
   // Sélecteur d'avion : n'affiche que les documents de l'avion choisi, et s'en souvient sur cet appareil
   const fichesEl = document.getElementById('fiches');
@@ -214,24 +306,21 @@ const connexion = url('/membre/connexion/');
     if (im && !boutonsAvion.some((b) => b.dataset.avion === im)) im = '';
     boutonsAvion.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.avion === im)));
     fichesEl?.classList.toggle('un', !!im);
-    fichesEl?.querySelectorAll<HTMLElement>('[data-ims], [data-im]').forEach((el) => {
-      const liste = (el.dataset.ims ?? el.dataset.im ?? '').split(' ');
-      el.classList.toggle('autre-avion', !!im && !liste.includes(im));
-    });
-    fichesEl?.querySelectorAll<HTMLElement>('.sep').forEach((h) => {
-      h.dataset.tous ??= h.textContent || '';
-      h.textContent = im ? h.dataset.un || '' : h.dataset.tous;
+    fichesEl?.querySelectorAll<HTMLElement>('[data-ims]').forEach((el) => {
+      el.classList.toggle('autre-avion', !!im && el.dataset.ims !== im);
     });
     try { im ? localStorage.setItem('acbt-avion', im) : localStorage.removeItem('acbt-avion'); } catch { /* navigation privée */ }
   };
   boutonsAvion.forEach((b) => b.addEventListener('click', () => choisirAvion(b.dataset.avion || '')));
   try { const avant = localStorage.getItem('acbt-avion'); if (avant) choisirAvion(avant); } catch { /* rien */ }
 
+  // Recherche : balaie tous les onglets à la fois (ajoute la classe « recherche » au corps)
   const q = document.getElementById('q') as HTMLInputElement | null;
   const aucun = document.getElementById('aucun');
   const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   q?.addEventListener('input', () => {
     const v = norm(q.value.trim());
+    document.body.classList.toggle('recherche', !!v);
     document.querySelectorAll<HTMLElement>('[data-q]').forEach((el) => { el.hidden = !!v && !norm(el.dataset.q || '').includes(v); });
     [...document.querySelectorAll<HTMLElement>('[data-bloc]')].reverse().forEach((b) => {
       b.hidden = !!v && !b.querySelector('[data-q]:not([hidden])');
@@ -242,57 +331,75 @@ const connexion = url('/membre/connexion/');
 
 <style>
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .outilbar { position: sticky; top: 76px; z-index: 20; transition: top .5s cubic-bezier(.2,.7,.2,1); background: rgba(246,242,234,.94); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
-  .outilbar-in { padding-top: 10px; padding-bottom: 10px; }
-  :global(body:has(.site-header.cache)) .outilbar { top: 0; }
+  [hidden] { display: none !important; }
+
+  /* En-tête opérationnel (sans photo) */
+  .tete { background: var(--ink); color: #fff; }
+  .tete-in { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 22px 0; flex-wrap: wrap; }
+  .tete .label { color: var(--accent); }
+  .tete h1 { margin: 2px 0 0; font-size: clamp(1.5rem, 4vw, 2rem); }
+  .icones { display: flex; gap: 8px; }
+  .icone { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: #fff; color: var(--ink); display: grid; place-items: center; cursor: pointer; padding: 0; transition: border-color .15s, color .15s; }
+  .icone:hover, .icone:focus-visible { border-color: var(--accent); color: var(--accent); }
+  .icone[hidden] { display: none; }
+
+  /* Barre d'onglets, collante sous l'en-tête du site */
+  .onglets { position: sticky; top: 76px; z-index: 20; background: rgba(246,242,234,.96); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); transition: top .5s cubic-bezier(.2,.7,.2,1); }
+  :global(body:has(.site-header.cache)) .onglets { top: 0; }
+  .onglets-in { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 6px 16px; }
+  .onglets-in::-webkit-scrollbar { display: none; }
+  .onglets button { display: inline-flex; align-items: center; gap: 8px; flex: none; padding: 9px 16px; border: 0; background: none; color: var(--muted); font: inherit; font-size: .92rem; font-weight: 600; border-radius: 999px; cursor: pointer; white-space: nowrap; transition: background .15s, color .15s; }
+  .onglets button:hover { color: var(--ink); }
+  .onglets button.actif { background: var(--accent); color: #fff; }
+  .onglets svg { flex: none; }
+  @media (max-width: 560px) { .onglets button span { font-size: .8rem; } .onglets button { padding: 8px 12px; } }
+
+  .recherchebar { border-bottom: 1px solid var(--line); background: #fff; }
+  .recherchebar .container { padding-top: 10px; padding-bottom: 10px; }
   .cherche { display: block; width: 100%; }
   .cherche input { width: 100%; max-width: 520px; display: block; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; font: inherit; font-size: .92rem; }
   .cherche input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
   @media (max-width: 860px) { .cherche input { max-width: none; } }
   .aucun { padding-top: 32px; color: var(--muted); }
-  [hidden] { display: none !important; }
-  .appli { display: grid; gap: 12px; margin-bottom: 32px; }
+
+  /* Panneaux : masqués sauf l'actif ; en recherche, tous visibles */
+  :global(body.recherche) .panneau[hidden] { display: block !important; }
+  :global(body.recherche) .onglets { display: none; }
+
+  .titre-bloc { font-size: 1.15rem; display: flex; align-items: center; gap: 10px; margin: 0 0 14px; }
+  .sous-titre { font-size: 1.2rem; margin: 28px 0 14px; }
+  .bloc-accueil { margin-top: 24px; }
+
+  /* METAR : présenté comme un outil opérationnel, bien visible */
+  .metar-bloc { margin-bottom: 8px; }
+  .carte-metar { padding: 16px 18px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; background: #fff; }
+
+  /* Bandeau d'alerte documents (les lignes sont créées en JS : styles en :global) */
+  .alerte-docs { margin-top: 24px; }
+  .pt-alerte { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #b42318; color: #fff; display: grid; place-items: center; font-weight: 700; }
+  .liste-alerte { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  :global(.liste-alerte .al) { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 12px; border: 1px solid; font-size: .92rem; }
+  :global(.liste-alerte .al .pt) { flex: none; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+  :global(.liste-alerte .al-expire) { color: #b42318; background: #fdecea; border-color: #f3b4ad; }
+  :global(.liste-alerte .al-bientot) { color: #9a6200; background: #fff3dd; border-color: #f2d49a; }
+  :global(.liste-alerte b) { color: var(--ink); }
+  .note { margin: 12px 0 0; font-size: .9rem; color: var(--muted); }
+  .lien-onglet { border: 0; background: none; color: var(--accent); font: inherit; font-weight: 600; cursor: pointer; padding: 0; text-decoration: underline; }
+  .ok { display: flex; align-items: center; gap: 10px; color: #1e7e34; background: #e8f6ec; border: 1px solid #bfe3c8; border-radius: 12px; padding: 12px 16px; margin: 0; font-weight: 600; }
+
+  /* Hors ligne */
+  .appli { display: grid; gap: 12px; margin-top: 28px; }
   .hors-ligne { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: color-mix(in srgb, var(--accent) 6%, white); }
   .hors-ligne > div { flex: 1 1 220px; display: grid; gap: 2px; font-size: .92rem; color: var(--muted); }
   .hors-ligne strong { color: var(--ink); font-size: 1rem; }
   .hors-ligne progress { width: 100%; height: 8px; accent-color: var(--accent); }
   .hors-ligne .btn { padding: 9px 16px; font-size: .9rem; }
-  .pastille { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 1.1rem; }
-  .icones { display: flex; gap: 8px; }
-  .icone { width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line); background: #fff; color: var(--ink); display: grid; place-items: center; cursor: pointer; padding: 0; transition: border-color .15s, color .15s, background .15s; }
-  .icone:hover, .icone:focus-visible { border-color: var(--accent); color: var(--accent); }
-  .icone[hidden] { display: none; }
-  .aide-ios { grid-column: 1 / -1; font-size: .9rem; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0; }
-  .carte-metar { margin-bottom: 28px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .pastille { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; }
+  .aide-ios { font-size: .9rem; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 0; }
 
-  .bloc { margin-bottom: 36px; }
-  .bloc:last-child { margin-bottom: 0; }
-  .bloc h3 { font-size: 1.15rem; margin-bottom: 14px; }
-  .cats-outils { display: grid; gap: 0 20px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin-bottom: 12px; }
-  .grille-outils { grid-template-columns: 1fr; gap: 14px; }
-  .outil { min-height: 170px; }
-  .sous-titre { font-size: 1.3rem; margin: 20px 0 18px; padding-top: 28px; border-top: 1px solid var(--line); }
-  .cat-doc { font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; font-family: var(--font-body); }
-  .pile { display: grid; gap: 10px; }
-  .pile :global(.doc) { min-height: 102px; }
-  .cats-docs { gap: 20px; }
-  .outil .card-body { height: 100%; box-sizing: border-box; }
-  .outil p { margin: 0; }
-  .outil { text-decoration: none; color: inherit; }
-  .outil h4 { font-size: 1.05rem; margin: 0; }
-  .outil-tete { display: flex; align-items: center; gap: 14px; min-height: 52px; margin-bottom: 14px; }
-  .logo-site { position: relative; flex: none; width: 96px; height: 48px; border-radius: 12px; background: #fff; border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; }
-  .logo-site::before { content: attr(data-init); font-family: var(--font-title); font-weight: 700; font-size: .95rem; color: var(--accent); }
-  .logo-site.perso img { width: calc(100% - 16px); height: 34px; }
-  .logo-site img { position: absolute; inset: 0; margin: auto; width: 32px; height: 32px; object-fit: contain; background: #fff; }
-  .outil:hover h4 { color: var(--accent); }
-  .outil p { font-size: .92rem; color: var(--muted); }
-  .docs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
-  .docs-2 { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
-  @media (max-width: 420px) { .docs, .docs-2 { grid-template-columns: 1fr; } }
-
-  .alerte { display: flex; gap: 14px; align-items: flex-start; background: #fff4e5; border: 1px solid #f2c98a; color: #6b4200; border-radius: 14px; padding: 14px 18px; margin-bottom: 28px; font-size: .95rem; }
-  .alerte b { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #d9480f; color: #fff; display: grid; place-items: center; font-size: .9rem; }
+  /* Sélecteur d'avion + fiches */
+  .alerte-info { display: flex; gap: 14px; align-items: flex-start; background: #fff4e5; border: 1px solid #f2c98a; color: #6b4200; border-radius: 14px; padding: 14px 18px; margin-top: 28px; font-size: .95rem; }
+  .alerte-info b { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #d9480f; color: #fff; display: grid; place-items: center; font-size: .9rem; }
   .selecteur { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
   .selecteur button { display: inline-flex; align-items: center; gap: 9px; padding: 6px 14px 6px 6px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); font: inherit; cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
   .selecteur button:first-child { padding: 6px 16px; min-height: 46px; font-weight: 600; font-size: .92rem; }
@@ -307,36 +414,53 @@ const connexion = url('/membre/connexion/');
     .selecteur button { flex: none; }
   }
   .autre-avion { display: none !important; }
+  .fiches { display: grid; gap: 20px; grid-template-columns: 1fr 1fr; align-items: start; }
   .fiches.un { grid-template-columns: minmax(0, 640px); }
-  .fiches.un .propres { grid-template-columns: 1fr; }
-  .fiches { display: grid; gap: 20px; grid-template-columns: 1.4fr 1fr 1fr; align-items: start; }
-  @media (max-width: 1000px) { .fiches { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 680px) { .fiches { grid-template-columns: 1fr; } }
   .fiche { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 16px; scroll-margin-top: 150px; }
   .fiche header { display: flex; gap: 14px; align-items: center; margin-bottom: 14px; }
   .fiche .photos { display: flex; flex: none; }
   .fiche .photos img { width: 64px; height: 48px; object-fit: cover; border-radius: 10px; border: 2px solid #fff; }
-  .fiche .photos img + img { margin-left: -16px; }
   .fiche h3 { margin: 0 0 4px; font-size: 1.25rem; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; }
   .chips span { font-size: .75rem; font-weight: 600; letter-spacing: .05em; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--ink); }
-  .fiche h5 { font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; font-family: var(--font-body); }
-  .propres { display: grid; gap: 10px; grid-template-columns: repeat(var(--n), 1fr); padding: 12px; background: color-mix(in srgb, var(--accent) 7%, white); border-radius: 12px; }
-  @media (max-width: 420px) { .propres { grid-template-columns: 1fr; } }
-  .propres > div { display: grid; gap: 6px; align-content: start; scroll-margin-top: 150px; }
-  .fiche .sep { margin-top: 16px; }
-  .liste { display: grid; gap: 6px; }
-  .fiche :global(.doc) { padding: 7px 10px; }
-  .fiche :global(.doc .meta) { display: none; }
+  .fiche h5.sep { font-size: .72rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 16px 0 8px; font-family: var(--font-body); }
+  .fiche h5.sep:first-of-type { margin-top: 0; }
+  .liste { display: grid; gap: 8px; }
+  .rien { color: var(--muted); font-size: .9rem; margin: 0 0 4px; }
+  .histo { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .histo summary { cursor: pointer; font-size: .85rem; font-weight: 600; color: var(--muted); }
+  .histo .liste, .histo .docs { margin-top: 10px; }
 
-  .cols2 { display: grid; gap: 40px; grid-template-columns: 1fr 1.4fr; align-items: start; }
-  @media (max-width: 860px) { .cols2 { grid-template-columns: 1fr; } }
+  /* Outils */
+  .cats-outils { display: grid; gap: 0 20px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); margin-bottom: 12px; }
+  .bloc { margin-bottom: 36px; }
+  .bloc:last-child { margin-bottom: 0; }
+  .bloc h3 { font-size: 1.15rem; margin-bottom: 14px; }
+  .grille-outils { grid-template-columns: 1fr; gap: 14px; }
+  .outil { min-height: 170px; text-decoration: none; color: inherit; }
+  .cat-doc { font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; font-family: var(--font-body); }
+  .pile { display: grid; gap: 10px; }
+  .cats-docs { gap: 20px; }
+  .outil .card-body { height: 100%; box-sizing: border-box; }
+  .outil h4 { font-size: 1.05rem; margin: 0; }
+  .outil-tete { display: flex; align-items: center; gap: 14px; min-height: 52px; margin-bottom: 14px; }
+  .logo-site { position: relative; flex: none; width: 96px; height: 48px; border-radius: 12px; background: #fff; border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; }
+  .logo-site::before { content: attr(data-init); font-family: var(--font-title); font-weight: 700; font-size: .95rem; color: var(--accent); }
+  .logo-site.perso img { width: calc(100% - 16px); height: 34px; }
+  .logo-site img { position: absolute; inset: 0; margin: auto; width: 32px; height: 32px; object-fit: contain; background: #fff; }
+  .outil:hover h4 { color: var(--accent); }
+  .outil p { font-size: .92rem; color: var(--muted); margin: 0; }
+  .docs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .docs-2 { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+  @media (max-width: 420px) { .docs, .docs-2 { grid-template-columns: 1fr; } }
   .liens { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 
-  .parcours { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; counter-reset: e; }
-  .etape { display: grid; grid-template-columns: 56px 1fr; gap: 20px; padding: 26px 0; border-top: 1px solid var(--line); }
-  .etape .num { width: 48px; height: 48px; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-family: var(--font-title); font-size: 1.4rem; }
-  .etape h3 { font-size: 1.3rem; margin: 6px 0 8px; }
-  .etape p { color: var(--muted); max-width: 70ch; }
-  .etape .docs { margin-top: 14px; }
+  /* Formation : blocs de documents opérationnels */
+  .intro-form { color: var(--muted); max-width: 70ch; margin: -8px 0 24px; }
+  .form-blocs { display: grid; gap: 16px; }
+  .form-bloc { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; }
+  .form-bloc h3 { font-size: 1.2rem; margin: 0 0 8px; }
+  .form-bloc p { color: var(--muted); max-width: 72ch; margin: 0; }
+  .form-bloc .docs { margin-top: 14px; }
 </style>
