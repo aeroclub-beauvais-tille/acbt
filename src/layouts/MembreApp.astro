@@ -1,0 +1,73 @@
+---
+// Coquille autonome de l'appli « Espace membre » : sa propre identité, sans l'en-tête ni le pied du site public.
+import '@fontsource-variable/inter/wght.css';
+import policeTexte from '@fontsource-variable/inter/files/inter-latin-wght-normal.woff2?url';
+import { url } from '../lib/utils';
+interface Props { title: string; description?: string }
+const { title, description = "Espace réservé aux membres de l'aéroclub de Beauvais-Tillé." } = Astro.props;
+---
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title} · ACBT Pilotes</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href={url('/favicon.png')} type="image/png" />
+    <link rel="apple-touch-icon" href={url('/icones/membre-192.png')} />
+    <link rel="preload" href={policeTexte} as="font" type="font/woff2" crossorigin />
+    <meta name="theme-color" content="#0e1a2b" />
+    <link rel="manifest" href={url('/membre/manifest.webmanifest')} />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="ACBT Pilotes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <slot name="head" />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
+<style is:global>
+  :root {
+    /* Identité propre à l'appli membre : palette froide « instrument », le rouge/ambre réservés aux alertes */
+    --bg: #eef2f7;
+    --surface: #ffffff;
+    --surface-2: #f5f8fc;
+    --ink: #0e1a2b;
+    --ink-2: #334155;
+    --muted: #64748b;
+    --line: #dde5ef;
+    --accent: #0b5cff;      /* bleu signal (froid) */
+    --accent-ink: #ffffff;
+    --accent-soft: #e7efff;
+    --bar: #0e1a2b;         /* barre du haut, sombre */
+    --bar-ink: #eaf1fb;
+    /* États */
+    --ok: #0f7a3d; --ok-bg: #e6f6ec; --ok-line: #bfe6cc;
+    --warn: #a85a00; --warn-bg: #fff2dc; --warn-line: #f3d199;
+    --bad: #c4161c; --bad-bg: #fdeaea; --bad-line: #f4b9bb;
+    --font: 'Inter Variable', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --tab-h: 62px;
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+  a { color: inherit; }
+  button { font-family: inherit; }
+  [hidden] { display: none !important; }
+  ::selection { background: var(--accent-soft); }
+</style>

@@ -1,16 +1,14 @@
 ---
-import Base from '../../layouts/Base.astro';
-import MembreTete from '../../components/MembreTete.astro';
+import MembreApp from '../../layouts/MembreApp.astro';
 import { url } from '../../lib/utils';
 // Sur Cloudflare, le vrai mot de passe est vérifié : on retire la mention « version d'essai ».
 const essai = !process.env.CF_PAGES;
 ---
-<Base univers="membres" title="Connexion à l'espace membre" description="Connexion à l'espace réservé aux membres de l'aéroclub de Beauvais-Tillé." noindex>
-  <MembreTete slot="head" />
+<MembreApp title="Connexion">
   <section class="connexion">
     <form class="boite" id="form" novalidate>
-      <img src={url('/icones/membre-192.png')} alt="" width="88" height="88" />
-      <h1>Espace membre</h1>
+      <img src={url('/icones/membre-192.png')} alt="" width="76" height="76" />
+      <h1>ACBT Pilotes</h1>
       <p class="intro">Outils et documents des pilotes de l'ACBT.</p>
       <label for="mdp">Mot de passe du club</label>
       <div class="champ">
@@ -18,22 +16,24 @@ const essai = !process.env.CF_PAGES;
         <button type="button" class="voir" id="voir" aria-label="Afficher le mot de passe">Voir</button>
       </div>
       <p class="erreur" id="erreur" role="alert" hidden></p>
-      <button class="btn btn-primary envoyer" type="submit" id="envoyer">Se connecter</button>
+      <button class="envoyer" type="submit" id="envoyer">Se connecter</button>
       <p class="aide">Le mot de passe est donné par le bureau du club. Vous restez connecté sur cet appareil.</p>
-      {essai && <p class="notice maquette">Version d'essai : le vrai mot de passe sera activé au passage sur Cloudflare. Pour l'instant, n'importe quel mot suffit.</p>}
+      {essai && <p class="maquette">Version d'essai : n'importe quel mot suffit (le vrai mot de passe sera activé avec Cloudflare).</p>}
 
       <div class="installer">
-        <button type="button" class="btn btn-outline" id="installer" hidden>📲 Installer l'appli sur ce téléphone</button>
-        <p class="aide-ios" id="aide-ios" hidden>Sur iPhone : touchez le bouton <b>Partager</b> (le carré avec une flèche) en bas de Safari, puis <b>Sur l'écran d'accueil</b>.</p>
+        <button type="button" class="btn-install" id="installer" hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2.5" /><path d="M12 7v7M9 11l3 3 3-3M10.5 18.5h3" /></svg>
+          Installer l'appli sur ce téléphone
+        </button>
+        <p class="aide-ios" id="aide-ios" hidden>Sur iPhone : touchez <b>Partager</b> en bas de Safari, puis <b>Sur l'écran d'accueil</b>.</p>
       </div>
     </form>
   </section>
-</Base>
+</MembreApp>
 
 <script>
   import { seConnecter, estConnecte, enregistrer, boutonInstaller } from '../../scripts/membre-app';
   import { url } from '../../lib/utils';
-
   const retour = () => {
     const r = new URLSearchParams(location.search).get('retour') || '';
     return r.startsWith(url('/membre/')) ? r : url('/membre/');
@@ -68,24 +68,24 @@ const essai = !process.env.CF_PAGES;
 </script>
 
 <style>
-  .connexion { min-height: calc(100svh - 77px); display: flex; justify-content: center; align-items: center; padding: 40px 16px 64px; overflow-x: clip; background: radial-gradient(ellipse at top, color-mix(in srgb, var(--accent) 12%, var(--paper)), var(--paper) 70%); }
-  .boite { width: 100%; max-width: 420px; min-width: 0; background: #fff; border: 1px solid var(--line); border-radius: 24px; padding: 32px 28px; box-shadow: 0 24px 60px rgba(15,27,45,.10); text-align: center; }
-  @media (max-width: 420px) { .connexion { padding-top: 24px; } .boite { padding: 26px 18px; border-radius: 20px; } }
-  .boite > img { border-radius: 20px; border: 1px solid var(--line); margin: 0 auto 14px; display: block; }
-  h1 { font-size: 1.8rem; margin: 0 0 4px; }
-  .intro { color: var(--muted); margin: 0 0 26px; }
-  label { display: block; text-align: left; font-weight: 600; font-size: .92rem; margin-bottom: 6px; }
-  .champ { display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; }
+  .connexion { min-height: 100svh; display: flex; justify-content: center; align-items: center; padding: 40px 16px; background: radial-gradient(ellipse at top, var(--accent-soft), var(--bg) 70%); }
+  .boite { width: 100%; max-width: 400px; background: var(--surface); border: 1px solid var(--line); border-radius: 22px; padding: 30px 24px; box-shadow: 0 24px 60px rgba(14,26,43,.10); text-align: center; }
+  .boite > img { border-radius: 18px; margin: 0 auto 14px; display: block; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .intro { color: var(--muted); margin: 0 0 24px; font-size: .95rem; }
+  label { display: block; text-align: left; font-weight: 600; font-size: .9rem; margin-bottom: 6px; }
+  .champ { display: flex; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
   .champ:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
   .champ input { flex: 1; min-width: 0; border: 0; padding: 13px 14px; font: inherit; font-size: 1.05rem; outline: none; background: transparent; }
   .voir { border: 0; background: transparent; color: var(--accent); font: inherit; font-weight: 600; font-size: .88rem; padding: 0 14px; cursor: pointer; }
-  .erreur { color: #b42318; background: #fef3f2; border: 1px solid #fecdca; border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .92rem; text-align: left; }
-  .envoyer { width: 100%; justify-content: center; margin-top: 18px; }
+  .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; text-align: left; }
+  .envoyer { width: 100%; margin-top: 18px; padding: 13px; border: 0; border-radius: 12px; background: var(--accent); color: var(--accent-ink); font: inherit; font-weight: 700; font-size: 1rem; cursor: pointer; }
   .envoyer:disabled { opacity: .7; cursor: wait; }
-  .aide { font-size: .85rem; color: var(--muted); margin: 14px 0 0; }
-  .maquette { font-size: .85rem; margin: 16px 0 0; text-align: left; }
-  .installer { margin-top: 20px; }
-  .installer .btn { width: 100%; justify-content: center; }
-  .aide-ios { font-size: .9rem; text-align: left; background: var(--paper); border-radius: 12px; padding: 12px 14px; margin: 10px 0 0; }
+  .aide { font-size: .84rem; color: var(--muted); margin: 14px 0 0; }
+  .maquette { font-size: .82rem; color: var(--muted); margin: 14px 0 0; text-align: left; background: var(--surface-2); border-radius: 10px; padding: 10px 12px; }
+  .installer { margin-top: 18px; }
+  .btn-install { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 9px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+  .btn-install svg { width: 19px; height: 19px; }
+  .aide-ios { font-size: .88rem; text-align: left; background: var(--surface-2); border-radius: 12px; padding: 12px 14px; margin: 10px 0 0; }
   [hidden] { display: none !important; }
 </style>
