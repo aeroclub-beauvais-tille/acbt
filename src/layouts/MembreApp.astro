@@ -15,6 +15,10 @@ const policesFaces = `@font-face{font-family:'Manrope';font-style:normal;font-we
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <script is:inline>
+      /* Applique le thème choisi avant l'affichage pour éviter un clignotement */
+      try { var t = localStorage.getItem('acbt-theme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
+    </script>
     <title>{title} · ACBT Pilotes</title>
     <meta name="description" content={description} />
     <meta name="robots" content="noindex" />
@@ -67,33 +71,26 @@ const policesFaces = `@font-face{font-family:'Manrope';font-style:normal;font-we
     --safe-b: env(safe-area-inset-bottom, 0px);
     color-scheme: light;
   }
+  /* Thème « Perfs ACBT » — sombre : automatique selon le téléphone, sauf si le pilote force clair/sombre */
   @media (prefers-color-scheme: dark) {
-    :root {
-      /* Thème « Perfs ACBT » — sombre */
-      --bg: #0a1124;
-      --surface: #121b33;
-      --surface-2: #18233f;
-      --ink: #eef2fa;
-      --ink-2: #c7d0e4;
-      --muted: #8792ad;
-      --line: #202c4a;
-      --accent: #8fa6ff;
-      --accent-ink: #0a1124;
-      --accent-soft: rgba(143,166,255,.14);
-      --accent-line: #2e3c60;
-      --accent-text: #afc0ff;
-      --navy: #16245a;
-      --on-navy: #ffffff;
-      --on-navy-dim: #9aa8cc;
-      --yellow: #ffb81f;
-      --bar: #0a1124;
-      --bar-ink: #eef2fa;
+    :root:not([data-theme="light"]) {
+      --bg: #0a1124; --surface: #121b33; --surface-2: #18233f; --ink: #eef2fa; --ink-2: #c7d0e4; --muted: #8792ad; --line: #202c4a;
+      --accent: #8fa6ff; --accent-ink: #0a1124; --accent-soft: rgba(143,166,255,.14); --accent-line: #2e3c60; --accent-text: #afc0ff;
+      --navy: #16245a; --on-navy: #ffffff; --on-navy-dim: #9aa8cc; --yellow: #ffb81f; --bar: #0a1124; --bar-ink: #eef2fa;
       --ok: #40c97f; --ok-bg: rgba(64,201,127,.14); --ok-line: #22543a;
       --warn: #ffb81f; --warn-bg: rgba(255,184,31,.14); --warn-line: #5a4618;
       --bad: #ff6464; --bad-bg: rgba(255,100,100,.14); --bad-line: #5e2723;
-      --shadow: none;
-      color-scheme: dark;
+      --shadow: none; color-scheme: dark;
     }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a1124; --surface: #121b33; --surface-2: #18233f; --ink: #eef2fa; --ink-2: #c7d0e4; --muted: #8792ad; --line: #202c4a;
+    --accent: #8fa6ff; --accent-ink: #0a1124; --accent-soft: rgba(143,166,255,.14); --accent-line: #2e3c60; --accent-text: #afc0ff;
+    --navy: #16245a; --on-navy: #ffffff; --on-navy-dim: #9aa8cc; --yellow: #ffb81f; --bar: #0a1124; --bar-ink: #eef2fa;
+    --ok: #40c97f; --ok-bg: rgba(64,201,127,.14); --ok-line: #22543a;
+    --warn: #ffb81f; --warn-bg: rgba(255,184,31,.14); --warn-line: #5a4618;
+    --bad: #ff6464; --bad-bg: rgba(255,100,100,.14); --bad-line: #5e2723;
+    --shadow: none; color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
