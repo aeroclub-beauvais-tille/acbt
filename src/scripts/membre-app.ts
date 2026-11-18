@@ -64,7 +64,14 @@ export function enregistrer() {
 }
 
 export const estInstallee = () => matchMedia('(display-mode: standalone)').matches || (navigator as { standalone?: boolean }).standalone === true;
-const iphone = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+/** Téléphone ou tablette : là, l'espace membres s'utilise en appli installée. */
+export const mobile = () => /android|iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+/** Doit-on d'abord proposer l'installation ? (mobile, pas déjà dans l'appli, pas choisi « continuer dans le navigateur » pour cette visite) */
+export const installerAvant = () => {
+  try { if (sessionStorage.getItem('acbt-navigateur')) return false; } catch { /* navigation privée */ }
+  return mobile() && !estInstallee();
+};
+export const iphone = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 /** Bouton « Installer l'appli » : invite du navigateur sur Android et ordinateur, explication sur iPhone. */
 export function boutonInstaller(bouton: HTMLButtonElement | null, aide: HTMLElement | null) {
