@@ -19,7 +19,7 @@ const policesFaces = `@font-face{font-family:'Manrope';font-style:normal;font-we
       /* Applique le thème choisi avant l'affichage pour éviter un clignotement */
       try { var t = localStorage.getItem('acbt-theme'); if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t); } catch (e) {}
     </script>
-    <title>{title} · ACBT Pilotes</title>
+    <title>{title} · ACBT Membres</title>
     <meta name="description" content={description} />
     <meta name="robots" content="noindex" />
     <link rel="icon" href={url('/favicon.png')} type="image/png" />
@@ -30,7 +30,7 @@ const policesFaces = `@font-face{font-family:'Manrope';font-style:normal;font-we
     <link rel="manifest" href={url('/membre/manifest.webmanifest')} />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="ACBT Pilotes" />
+    <meta name="apple-mobile-web-app-title" content="ACBT Membres" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <slot name="head" />
   </head>
