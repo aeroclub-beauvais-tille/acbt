@@ -115,7 +115,8 @@ export function badges(racine: ParentNode = document) {
     b.textContent = chip;
     const e = b.parentElement?.querySelector<HTMLElement>('.ech');
     if (e) e.textContent = ech;
-    if ((code === 'expire' || code === 'bientot') && b.dataset.titre && !alertes.some((a) => a.titre === b.dataset.titre))
+    // Un document remplacé (historique) n'est plus à renouveler : sa version en vigueur fait foi
+    if ((code === 'expire' || code === 'bientot') && b.dataset.titre && !b.closest('.histo') && !alertes.some((a) => a.titre === b.dataset.titre))
       alertes.push({ titre: b.dataset.titre, code, chip, ech, vers: b.dataset.vers });
   });
 
@@ -238,6 +239,7 @@ export function avions() {
   const etat = (im: string) => {
     let pire = 3, nExp = 0, minJ = Infinity;
     fiches.querySelectorAll<HTMLElement>(`[data-ims="${im}"] .badge`).forEach((b) => {
+      if (b.closest('.histo')) return; // historique : remplacé, ne compte pas
       const code = b.dataset.code || 'sans-fin';
       pire = Math.min(pire, RANG[code] ?? 3);
       if (code === 'expire') nExp++;

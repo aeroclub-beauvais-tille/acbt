@@ -140,12 +140,15 @@ const onglets = [
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" /><path d="M12 9v4M12 17h.01" /></svg>
               Signaler un problème technique
             </button>
+            <div class="fiche-cols"><div>
             <h5 class="sep">Documents officiels</h5>
             {x.officiels.length > 0
               ? <div class="liste">{x.officiels.map((d) => <DocLien doc={d} vers="avions" />)}</div>
               : <p class="rien">Aucun document officiel.</p>}
+            </div><div>
             {x.techniques.length > 0 && <h5 class="sep">Manuels et check-lists</h5>}
             <div class="liste">{x.techniques.map((d) => <DocLien doc={d} court={titreDoc(d).replace(` ${x.im}`, '')} />)}</div>
+            </div></div>
             {x.historique.length > 0 && (
               <details class="histo"><summary>Historique ({x.historique.length})</summary><div class="liste">{x.historique.map((d) => <DocLien doc={d} vers="avions" />)}</div></details>
             )}
@@ -358,7 +361,26 @@ const onglets = [
   .signaler:active { transform: scale(.99); }
 
   .fiches { display: grid; gap: 14px; }
-  @media (min-width: 620px) { .fiches { grid-template-columns: 1fr 1fr; align-items: start; } }
+  /* Une seule fiche affichée à la fois (l'avion choisi) : pleine largeur ; sur grand écran, documents et manuels côte à côte */
+  @media (min-width: 900px) {
+    .fiche { padding: 20px 22px; }
+    .fiche-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 22px; align-items: start; }
+    .fiche-cols > div > .sep:first-child { margin-top: 0; }
+    .signaler { width: auto; padding-inline: 18px; }
+  }
+  .fiche-cols > div + div > .sep:first-child { margin-top: 22px; }
+  @media (min-width: 900px) {
+    .content { max-width: 980px; }
+    .topbar { padding-inline: max(14px, calc((100% - 980px) / 2 + 14px)); }
+    #accueil { max-width: 760px; margin-inline: auto; }
+    .fiche-cols > div + div > .sep:first-child { margin-top: 0; }
+    .outils { grid-template-columns: 1fr 1fr 1fr; }
+  }
+  /* Grand écran : la barre d'onglets reste groupée au centre, alignée sur le contenu */
+  @media (min-width: 820px) {
+    .tabbar { justify-content: center; }
+    .tabbar button { flex: 0 1 240px; }
+  }
   .fiche { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 15px; }
   .fiche.cache { display: none; }
   .fiche header { display: flex; gap: 12px; align-items: center; margin-bottom: 14px; }
