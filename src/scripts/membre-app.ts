@@ -80,55 +80,74 @@ export function boutonInstaller(bouton: HTMLButtonElement | null, aide: HTMLElem
 }
 
 /**
- * Badges de validité, recalculés dans le navigateur à chaque ouverture (justes même hors ligne,
- * contrairement à un calcul figé au moment de la publication). Alimente aussi le bandeau d'alerte.
- * Chaque badge porte data-fin (AAAA-MM-JJ), éventuellement data-debut, ou data-sansfin.
+ * Badges de validité, recalculés dans le navigateur à chaque ouverture (justes même hors ligne).
+ * Chaque badge porte data-fin (ISO), éventuellement data-debut. Pastille courte + échéance discrète.
+ * Alimente aussi le bandeau « documents à renouveler » (les bulletins météo en sont exclus).
  */
 export function badges(racine: ParentNode = document) {
   const PREAVIS = 30;
-  const auj = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' }); // AAAA-MM-JJ du jour à Paris
-  const midi = (iso: string) => Date.parse(iso + 'T12:00:00Z');
-  const jours = (iso: string) => Math.round((midi(iso) - midi(auj)) / 86_400_000);
-  const fmt = (iso: string) =>
-    new Date(iso + 'T12:00:00Z')
-      .toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', year: 'numeric' })
-      .replace(/^1 /, '1er ');
-  const alertes: { titre: string; code: string; txt: string; vers?: string }[] = [];
+  const jour = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
+  const auj = jour(new Date().toISOString());
+  const midi = (d: string) => Date.parse(d + 'T12:00:00Z');
+  const jours = (iso: string) => Math.round((midi(jour(iso)) - midi(auj)) / 86_400_000);
+  const court = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris', day: '2-digit', month: '2-digit', year: '2-digit' });
+  const alertes: { titre: string; code: string; chip: string; ech: string; vers?: string }[] = [];
 
   racine.querySelectorAll<HTMLElement>('.badge').forEach((b) => {
     const fin = b.dataset.fin;
     const debut = b.dataset.debut;
-    let code = 'sans-fin';
-    let txt = 'N’expire pas';
-    if (debut && jours(debut) > 0) {
-      code = 'a-venir';
-      txt = 'Valide à partir du ' + fmt(debut);
-    } else if (fin) {
+    let code = 'sans-fin', chip = 'Valide', ech = 'n’expire pas';
+    if (debut && jours(debut) > 0) { code = 'a-venir'; chip = 'À venir'; ech = 'dès le ' + court(debut); }
+    else if (fin) {
       const j = jours(fin);
-      if (j < 0) { code = 'expire'; txt = 'Expiré le ' + fmt(fin); }
-      else if (j === 0) { code = 'bientot'; txt = 'Expire aujourd’hui'; }
-      else if (j <= PREAVIS) { code = 'bientot'; txt = `Expire dans ${j} jour${j > 1 ? 's' : ''}`; }
-      else { code = 'valide'; txt = 'Valide jusqu’au ' + fmt(fin); }
+      if (j < 0) { code = 'expire'; chip = 'Expiré'; ech = 'le ' + court(fin); }
+      else if (j <= PREAVIS) { code = 'bientot'; chip = j === 0 ? 'Aujourd’hui' : `${j} j`; ech = 'jusqu’au ' + court(fin); }
+      else { code = 'valide'; chip = 'Valide'; ech = 'jusqu’au ' + court(fin); }
     }
     b.dataset.code = code;
-    b.textContent = txt;
-    b.hidden = false;
+    b.textContent = chip;
+    const e = b.parentElement?.querySelector<HTMLElement>('.ech');
+    if (e) e.textContent = ech;
     if ((code === 'expire' || code === 'bientot') && b.dataset.titre && !alertes.some((a) => a.titre === b.dataset.titre))
-      alertes.push({ titre: b.dataset.titre, code, txt, vers: b.dataset.vers });
+      alertes.push({ titre: b.dataset.titre, code, chip, ech, vers: b.dataset.vers });
   });
 
   const zone = racine.querySelector<HTMLElement>('#alerte-docs');
   if (zone) {
     const liste = zone.querySelector('[data-liste]');
     const vide = zone.querySelector<HTMLElement>('[data-vide]');
+    const pleine = zone.querySelector<HTMLElement>('[data-pleine]');
     alertes.sort((a, b) => (a.code === b.code ? 0 : a.code === 'expire' ? -1 : 1));
     if (liste) liste.innerHTML = alertes
-      .map((a) => `<li class="al al-${a.code}"><span class="pt"></span><span><b>${a.titre}</b> — ${a.txt}</span></li>`)
+      .map((a) => `<li class="al al-${a.code}" data-vers="${a.vers || ''}"><span class="pt"></span><span class="al-t"><b>${a.titre}</b></span><span class="al-e">${a.code === 'expire' ? 'Expiré ' + a.ech : a.chip}</span></li>`)
       .join('');
     zone.dataset.n = String(alertes.length);
     if (vide) vide.hidden = alertes.length > 0;
-    zone.querySelector<HTMLElement>('[data-pleine]')!.hidden = alertes.length === 0;
+    if (pleine) pleine.hidden = alertes.length === 0;
   }
+}
+
+/**
+ * Bandeau d'alerte MAA (avertissement météo d'aérodrome) : bien visible dès qu'un bulletin est EN COURS,
+ * c.-à-d. l'instant présent est entre debut et fin (horaires précis, en UTC). Un MAA terminé disparaît.
+ * Chaque candidat porte .maa avec data-debut / data-fin (ISO) ; met aussi à jour les états « En cours / Terminé ».
+ */
+export function maa(racine: ParentNode = document) {
+  const now = Date.now();
+  const actifs: HTMLElement[] = [];
+  racine.querySelectorAll<HTMLElement>('[data-maa]').forEach((el) => {
+    const d = Date.parse(el.dataset.debut || '');
+    const f = Date.parse(el.dataset.fin || '');
+    const enCours = !isNaN(d) && !isNaN(f) && now >= d && now <= f;
+    const passe = !isNaN(f) && now > f;
+    el.dataset.etat = enCours ? 'en-cours' : passe ? 'passe' : 'a-venir';
+    const chip = el.querySelector<HTMLElement>('[data-maa-etat]');
+    if (chip) chip.textContent = enCours ? 'En cours' : passe ? 'Terminé' : 'À venir';
+    if (el.classList.contains('maa-banniere')) el.hidden = !enCours;
+    if (enCours) actifs.push(el);
+  });
+  const zone = racine.querySelector<HTMLElement>('#maa-zone');
+  if (zone) zone.hidden = actifs.length === 0;
 }
 
 /**
