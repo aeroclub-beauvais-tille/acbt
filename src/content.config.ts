@@ -62,9 +62,12 @@ const documents = defineCollection({
     rubrique: opt(z.enum(RUBRIQUES_AVION)),
     // Type de document officiel (sert au nom automatique et au classement).
     type: opt(z.string()),
-    // Validité : « debut » et « fin ». Sans « fin », le document n'expire pas.
+    // Validité : « debut » et « fin » (date, ou date-heure ISO pour un bulletin météo MAA). Sans « fin », le document n'expire pas.
     debut: opt(z.coerce.date()),
     fin: opt(z.coerce.date()),
+    // Bulletin météo (MAA) : motif en clair et numéro, lus dans le PDF.
+    motif: opt(z.string()),
+    numero: opt(z.string()),
     // Identifiant (nom de fichier sans extension) du document que celui-ci remplace : l'ancien passe en historique.
     remplace: opt(z.string()),
     fichier: opt(z.string()),
