@@ -317,10 +317,11 @@ const onglets = [
   .topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 54px; padding: 0 14px; padding-top: env(safe-area-inset-top, 0px); background: var(--bar); color: var(--bar-ink); }
   .marque { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: #fff; }
   .marque .logo { --logo-h: 26px; --logo-rouge: #ff4d4d; color: #fff; }
-  .marque span { font-weight: 800; font-size: 1.05rem; letter-spacing: -.01em; }
+  .marque span { font-weight: 800; font-size: 1.05rem; letter-spacing: -.01em; white-space: nowrap; }
   .actions { display: flex; gap: 4px; }
   .ic { width: 40px; height: 40px; border: 0; background: transparent; color: var(--bar-ink); display: grid; place-items: center; border-radius: 10px; cursor: pointer; }
   .ic svg { width: 21px; height: 21px; }
+  #btn-theme svg { width: 18px; height: 18px; }  /* le soleil/lune est visuellement plus « plein » : on l'aligne sur les autres */
   .ic:active { background: rgba(255,255,255,.12); }
 
   /* Recherche */
@@ -344,14 +345,14 @@ const onglets = [
 
   /* MAA */
   #maa-zone { margin-bottom: 18px; display: grid; gap: 9px; }
-  .maa-banniere { display: flex; gap: 12px; align-items: center; text-decoration: none; color: #fff; background: linear-gradient(135deg, #c4161c, #e4482b); border-radius: 14px; padding: 12px 14px; box-shadow: 0 5px 16px rgba(196,22,28,.26); }
+  .maa-banniere { display: flex; gap: 10px; align-items: center; text-decoration: none; color: #fff; background: linear-gradient(135deg, #c4161c, #e4482b); border-radius: 14px; padding: 11px 13px; box-shadow: 0 5px 16px rgba(196,22,28,.26); }
   .maa-banniere[data-etat='a-venir'] { background: linear-gradient(135deg, #b5700a, #e0982a); box-shadow: 0 5px 16px rgba(181,112,10,.26); }
-  .maa-banniere .maa-ic { flex: none; width: 34px; height: 34px; display: grid; place-items: center; background: rgba(255,255,255,.18); border-radius: 50%; }
-  .maa-banniere .maa-ic svg { width: 20px; height: 20px; }
-  .maa-txt { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 5px 10px; flex-wrap: wrap; }
-  .maa-txt strong { font-size: .98rem; }
-  .maa-num { font-size: .86rem; font-weight: 700; opacity: .95; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .maa-pdf { flex: none; font-size: .72rem; font-weight: 700; background: rgba(255,255,255,.2); padding: 5px 9px; border-radius: 8px; }
+  .maa-banniere .maa-ic { flex: none; width: 30px; height: 30px; display: grid; place-items: center; background: rgba(255,255,255,.18); border-radius: 50%; }
+  .maa-banniere .maa-ic svg { width: 18px; height: 18px; }
+  .maa-txt { flex: 1; min-width: 0; display: grid; gap: 1px; }
+  .maa-txt strong { font-size: .82rem; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .maa-num { font-size: .8rem; font-weight: 700; opacity: .95; font-variant-numeric: tabular-nums; }
+  .maa-pdf { flex: none; font-size: .7rem; font-weight: 700; background: rgba(255,255,255,.2); padding: 5px 8px; border-radius: 8px; }
 
   .carte-metar { padding: 15px 16px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 14px; }
   .carte-taf { margin-top: 10px; }
