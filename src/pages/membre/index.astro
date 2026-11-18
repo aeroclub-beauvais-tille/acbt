@@ -38,7 +38,7 @@ const flotte = avions.map((a) => {
 });
 
 // Bulletins météo (MAA) — gérés à part (horaires précis, pas « à renouveler »)
-const meteo = docs.filter((d) => d.type === 'Bulletin météo' && !d.archive).sort((a, b) => (b.debut?.getTime() ?? 0) - (a.debut?.getTime() ?? 0));
+const meteo = docs.filter((d) => d.type === 'Bulletin météo' && !d.archive).sort((a, b) => (a.debut?.getTime() ?? 0) - (b.debut?.getTime() ?? 0));
 const generaux = docs.filter((d) => d.avions.length === 0 && estOfficiel(d) && !d.archive && d.type !== 'Bulletin météo');
 const historiqueGen = docs.filter((d) => d.avions.length === 0 && estOfficiel(d) && d.archive);
 const docsClub = vivants('Vie du club').filter((d) => !estOfficiel(d));
@@ -58,13 +58,13 @@ const onglets = [
   { id: 'formation', nom: 'Formation', svg: 'M22 10L12 5 2 10l10 5 10-5zM6 12v5c0 1 3 3 6 3s6-2 6-3v-5M22 10v6' },
 ];
 ---
-<MembreApp title="Espace membre">
+<MembreApp title="Espace membres">
   <script slot="head" is:inline define:vars={{ connexion }}>
     try { if (!localStorage.getItem('acbt-membre')) location.replace(connexion + '?retour=' + encodeURIComponent(location.pathname + location.hash)); } catch (e) {}
   </script>
 
   <header class="topbar">
-    <a class="marque" href={url('/membre/')} aria-label="Accueil espace membre"><Logo class="logo" /><span>Espace membre</span></a>
+    <a class="marque" href={url('/membre/')} aria-label="Accueil espace membres"><Logo class="logo" /><span>Espace membres</span></a>
     <div class="actions">
       <button type="button" class="ic" id="btn-theme" aria-label="Changer de thème"></button>
       <button type="button" class="ic" id="btn-recherche" aria-label="Rechercher un document">

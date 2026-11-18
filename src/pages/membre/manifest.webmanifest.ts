@@ -6,7 +6,7 @@ export const GET: APIRoute = () =>
   new Response(
     JSON.stringify({
       id: url('/membre/'),
-      name: 'ACBT · Espace membre',
+      name: 'ACBT · Espace membres',
       short_name: 'ACBT Pilotes',
       description: "Outils et documents des pilotes de l'aéroclub de Beauvais-Tillé, même sans réseau.",
       lang: 'fr',
