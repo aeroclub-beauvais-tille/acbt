@@ -61,7 +61,7 @@ const m = await metar();
 <style>
   .metar { display: flex; align-items: center; gap: 10px 14px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
   .station { font-weight: 700; letter-spacing: .06em; font-size: .75rem; color: var(--ink); }
-  .raw { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .85rem; color: var(--ink); overflow-wrap: anywhere; }
+  .raw { font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: .83rem; letter-spacing: 0; color: var(--ink); overflow-wrap: anywhere; }
   .raw.vide { font-family: inherit; color: var(--muted); }
   .etat { display: inline-flex; align-items: center; gap: 7px; font-size: .7rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
   .etat i { position: relative; width: 9px; height: 9px; border-radius: 50%; background: #9aa5b4; }
