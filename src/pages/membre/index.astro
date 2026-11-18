@@ -45,19 +45,12 @@ const memos = ['Sécurité', 'Préparation des vols', 'Météo', 'Formulaires']
   .map((c) => ({ c, docs: vivants(c).filter((d) => !estOfficiel(d)) })).filter((x) => x.docs.length);
 const host = (l: string) => new URL(l).hostname.replace(/^www\./, '');
 
-// Fenêtre de validité d'un MAA, en UTC, comme sur le bulletin
-const fenetreUTC = (d?: Date, f?: Date) => {
-  const o: Intl.DateTimeFormatOptions = { timeZone: 'UTC', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' };
-  const fmt = (x?: Date) => x ? x.toLocaleString('fr-FR', o).replace(', ', ' · ').replace(':', 'h') : '';
-  return `du ${fmt(d)} au ${fmt(f)} UTC`;
-};
-
 const hors = await fichiersMembre();
 const mo = Math.round(hors.taille / 1e6);
 const connexion = url('/membre/connexion/');
 
 const onglets = [
-  { id: 'accueil', nom: 'Accueil', svg: 'M3 11l9-8 9 8M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10' },
+  { id: 'accueil', nom: 'Météo', svg: 'M17.5 19a4.5 4.5 0 1 0-.9-8.9A6 6 0 1 0 6 19h11.5z' },
   { id: 'avions', nom: 'Avions', svg: 'M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z' },
   { id: 'club', nom: 'Club', svg: 'M3 21h18M5 21V7l8-4v18M19 21V11l-6-3M9 9v.01M9 12v.01M9 15v.01M9 18v.01' },
   { id: 'preparer', nom: 'Préparer', svg: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4v12m10-6H2' },
@@ -98,9 +91,8 @@ const onglets = [
           <a class="maa-banniere" data-maa data-debut={m.debut?.toISOString()} data-fin={m.fin?.toISOString()} href={m.fichier ? asset(m.fichier) : (m.lien || undefined)} target="_blank" rel="noopener" hidden>
             <span class="maa-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L1 21h22L12 2z" /><path d="M12 9v5M12 17.5v.01" /></svg></span>
             <span class="maa-txt">
-              <strong>Avertissement météo en cours{m.numero ? ` · n°${m.numero}` : ''}</strong>
-              {m.motif && <span class="maa-motif">{m.motif}</span>}
-              <span class="maa-val">{fenetreUTC(m.debut, m.fin)}</span>
+              <strong>Avertissement météo en cours</strong>
+              <span class="maa-num">MAA n°{m.numero ?? '—'}</span>
             </span>
             <span class="maa-pdf">PDF ↗</span>
           </a>
@@ -120,17 +112,6 @@ const onglets = [
         </a>
       </div>
 
-      <div class="alerte-docs" id="alerte-docs">
-        <div data-pleine hidden>
-          <h2 class="bt bt-rouge"><span class="pt-alerte" aria-hidden="true">!</span>Documents à renouveler</h2>
-          <ul class="liste-alerte" data-liste></ul>
-        </div>
-        <p class="ok" data-vide>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
-          Tous les documents à échéance sont à jour.
-        </p>
-      </div>
-
       <div class="hors-ligne" id="hors-ligne" data-fichiers={JSON.stringify(hors.liste)}>
         <span class="hl-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M7 10l5 5 5-5M5 21h14" /></svg></span>
         <div><strong>Documents hors ligne</strong><span data-etat>Chaque document ouvert reste disponible sans réseau.</span><progress hidden></progress></div>
@@ -142,6 +123,12 @@ const onglets = [
     <!-- AVIONS -->
     <section class="panneau" id="avions" hidden>
       <h1 class="titre">Documents par avion</h1>
+      <div class="alerte-docs" id="alerte-docs">
+        <div data-pleine hidden>
+          <h2 class="bt bt-rouge"><span class="pt-alerte" aria-hidden="true">!</span>Documents à renouveler</h2>
+          <ul class="liste-alerte" data-liste></ul>
+        </div>
+      </div>
       <div class="selecteur" id="selecteur" role="group" aria-label="Choisir un avion">
         {flotte.map((x) => (
           <button type="button" data-avion={x.im} aria-pressed="false">{x.photo && <img src={asset(x.photo)} alt="" loading="lazy" />}<span><b>{x.im}</b><small>{x.modele}</small></span></button>
@@ -352,14 +339,13 @@ const onglets = [
   .tabbar button[aria-selected='true']::before { content: ''; position: absolute; top: 0; left: 28%; right: 28%; height: 3px; border-radius: 0 0 3px 3px; background: var(--yellow); }
 
   /* MAA */
-  #maa-zone { margin-bottom: 18px; display: grid; gap: 10px; }
-  .maa-banniere { display: flex; gap: 13px; align-items: center; text-decoration: none; color: #fff; background: linear-gradient(135deg, #c4161c, #e4482b); border-radius: 16px; padding: 15px 16px; box-shadow: 0 6px 20px rgba(196,22,28,.28); }
-  .maa-banniere .maa-ic { flex: none; width: 38px; height: 38px; display: grid; place-items: center; background: rgba(255,255,255,.18); border-radius: 50%; }
-  .maa-banniere .maa-ic svg { width: 22px; height: 22px; }
-  .maa-txt { flex: 1; min-width: 0; display: grid; gap: 1px; }
-  .maa-txt strong { font-size: 1rem; }
-  .maa-motif { font-size: .95rem; font-weight: 600; }
-  .maa-val { font-size: .8rem; opacity: .92; font-variant-numeric: tabular-nums; }
+  #maa-zone { margin-bottom: 18px; display: grid; gap: 9px; }
+  .maa-banniere { display: flex; gap: 12px; align-items: center; text-decoration: none; color: #fff; background: linear-gradient(135deg, #c4161c, #e4482b); border-radius: 14px; padding: 12px 14px; box-shadow: 0 5px 16px rgba(196,22,28,.26); }
+  .maa-banniere .maa-ic { flex: none; width: 34px; height: 34px; display: grid; place-items: center; background: rgba(255,255,255,.18); border-radius: 50%; }
+  .maa-banniere .maa-ic svg { width: 20px; height: 20px; }
+  .maa-txt { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 5px 10px; flex-wrap: wrap; }
+  .maa-txt strong { font-size: .98rem; }
+  .maa-num { font-size: .86rem; font-weight: 700; opacity: .95; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .maa-pdf { flex: none; font-size: .72rem; font-weight: 700; background: rgba(255,255,255,.2); padding: 5px 9px; border-radius: 8px; }
 
   .carte-metar { padding: 15px 16px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 14px; }
@@ -376,7 +362,8 @@ const onglets = [
   .acc small { color: var(--muted); font-size: .82rem; font-variant-numeric: tabular-nums; }
 
   /* Alerte documents */
-  .alerte-docs { margin-top: 22px; }
+  .alerte-docs { margin: 0; }
+  .alerte-docs [data-pleine] { margin-bottom: 18px; }
   .bt-rouge { color: var(--bad); }
   .pt-alerte { flex: none; width: 22px; height: 22px; border-radius: 50%; background: var(--bad); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: .8rem; }
   .liste-alerte { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
