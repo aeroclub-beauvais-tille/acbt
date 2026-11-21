@@ -123,74 +123,75 @@
   "privileges_note": "Ce tableau résume les règles européennes (Part-FCL) : vos instructeurs vous détaillent les conditions exactes.",
   "maintien_titre": "Garder sa licence valide",
   "maintien_intro": "Une licence ne s'use que si l'on ne vole pas. Voici les règles à suivre pour rester à jour une fois breveté, en monomoteur à pistons terrestre (SEP terrestre).",
-  "maintien": [
+  "validite": [
     {
-      "titre": "Certificat médical",
-      "pour": "LAPL et PPL",
-      "texte": "Classe 2 pour le PPL : valable 5 ans avant 40 ans, 2 ans de 40 à 50 ans, puis 1 an. Certificat LAPL : 5 ans avant 40 ans, puis 2 ans. Sans certificat valide, on ne peut pas voler comme commandant de bord.",
-      "chiffre": "1 à 5 ans",
-      "chiffre_legende": "selon votre âge",
-      "conditions_intro": "",
-      "conditions": [
-        "PPL (classe 2) : 5 ans avant 40 ans, 2 ans de 40 à 50 ans, puis 1 an",
-        "LAPL : 5 ans avant 40 ans, puis 2 ans"
-      ],
-      "sinon_label": "Attention",
-      "sinon": "Sans certificat valide, pas de vol comme commandant de bord."
-    },
-    {
-      "titre": "Expérience récente pour emmener des passagers",
-      "pour": "LAPL et PPL",
-      "texte": "3 décollages et 3 atterrissages aux commandes dans les 90 jours précédents, sur la même classe d'avion. Pour emmener des passagers de nuit, au moins un des trois doit avoir été fait de nuit. Sinon, un vol seul à bord ou avec un instructeur suffit à se remettre à jour.",
-      "chiffre": "90 jours",
-      "chiffre_legende": "glissants",
-      "conditions_intro": "Sur la même classe d'avion :",
-      "conditions": [
-        "3 décollages et 3 atterrissages aux commandes",
+      "question": "Emmener des passagers",
+      "commun": true,
+      "lapl_chiffre": "90 jours",
+      "lapl_legende": "glissants",
+      "lapl_points": [
+        "3 décollages et 3 atterrissages aux commandes, sur la même classe d'avion",
         "De nuit : au moins un des trois fait de nuit"
       ],
-      "sinon": "Un vol seul à bord ou avec un instructeur suffit à se remettre à jour."
+      "lapl_note": "Sinon : un vol seul à bord ou avec un instructeur suffit à se remettre à jour.",
+      "ppl_chiffre": "",
+      "ppl_legende": "",
+      "ppl_points": [],
+      "ppl_note": ""
     },
     {
-      "titre": "Maintenir son LAPL",
-      "pour": "LAPL",
-      "texte": "Le LAPL n'a pas de date d'échéance. Pour voler, il faut avoir fait sur les 24 derniers mois au moins 12 h comme commandant de bord, 12 décollages et atterrissages, et 1 h de vol de remise à niveau avec un instructeur. Sinon, un contrôle de compétences avec un examinateur remet la licence à jour.",
-      "chiffre": "24 mois",
-      "chiffre_legende": "glissants",
-      "conditions_intro": "Pas de date d'échéance. Sur les 24 derniers mois :",
-      "conditions": [
+      "question": "Garder sa licence",
+      "commun": false,
+      "lapl_chiffre": "Pas d'échéance",
+      "lapl_legende": "règle des 24 mois glissants",
+      "lapl_points": [
         "12 h comme commandant de bord",
         "12 décollages et atterrissages",
         "1 h de remise à niveau avec un instructeur"
       ],
-      "sinon": "Un contrôle de compétences avec un examinateur remet la licence à jour."
-    },
-    {
-      "titre": "Prorogation de la SEP terrestre",
-      "pour": "PPL",
-      "texte": "La qualification de classe SEP terrestre est valable 24 mois. On la proroge avant son échéance, soit par l'expérience : dans les 12 mois qui précèdent l'échéance, 12 h de vol dont 6 h comme commandant de bord, 12 décollages et atterrissages et 1 h de vol avec un instructeur ; soit par un contrôle de compétences avec un examinateur dans les 3 mois qui précèdent l'échéance.",
-      "chiffre": "24 mois",
-      "chiffre_legende": "de validité",
-      "conditions_intro": "Dans les 12 mois avant l'échéance :",
-      "conditions": [
-        "12 h de vol, dont 6 h comme commandant de bord",
+      "lapl_note": "Ces 3 conditions sur les 24 derniers mois pour pouvoir voler.",
+      "ppl_chiffre": "24 mois",
+      "ppl_legende": "qualification SEP, à proroger",
+      "ppl_points": [
+        "Dans les 12 mois avant l'échéance : 12 h de vol, dont 6 h comme commandant de bord",
         "12 décollages et atterrissages",
         "1 h de vol avec un instructeur"
       ],
-      "sinon_label": "Ou bien",
-      "sinon": "Un contrôle de compétences avec un examinateur, dans les 3 mois avant l'échéance."
+      "ppl_note": "Ou bien : un contrôle de compétences avec un examinateur, dans les 3 mois avant l'échéance."
     },
     {
-      "titre": "Renouvellement après expiration",
-      "pour": "PPL",
-      "texte": "Si la date d'échéance est dépassée, la qualification doit être renouvelée : formation de remise à niveau avec un instructeur, dont la durée dépend du temps écoulé et de votre niveau, puis contrôle de compétences avec un examinateur.",
-      "chiffre": "Expirée",
-      "chiffre_legende": "qualification SEP",
-      "conditions_intro": "La qualification doit être renouvelée :",
-      "conditions": [
+      "question": "Si ce n'est pas fait",
+      "commun": false,
+      "lapl_chiffre": "Contrôle",
+      "lapl_legende": "avec un examinateur",
+      "lapl_points": [
+        "Un contrôle de compétences remet la licence à jour"
+      ],
+      "lapl_note": "",
+      "ppl_chiffre": "Renouveler",
+      "ppl_legende": "la qualification",
+      "ppl_points": [
         "Remise à niveau avec un instructeur (durée selon le temps écoulé et votre niveau)",
         "Puis contrôle de compétences avec un examinateur"
-      ]
+      ],
+      "ppl_note": ""
+    },
+    {
+      "question": "Certificat médical",
+      "commun": false,
+      "lapl_chiffre": "5 ans",
+      "lapl_legende": "puis 2 ans après 40 ans",
+      "lapl_points": [
+        "Certificat médical LAPL, plus simple que la classe 2"
+      ],
+      "lapl_note": "Sans certificat valide, pas de vol comme commandant de bord.",
+      "ppl_chiffre": "Classe 2",
+      "ppl_legende": "5 ans, 2 ans, puis 1 an",
+      "ppl_points": [
+        "5 ans avant 40 ans",
+        "2 ans de 40 à 50 ans, puis 1 an"
+      ],
+      "ppl_note": "Sans certificat valide, pas de vol comme commandant de bord."
     }
   ],
   "maintien_note": "Pensez à faire signer votre carnet de vol par l'instructeur après chaque vol de remise à niveau. En cas de doute sur une échéance, demandez à un instructeur du club : il vérifie avec vous votre carnet et vos dates.",
@@ -219,20 +220,28 @@
   ],
   "questions": [
     {
-      "question": "Combien de temps dure la formation ?",
-      "reponse": "Tout dépend de votre disponibilité. La formation se fait à votre rythme, vol après vol, sans calendrier imposé : plus vous volez régulièrement, plus vous progressez vite."
+      "question": "Combien d'heures faut-il pour obtenir le PPL(A) ?",
+      "reponse": "La réglementation européenne impose un minimum de 45 heures de vol pour le PPL(A), dont au moins 25 heures en double commande et 10 heures en solo. Dans la pratique, la majorité des élèves obtiennent leur licence entre 55 et 70 heures."
     },
     {
-      "question": "Combien coûte une licence ?",
-      "reponse": "Le budget dépend surtout du nombre d'heures de vol. Comptez l'adhésion annuelle et les heures en double commande puis en solo : tous les prix sont sur la page Tarifs. Les instructeurs sont bénévoles, et des aides existent pour les jeunes."
+      "question": "Peut-on commencer à piloter sans expérience ?",
+      "reponse": "Oui, aucune expérience n'est requise. La formation débute par un vol de découverte, puis progresse selon votre rythme. L'âge minimum pour le premier vol solo est de 16 ans, la délivrance de la licence intervenant à partir de 17 ans."
     },
     {
-      "question": "Faut-il passer une visite médicale ?",
-      "reponse": "Oui. Un certificat médical délivré par un médecin agréé aéronautique est nécessaire avant votre premier vol en solo. Nous vous indiquons les médecins agréés de la région."
+      "question": "Faut-il une visite médicale pour passer la licence ?",
+      "reponse": "Oui. Pour le PPL(A) ou LAPL(A), une visite médicale de classe 2 est requise. Elle peut être réalisée auprès d'un médecin aéronautique (AeMC) ou, pour le LAPL, auprès d'un médecin agréé. La visite se fait idéalement avant le début de la formation."
     },
     {
-      "question": "Comment se prépare l'examen théorique ?",
-      "reponse": "En e-learning à la maison, avec le soutien des instructeurs du club. L'examen se passe ensuite en ligne dans un centre agréé."
+      "question": "L'ACBT propose-t-il des cours théoriques ?",
+      "reponse": "Votre instructeur vous prépare à l'examen théorique (9 matières pour le PPL) lors des briefings sol. Des supports pédagogiques approuvés par la DGAC sont mis à disposition. L'examen théorique se passe dans un centre agréé."
+    },
+    {
+      "question": "Combien coûte la formation pilote à l'ACBT ?",
+      "reponse": "Le coût total dépend de votre nombre d'heures de vol. En comptant le tarif horaire de l'avion, l'instruction et les cotisations, un PPL(A) se situe généralement entre 8 000 et 12 000 €. Pour un LAPL(A), comptez entre 5 500 et 8 000 €."
+    },
+    {
+      "question": "L'ACBT forme-t-il les pilotes de ligne ?",
+      "reponse": "Non, l'ACBT est un aéroclub associatif : nous formons au vol de loisir et de voyage, pas au métier de pilote de ligne (formation ATPL en école professionnelle). Cela dit, la quasi-totalité des pilotes de ligne ont commencé par le brevet de pilote privé (PPL) : c'est la première brique du parcours, et vous pouvez l'obtenir chez nous avant de rejoindre une école professionnelle."
     }
   ]
 }

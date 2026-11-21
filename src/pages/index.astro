@@ -17,7 +17,7 @@ const slides = pg.diaporama.map((d) => ({ img: d.image, legende: d.legende }));
 const des = Math.min(...t.formules.flatMap((f) => f.prix.map((p) => p.prix)));
 const cibles = [
   { id: 'decouvrir', href: '/decouvrir-le-vol', badge: `dès ${des.toLocaleString('fr-FR')} €`, action: 'Voir les prix' },
-  { id: 'apprendre', href: '/formations#simulateur', badge: 'Budget en 1 minute', action: 'Calculer mon budget' },
+  { id: 'apprendre', href: '/formations', badge: 'BIA · LAPL · PPL', action: 'Le parcours' },
   { id: 'voler', href: '/club/flotte', badge: '', action: 'Voir les avions' },
 ];
 const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titre, texte: c.texte, image: c.image }));
@@ -102,8 +102,8 @@ const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titr
           {f.parcours.slice(0, 4).map((e, i) => <li><span>{i + 1}</span>{e.titre}</li>)}
         </ol>
         <div class="btns">
-          <a class="btn btn-primary" href={url('/formations#simulateur')}>Calculer mon budget</a>
-          <a class="btn btn-outline" href={url('/formations')}>Comment ça se passe</a>
+          <a class="btn btn-primary" href={url('/formations')}>Comment ça se passe</a>
+          <a class="btn btn-outline" href={url('/club/tarifs')}>Voir les tarifs</a>
         </div>
       </div>
     </div>
