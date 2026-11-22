@@ -76,6 +76,9 @@ a.card:hover, .card:has(a.stretched:hover) { transform: translateY(-4px); box-sh
 .btn:hover { transform: translateY(-1px); }
 .btn-primary { background: var(--accent-fonce); color: #fff; }
 .btn-primary:hover { color: #fff; background: color-mix(in srgb, var(--accent) 65%, black); }
+/* Bouton jaune : toutes les actions « Réserver » */
+.btn-jaune { background: var(--sun); color: var(--ink); }
+.btn-jaune:hover { background: #ffc933; color: var(--ink); }
 .btn-ghost { border-color: rgba(255,255,255,.7); color: #fff; }
 .btn-ghost:hover { background: #fff; color: var(--ink); }
 .btn-outline { border-color: var(--ink); color: var(--ink); }
