@@ -7,7 +7,8 @@ import { url, asset, tarifEnVigueur } from '../lib/utils';
 interface Props { avions: CollectionEntry<'avions'>[] }
 const { avions } = Astro.props;
 const n = (x?: number) => (x == null ? '—' : x.toLocaleString('fr-FR'));
-const lignes = avions.map((a) => ({ a, t: tarifEnVigueur(a.data.tarifs).actuel }));
+// Un avion sans tarif saisi (ex. F-BTBJ) n'apparaît pas dans les prix.
+const lignes = avions.filter((a) => a.data.tarifs.length).map((a) => ({ a, t: tarifEnVigueur(a.data.tarifs).actuel }));
 // Regroupe les avions qui ont exactement les mêmes tarifs
 const groupes = Object.values(
   lignes.reduce<Record<string, typeof lignes>>((acc, l) => {
