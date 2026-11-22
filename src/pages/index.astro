@@ -318,7 +318,7 @@ const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titr
   @media (max-width: 700px) { .points { grid-template-columns: 1fr; gap: 14px; } .points div { flex-direction: row; align-items: baseline; gap: 14px; } .points strong { font-size: 1.8rem; min-width: 3.2em; } }
   .contact-band { display: block; }
   /* Météo du terrain : fine bande posée en haut de la photo d'accueil */
-  .hero-metar { position: absolute; top: 76px; left: 0; right: 0; z-index: 2; padding: 8px 0; background: rgba(10,18,31,.55); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(255,255,255,.12); }
+  .hero-metar { position: absolute; top: 84px; left: 0; right: 0; z-index: 2; padding: 8px 0; text-shadow: 0 1px 8px rgba(0,0,0,.6); }
   @media (max-width: 700px) {
     .hero-metar { padding: 6px 0; }
     .hero-metar :global(.metar) { gap: 8px; flex-wrap: nowrap; align-items: flex-start; }
