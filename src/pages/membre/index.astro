@@ -23,14 +23,15 @@ const rangType = (d: Doc) => { const i = TYPES_AVION.indexOf((d.type ?? '') as (
 const rangRub = (d: Doc) => RUBRIQUES_AVION.indexOf((d.rubrique ?? 'Autre') as (typeof RUBRIQUES_AVION)[number]);
 const modele = (t: string) => t.replace(/-\d+.*$| Petit Prince| Paris-Nice/g, '').trim();
 
-// Documents à emporter lors d'un vol (« le minimum exigé »), dans cet ordre. La fiche de pesée n'est pas affichée.
-const REQUIS: { nom: string; types?: string[]; rubrique?: string }[] = [
+// Documents à emporter lors d'un vol (« le minimum exigé »), dans cet ordre.
+const REQUIS: { nom: string; types?: string[]; rubrique?: string; pesee?: boolean }[] = [
   { nom: 'Certificat d’immatriculation', types: ["Certificat d'immatriculation"] },
   { nom: 'Certificat de navigabilité', types: ['Certificat de navigabilité (CDN)'] },
   { nom: 'Certificat d’examen de navigabilité', types: ["Certificat d'examen de navigabilité (CEN)"] },
   { nom: 'Licence station radio (LSA)', types: ['Licence station radio', 'Autorisation radio'] },
   { nom: 'Certificat de limitation de nuisance', types: ['Certificat acoustique'] },
   { nom: 'Attestation d’assurance RC', types: ['Assurance'] },
+  { nom: 'Fiche de pesée et centrage', pesee: true },
   { nom: 'Manuel de vol', rubrique: 'Manuel de vol' },
 ];
 const PIECES_PILOTE = ['Licence', 'Certificat médical', 'CNI'];
@@ -38,11 +39,11 @@ const estPesee = (d: Doc) => d.type === 'Fiche de pesée et centrage' || /pes[é
 
 const flotte = avions.map((a) => {
   const im = a.data.immatriculation ?? a.data.nom;
-  const mine = docsAvion.filter((d) => d.avions.includes(im) && !estPesee(d));
+  const mine = docsAvion.filter((d) => d.avions.includes(im));
   const vivants = mine.filter((d) => !d.archive);
   const pris = new Set<string>();
   const requis = REQUIS.map((r) => {
-    const doc = vivants.find((d) => !pris.has(d.id) && (r.types ? r.types.includes(d.type ?? '') : !estOfficiel(d) && d.rubrique === r.rubrique));
+    const doc = vivants.find((d) => !pris.has(d.id) && (r.pesee ? estPesee(d) : r.types ? r.types.includes(d.type ?? '') : !estOfficiel(d) && d.rubrique === r.rubrique));
     if (doc) pris.add(doc.id);
     return { nom: r.nom, doc };
   });
