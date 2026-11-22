@@ -255,7 +255,9 @@ const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titr
     .hero.a-video .slides, .hero.a-video .voile { position: absolute; inset: 0; height: auto; max-height: none; }
     .hero.a-video .voile { background: linear-gradient(180deg, rgba(10,18,31,.55) 0%, rgba(10,18,31,0) 28%, rgba(10,18,31,0) 50%, rgba(10,18,31,.85) 100%); }
     .hero.a-video .h-video-mobile { display: block; }
-    .hero.a-video .hero-inner { padding: 0 0 120px; }
+    .hero.a-video .hero-inner { padding: 0 0 60px; }
+    /* Texte bas sur la vidéo : affiché tout de suite, sans attendre le défilement */
+    .hero.a-video .lead { visibility: visible !important; opacity: 1 !important; transform: none !important; }
     .hero.a-video h1 { font-size: 2.3rem; }
   }
   @media (max-width: 700px) {
