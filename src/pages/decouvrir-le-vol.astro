@@ -64,11 +64,17 @@ const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
     <a class="btn btn-outline" href={tel} aria-label={`Appeler le ${club.telephone}`}>Appeler</a>
   </div>
 </Base>
+<script>
+  const barre = document.querySelector('.barre-mobile');
+  const tete = document.querySelector('.page-head');
+  if (barre && tete && 'IntersectionObserver' in window) {
+    new IntersectionObserver(([e]) => barre.classList.toggle('visible', !e.isIntersecting)).observe(tete);
+  } else barre?.classList.add('visible');
+</script>
 <style>
   .cta-tete { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 22px; }
   .lien-cadeau { color: #fff; font-weight: 500; text-decoration: underline; text-decoration-color: var(--sun); text-decoration-thickness: 2px; text-underline-offset: 5px; }
   .lien-cadeau:hover { color: var(--sun); }
-  @media (max-width: 899px) { .cta-tete .btn { display: none; } .cta-tete { margin-top: 14px; } }
   .offre { padding: 28px 0 36px; background: var(--paper); }
   .prix { display: grid; gap: 10px; align-content: start; }
   .formule { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
@@ -113,5 +119,8 @@ const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
   @media (max-width: 899px) {
     .barre-mobile { position: sticky; bottom: 0; z-index: 40; display: grid; grid-template-columns: 1.4fr 1fr; gap: 10px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); background: rgba(245,248,252,.94); backdrop-filter: blur(10px); border-top: 1px solid var(--line); }
     .barre-mobile .btn { justify-content: center; padding: 12px 16px; }
+    /* La barre n'arrive qu'une fois le bandeau du haut sorti de l'écran, pour ne pas doubler son bouton */
+    .barre-mobile { transition: transform .3s ease, opacity .3s ease; }
+    .barre-mobile:not(.visible) { transform: translateY(110%); opacity: 0; pointer-events: none; }
   }
 </style>

@@ -12,6 +12,7 @@ import { url, asset } from '../lib/utils';
 const avions = (await getCollection('avions', (a) => a.data.actif)).sort((a, b) => a.data.ordre - b.data.ordre);
 const annees = new Date().getFullYear() - 1979;
 const pg = pages.accueil;
+const videosMobile: string[] = ((pg as any).videos_mobile || []).filter(Boolean);
 const slides = pg.diaporama.map((d) => ({ img: d.image, legende: d.legende }));
 // Les trois choix sous la photo : textes et photos modifiables dans le back-office (Pages du site > Accueil).
 const des = Math.min(...t.formules.flatMap((f) => f.prix.map((p) => p.prix)));
@@ -34,9 +35,12 @@ const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titr
     address: { '@type': 'PostalAddress', streetAddress: 'Aéroport de Beauvais-Tillé, zone aéroplaisance', postalCode: '60000', addressLocality: 'Tillé', addressCountry: 'FR' },
     geo: { '@type': 'GeoCoordinates', latitude: club.latitude, longitude: club.longitude },
   })} />
-  <section class="hero" aria-label="Présentation">
+  <section class:list={["hero", { "a-video": videosMobile.length > 0 }]} aria-label="Présentation">
     <div class="slides">
       {slides.map((s, i) => <img {...photo(s.img, '100vw')} fetchpriority={i ? undefined : 'high'} alt={s.legende} class:list={{ on: i === 0 }} loading={i ? 'lazy' : 'eager'} />)}
+      {videosMobile.map((v, i) => (
+        <video class:list={['h-video-mobile', { on: i === 0 }]} muted playsinline loop={videosMobile.length === 1} preload="none" poster={asset(v.replace(/\.mp4$/i, '.jpg'))} aria-hidden="true" data-src={asset(v)}></video>
+      ))}
     </div>
     <div class="voile"></div>
     <div class="hero-metar"><div class="container"><Metar sombre /></div></div>
@@ -157,6 +161,22 @@ const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titr
 </Base>
 
 <script>
+  // Vidéos réservées au téléphone, enchaînées l'une après l'autre ; l'ordinateur garde les photos.
+  const vms = [...document.querySelectorAll<HTMLVideoElement>('.h-video-mobile')];
+  if (vms.length && matchMedia('(max-width: 700px)').matches && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    const charger = (v: HTMLVideoElement) => { if (!v.src) { v.src = v.dataset.src || ''; v.preload = 'auto'; } };
+    const lancer = (i: number) => {
+      const v = vms[i];
+      charger(v); v.currentTime = 0; v.play().catch(() => {});
+      vms.forEach((x, j) => x.classList.toggle('on', j === i));
+      if (vms.length > 1) charger(vms[(i + 1) % vms.length]);
+    };
+    if (vms.length > 1) vms.forEach((v, i) => v.addEventListener('ended', () => lancer((i + 1) % vms.length)));
+    lancer(0);
+  }
+</script>
+
+<script>
   import { gsap } from 'gsap';
   import { ScrollTrigger } from 'gsap/ScrollTrigger';
   import { MotionPathPlugin } from 'gsap/MotionPathPlugin';
@@ -227,10 +247,21 @@ const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titr
   .hero h1 { color: #fff; max-width: 13ch; }
   .hero .lead { color: rgba(255,255,255,.88); max-width: 46ch; }
   /* Mobile : la photo passe au-dessus, le texte sur fond uni pour rester lisible. */
+  .h-video-mobile { display: none; position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .8s ease; }
+  .h-video-mobile.on { opacity: 1; }
+  /* Téléphone avec vidéo : plein écran, texte posé en bas de la vidéo */
   @media (max-width: 700px) {
-    .hero { flex-direction: column; min-height: 0; padding-top: 0; }
-    .slides { position: relative; height: calc(min(46vw, 260px) + 120px); overflow: hidden; }
-    .voile { inset: 0 0 auto 0; height: calc(min(46vw, 260px) + 120px); background: linear-gradient(180deg, rgba(10,18,31,.55) 0%, rgba(10,18,31,0) 40%, rgba(10,18,31,0) 60%, var(--ink) 100%); }
+    .hero.a-video { height: 100svh; min-height: 560px; padding-top: 0; flex-direction: column; justify-content: flex-end; }
+    .hero.a-video .slides, .hero.a-video .voile { position: absolute; inset: 0; height: auto; max-height: none; }
+    .hero.a-video .voile { background: linear-gradient(180deg, rgba(10,18,31,.55) 0%, rgba(10,18,31,0) 28%, rgba(10,18,31,0) 50%, rgba(10,18,31,.85) 100%); }
+    .hero.a-video .h-video-mobile { display: block; }
+    .hero.a-video .hero-inner { padding: 0 0 120px; }
+    .hero.a-video h1 { font-size: 2.3rem; }
+  }
+  @media (max-width: 700px) {
+    .hero:not(.a-video) { flex-direction: column; min-height: 0; padding-top: 0; }
+    .hero:not(.a-video) .slides { position: relative; height: calc(min(46vw, 260px) + 120px); overflow: hidden; }
+    .hero:not(.a-video) .voile { inset: 0 0 auto 0; height: calc(min(46vw, 260px) + 120px); background: linear-gradient(180deg, rgba(10,18,31,.55) 0%, rgba(10,18,31,0) 40%, rgba(10,18,31,0) 60%, var(--ink) 100%); }
     .hero-inner { padding: 0 0 22px; }
     .hero .eyebrow { display: none; }
     .hero h1 { font-size: 1.65rem; margin-bottom: .3em; max-width: 18ch; }
