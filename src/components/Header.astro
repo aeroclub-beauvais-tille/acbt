@@ -14,6 +14,8 @@ const path = Astro.url.pathname.replace(/\/$/, '');
 const actif = (href: string) =>
   href === '/club' ? [url('/club/historique'), url('/actualites')].some((p) => path === p || path.startsWith(p + '/')) || path === url('/club') : path.startsWith(url(href));
 const membre = path.startsWith(url('/membre'));
+// Page Baptême : son bandeau porte déjà le bouton Réserver, pas de doublon en haut
+const sansReserver = membre || path === url('/decouvrir-le-vol').replace(/\/$/, '');
 ---
 <header class:list={['site-header', { membre }]}>
   <div class="bar">
@@ -33,7 +35,7 @@ const membre = path.startsWith(url('/membre'));
       <p class="nav-pied">03 44 48 28 52 · Aéroport de Beauvais-Tillé</p>
     </nav>
     {Astro.slots.has('actions') && <div class="actions"><slot name="actions" /></div>}
-    {!membre && <a class="reserver" href={url('/contact?objet=Baptême')}>Réserver<span>&nbsp;un baptême</span></a>}
+    {!sansReserver && <a class="reserver" href={url('/contact?objet=Baptême')}>Réserver<span>&nbsp;un baptême</span></a>}
     <label for="nav-toggle" class="burger"><span class="b-ouvrir">Menu</span><span class="b-fermer">Fermer</span></label>
   </div>
   <div class="progression" aria-hidden="true"></div>
