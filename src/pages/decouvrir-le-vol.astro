@@ -3,6 +3,7 @@ import { photo, photoUrl } from '../lib/photo';
 // Page Baptêmes : les prix doivent être lisibles dès l'ouverture, sans faire défiler, sur téléphone comme sur tablette.
 // Tout vient du back-office : formules et prix (Tarifs), textes (Page Découvrir), titre et photo (Pages du site).
 import Base from '../layouts/Base.astro';
+import PageHead from '../components/PageHead.astro';
 import Etapes from '../components/Etapes.astro';
 import Faq from '../components/Faq.astro';
 import d from '../data/decouvrir.json';
@@ -14,18 +15,14 @@ const n = (x: number) => x.toLocaleString('fr-FR');
 const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
 ---
 <Base univers="decouvrir" title="Baptême de l'air" description={`Baptême de l'air, vol découverte et vol d'initiation à Beauvais-Tillé, dès ${n(Math.min(...t.formules.flatMap((f) => f.prix.map((p) => p.prix))))} €.`}>
+  <PageHead eyebrow="Baptême de l'air" image={pages.decouvrir.image} title={pages.decouvrir.titre} lead={d.accroche}>
+    <div class="cta-tete">
+      <a class="btn btn-primary" href={url('/contact?objet=Vol découverte')}>Réserver un baptême</a>
+      <a class="lien-cadeau" href={url('/contact?objet=Bon cadeau')}>Offrir un baptême en bon cadeau</a>
+    </div>
+  </PageHead>
   <section class="offre">
-    <div class="container offre-grid">
-      <div class="intro" style={`--img: url('${photoUrl(pages.decouvrir.image)}')`}>
-        <span class="eyebrow">Baptême de l'air à Beauvais</span>
-        <h1>{pages.decouvrir.titre.replace(/-/g, '\u2011')}</h1>
-        <p class="accroche">{d.accroche}</p>
-        <div class="btns cta-large">
-          <a class="btn btn-primary" href={url('/contact?objet=Vol découverte')}>Réserver un baptême</a>
-          <a class="btn btn-clair" href={url('/contact?objet=Bon cadeau')}>Offrir un baptême</a>
-        </div>
-        <p class="tel-ligne">Ou appelez le <a href={tel}>{club.telephone}</a></p>
-      </div>
+    <div class="container">
       <div class="prix" aria-label="Formules et prix">
         {t.formules.map((f) => (
           <article class:list={['formule', { multi: f.prix.length > 1 }]}>
@@ -68,29 +65,11 @@ const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
   </div>
 </Base>
 <style>
-  .tel-ligne { display: none; margin: 12px 0 0; font-size: .92rem; color: rgba(255,255,255,.85); }
-  .tel-ligne a { color: #fff; font-weight: 600; }
-  @media (min-width: 900px) { .tel-ligne { display: block; } }
-  .offre { padding: 20px 0 28px; background: var(--paper); }
-  .offre-grid { display: grid; gap: 18px; grid-template-columns: 1fr; }
-  @media (min-width: 900px) { .offre { padding: 28px 0 36px; } .offre-grid { grid-template-columns: .9fr 1.1fr; align-items: stretch; gap: 24px; } }
-
-  .intro .eyebrow { margin-bottom: .5em; color: var(--accent-fonce); }
-  .intro h1 { font-size: clamp(1.7rem, 4vw, 2.9rem); margin-bottom: .3em; max-width: 16ch; text-wrap: balance; }
-  .accroche { color: var(--muted); font-size: 1rem; margin: 0; max-width: 46ch; }
-  .cta-large { display: none; }
-  /* Tablette et ordinateur : la photo du club en fond du bloc de présentation */
-  @media (min-width: 900px) {
-    .intro { position: relative; display: flex; flex-direction: column; justify-content: flex-end; padding: 28px; border-radius: 22px; color: #fff; overflow: hidden; isolation: isolate;
-      background: linear-gradient(180deg, rgba(10,18,31,.05) 20%, rgba(10,18,31,.88) 100%), var(--img) center / cover no-repeat, var(--ink); min-height: 100%; }
-    .intro .eyebrow { color: #ffc59e; }
-    .intro h1 { color: #fff; }
-    .accroche { color: rgba(255,255,255,.88); }
-    .cta-large { display: flex; margin-top: 18px; }
-  }
-  .btn-clair { background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.6); }
-  .btn-clair:hover { background: #fff; color: var(--ink); }
-
+  .cta-tete { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 22px; }
+  .lien-cadeau { color: #fff; font-weight: 500; text-decoration: underline; text-decoration-color: var(--sun); text-decoration-thickness: 2px; text-underline-offset: 5px; }
+  .lien-cadeau:hover { color: var(--sun); }
+  @media (max-width: 899px) { .cta-tete .btn { display: none; } .cta-tete { margin-top: 14px; } }
+  .offre { padding: 28px 0 36px; background: var(--paper); }
   .prix { display: grid; gap: 10px; align-content: start; }
   .formule { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
   .f-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; }
@@ -110,10 +89,7 @@ const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
   @media (min-width: 900px) { .formule { padding: 16px 20px; } .formule h2 { font-size: 1.3rem; } .formule p { font-size: .92rem; } .montant b { font-size: 2rem; } }
   /* Petit téléphone : on va à l'essentiel pour que les trois formules tiennent à l'écran */
   @media (max-width: 599px) {
-    .intro .eyebrow, .accroche { display: none; }
-    .intro h1 { font-size: 1.55rem; margin: 0; }
-    .offre { padding: 8px 0 20px; }
-    .offre-grid { gap: 12px; }
+    .offre { padding: 16px 0 20px; }
     .prix { gap: 8px; }
     .formule { padding: 12px 14px; border-radius: 16px; }
     .montant b { font-size: 1.5rem; }
