@@ -1,12 +1,15 @@
 # Back-office Sveltia CMS (essai, en parallèle de Pages CMS).
 # Fichier généré à partir de .pages.yml : garder les deux en phase.
-# Ouvrir https://hugoflying.github.io/acbt/admin/
+# Ouvrir https://acbt60.fr/admin/
 backend:
   name: github
   repo: aeroclub-beauvais-tille/acbt
   branch: main
   auth_methods:
+  - oauth
   - token
+  base_url: https://acbt60.pages.dev
+  auth_endpoint: api/auth
   commit_messages:
     create: 'Ajout : {{collection}} « {{slug}} » (back-office)'
     update: 'Modification : {{collection}} « {{slug}} » (back-office)'
@@ -15,8 +18,8 @@ backend:
     deleteMedia: Suppression du fichier {{path}} (back-office)
 app_title: Back-office ACBT
 logo:
-  src: /acbt/uploads/logo/logo-acbt.png
-site_url: https://hugoflying.github.io/acbt
+  src: ../uploads/logo/logo-acbt-admin.svg
+site_url: https://acbt60.fr
 media_folder: public/uploads
 public_folder: /uploads
 output:
