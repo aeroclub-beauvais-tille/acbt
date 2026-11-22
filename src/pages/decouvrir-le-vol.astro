@@ -27,7 +27,7 @@ const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
           <article class:list={['formule', { multi: f.prix.length > 1 }]}>
             <div class="f-tete">
               <h2><span class="f-type">{/d[ée]couverte|bapt[eê]me/i.test(f.titre) ? 'En passager' : 'Aux commandes'}</span>{f.titre}</h2>
-              {f.prix.length === 1 && <p class="montant"><b>{n(f.prix[0].prix)} €</b><span>{f.prix[0].libelle}</span></p>}
+              {f.prix.length === 1 && <p class="montant"><b>{n(f.prix[0].prix)} €</b></p>}
             </div>
             <p class="f-texte">{f.texte}</p>
             {f.prix.length > 1 && (
