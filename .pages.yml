@@ -104,6 +104,7 @@ content:
         fields:
           - { name: titre, label: Titre, type: string }
           - { name: texte, label: Description, type: text }
+          - { name: photo, label: Photo (facultative), type: image, description: "Affichée en bas de la carte sur la page Baptême." }
           - name: prix
             label: Prix
             type: object
