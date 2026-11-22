@@ -323,6 +323,12 @@ const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titr
     .hero-metar :global(.raw) { font-size: .7rem; line-height: 1.35; }
     .hero-metar :global(.station), .hero-metar :global(.etat b) { display: none; }
     .hero-metar :global(.etat) { margin-top: 4px; }
+    /* Sur la vidéo plein écran : METAR brut posé directement sur l'image, comme Horizon */
+    .hero.a-video .hero-metar { background: none; backdrop-filter: none; border: 0; padding: 4px 0 0; text-shadow: 0 1px 6px rgba(0,0,0,.45); }
+    .hero.a-video .hero-metar :global(.metar) { flex-wrap: wrap; gap: 6px 18px; align-items: center; }
+    .hero.a-video .hero-metar :global(.station), .hero.a-video .hero-metar :global(.etat b) { display: inline; }
+    .hero.a-video .hero-metar :global(.etat) { margin-top: 0; }
+    .hero.a-video .hero-metar :global(.raw) { flex-basis: 100%; font-size: .78rem; line-height: 1.6; }
   }
   .contact-band .btns { margin-top: 20px; }
 
