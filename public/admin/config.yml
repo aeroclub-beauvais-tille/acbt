@@ -395,11 +395,6 @@ singletons:
       label: Description
       widget: text
       required: false
-    - name: photo
-      label: Photo (facultative)
-      widget: image
-      required: false
-      hint: Affichée en bas de la carte sur la page Baptême.
     - name: prix
       label: Prix
       widget: list
@@ -841,6 +836,11 @@ singletons:
     label: Introduction
     widget: text
     required: false
+  - name: photo
+    label: Photo sous les formules
+    widget: image
+    required: false
+    hint: Grande photo affichée sous les trois formules. Laisser vide pour ne rien afficher.
   - name: bon_cadeau
     label: Texte bon cadeau
     widget: text

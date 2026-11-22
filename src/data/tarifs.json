@@ -63,8 +63,7 @@
           "libelle": "2 adultes + 1 enfant",
           "prix": 80
         }
-      ],
-      "photo": "/uploads/avions/dr400-120-03.jpg"
+      ]
     },
     {
       "titre": "Vol d'initiation",
@@ -74,8 +73,7 @@
           "libelle": "1 vol de 30 min",
           "prix": 100
         }
-      ],
-      "photo": "/uploads/avions/dr400-120-01.jpg"
+      ]
     },
     {
       "titre": "Pack initiation",

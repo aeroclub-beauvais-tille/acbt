@@ -104,7 +104,6 @@ content:
         fields:
           - { name: titre, label: Titre, type: string }
           - { name: texte, label: Description, type: text }
-          - { name: photo, label: Photo (facultative), type: image, description: "Affichée en bas de la carte sur la page Baptême." }
           - name: prix
             label: Prix
             type: object
@@ -302,6 +301,7 @@ content:
     fields:
       - { name: accroche, label: Phrase sous le titre (courte), type: text, description: "Une ou deux lignes au maximum : sur téléphone, les prix doivent rester visibles sans faire défiler." }
       - { name: intro, label: Introduction, type: text }
+      - { name: photo, label: Photo sous les formules, type: image, description: "Grande photo affichée sous les trois formules. Laisser vide pour ne rien afficher." }
       - { name: bon_cadeau, label: Texte bon cadeau, type: text }
       - { name: deroulement_titre, label: Titre du déroulé, type: string }
       - name: deroulement
