@@ -40,7 +40,7 @@ const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
   </section>
 
   {d.deroulement.length > 0 && (
-    <section class="section white">
+    <section class="section dark">
       <div class="container">
         <span class="eyebrow">Le jour J</span>
         <h2 data-split>{d.deroulement_titre}</h2>
@@ -50,7 +50,7 @@ const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
     </section>
   )}
   {d.questions.length > 0 && (
-    <section class="section soft">
+    <section class="section">
       <div class="container">
         <span class="eyebrow">Questions fréquentes</span>
         <h2 data-split>{pages.decouvrir.intertitres.savoir}</h2>
@@ -72,7 +72,7 @@ const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
 </script>
 <style>
   .cta-tete { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 22px; }
-  .offre { padding: clamp(28px, 4vw, 56px) 0; background: var(--paper-2); }
+  .offre { padding: clamp(28px, 4vw, 56px) 0; background: var(--paper); }
   .prix { display: grid; gap: 10px; align-content: start; }
   .formule { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
   .f-tete { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
