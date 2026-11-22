@@ -213,7 +213,7 @@ const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titr
   .detoure i { text-shadow: none; color: var(--sun); }
   @keyframes defile { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) { .d-piste { animation: none; } }
-  .hero { position: relative; min-height: min(58vh, 520px); display: flex; color: #fff; background: var(--ink); overflow: hidden; }
+  .hero { position: relative; min-height: min(70vh, 620px); padding-top: 76px; display: flex; color: #fff; background: var(--ink); overflow: hidden; }
   .slides { position: absolute; inset: 0; }
   .slides img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transform: scale(1.06); transition: opacity 1.4s ease, transform 7s ease-out; }
   .slides img.on { opacity: 1; transform: scale(1); }
@@ -228,9 +228,9 @@ const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titr
   .hero .lead { color: rgba(255,255,255,.88); max-width: 46ch; }
   /* Mobile : la photo passe au-dessus, le texte sur fond uni pour rester lisible. */
   @media (max-width: 700px) {
-    .hero { flex-direction: column; min-height: 0; }
-    .slides { position: relative; height: 38vw; max-height: 240px; overflow: hidden; }
-    .voile { inset: 0 0 auto 0; height: min(38vw, 240px); background: linear-gradient(180deg, rgba(10,18,31,0) 55%, var(--ink) 100%); }
+    .hero { flex-direction: column; min-height: 0; padding-top: 0; }
+    .slides { position: relative; height: calc(min(46vw, 260px) + 120px); overflow: hidden; }
+    .voile { inset: 0 0 auto 0; height: calc(min(46vw, 260px) + 120px); background: linear-gradient(180deg, rgba(10,18,31,.55) 0%, rgba(10,18,31,0) 40%, rgba(10,18,31,0) 60%, var(--ink) 100%); }
     .hero-inner { padding: 0 0 22px; }
     .hero .eyebrow { display: none; }
     .hero h1 { font-size: 1.65rem; margin-bottom: .3em; max-width: 18ch; }
@@ -252,7 +252,7 @@ const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titr
   .choix { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; margin-top: -48px; }
   .choix-carte { --c: var(--sun); position: relative; display: grid; grid-template-columns: 42% 1fr; min-height: 190px; border-radius: 20px; overflow: hidden; background: #fff; border: 1px solid var(--line); text-decoration: none; color: inherit; box-shadow: 0 18px 40px rgba(15,27,45,.12); transition: transform .25s, box-shadow .25s; }
   .choix-carte:hover { transform: translateY(-3px); box-shadow: 0 22px 50px rgba(15,27,45,.18); color: inherit; }
-  .c-apprendre { --c: #2f6fd6; } .c-voler { --c: #1f8a70; }
+  .c-apprendre { --c: #1e5fa8; } .c-voler { --c: #1e5fa8; }
   .choix-carte img { width: 100%; height: 100%; object-fit: cover; }
   .choix-texte { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 18px 20px; border-top: 4px solid var(--c); }
   .choix-texte h3 { font-size: clamp(1.2rem, 2.2vw, 1.55rem); margin: 0; }
@@ -285,7 +285,7 @@ const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titr
   @media (max-width: 700px) { .points { grid-template-columns: 1fr; gap: 14px; } .points div { flex-direction: row; align-items: baseline; gap: 14px; } .points strong { font-size: 1.8rem; min-width: 3.2em; } }
   .contact-band { display: block; }
   /* Météo du terrain : fine bande posée en haut de la photo d'accueil */
-  .hero-metar { position: absolute; top: 0; left: 0; right: 0; z-index: 2; padding: 8px 0; background: rgba(10,18,31,.55); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(255,255,255,.12); }
+  .hero-metar { position: absolute; top: 76px; left: 0; right: 0; z-index: 2; padding: 8px 0; background: rgba(10,18,31,.55); backdrop-filter: blur(8px); border-bottom: 1px solid rgba(255,255,255,.12); }
   @media (max-width: 700px) {
     .hero-metar { padding: 6px 0; }
     .hero-metar :global(.metar) { gap: 8px; flex-wrap: nowrap; align-items: flex-start; }
@@ -302,7 +302,7 @@ const choix = pg.cartes.slice(0, 3).map((c, i) => ({ ...cibles[i], titre: c.titr
   .duo-img img { width: 100%; height: 100%; object-fit: cover; }
   .vedette .eyebrow { color: var(--accent-fonce); }
   .vedette .lead { margin: 0 0 20px; font-size: 1.08rem; }
-  .vedette.pilote { --accent: #2f6fd6; --accent-fonce: color-mix(in srgb, var(--accent) 78%, black); }
+  .vedette.pilote { --accent: #1e5fa8; --accent-fonce: color-mix(in srgb, var(--accent) 78%, black); }
   .formules { list-style: none; margin: 0 0 22px; padding: 0; border-top: 1px solid var(--line); }
   .formules li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); }
   .formules span { display: flex; flex-direction: column; min-width: 0; }
