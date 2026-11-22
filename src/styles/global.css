@@ -46,6 +46,8 @@ p { margin: 0 0 1em; }
 .section { padding: clamp(40px, 6vw, 72px) 0; }
 /* Alternance des pages : bannière, puis fond blanc et fond bleu foncé (pas de bleu clair intermédiaire) */
 .section.soft { background: var(--white); }
+/* Deux sections blanches qui se suivent : pas de double marge entre elles */
+.section:not(.dark) + .section:not(.dark) { padding-top: 0; }
 .section.white { background: var(--white); }
 .section.dark { background: var(--marine); color: #dbe4f0; }
 /* Sur le bleu foncé, seuls les titres et textes de la section passent en clair ; les cartes blanches gardent leurs couleurs */
