@@ -3,7 +3,7 @@
 interface Props { etapes: { titre: string; texte: string }[] }
 const { etapes } = Astro.props;
 ---
-<ol class="etapes" style={`--n: ${etapes.length}`} data-stagger>
+<ol class="etapes" style={`--n: ${etapes.length}`}>
   {etapes.map((e, i) => (
     <li>
       <span class="num">{i + 1}</span>
