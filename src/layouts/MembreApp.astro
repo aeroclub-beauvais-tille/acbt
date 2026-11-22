@@ -100,6 +100,11 @@ const policesFaces = `@font-face{font-family:'Manrope';font-style:normal;font-we
   /* Fond marine derrière la barre d'état (iPhone, iPad) : iOS y teinte l'heure et la batterie avec la couleur de la page */
   html { background: var(--bar); }
   body { min-height: 100vh; min-height: 100dvh; }
+  /* Appli installée sur iPhone : la page passe sous la barre d'état, iOS la raccourcit d'autant et laisse une bande blanche en bas.
+     On l'allonge de la hauteur de la barre d'état pour qu'elle remplisse tout l'écran. */
+  @media (display-mode: standalone) {
+    html { min-height: calc(100vh + env(safe-area-inset-top, 0px)); background: var(--surface); }
+  }
   html { scroll-padding-top: 64px; }  /* la barre bleue ne masque pas la cible d'un lien interne */
   body {
     background: var(--bg);
