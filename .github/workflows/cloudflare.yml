@@ -1,0 +1,75 @@
+name: Publier sur Cloudflare (acbt60.fr)
+
+# Le site du club (https://acbt60.fr) est le projet Cloudflare Pages « acbt60 ».
+# Ce fichier construit le site (vitrine + espace membre + tableau de bord TV + Perfs)
+# et l'envoie dans ce projet avec Wrangler. Les fonctions serveur (dossier functions/)
+# partent avec. Les secrets, la base D1 (DB) et le domaine restent réglés dans Cloudflare :
+# rien n'est écrasé (pas de fichier wrangler.toml dans le dépôt, volontairement).
+#
+# Quand :
+#  - à chaque modification sur main (back-office compris) ;
+#  - chaque nuit (tarifs planifiés, documents qui expirent, date du jour) ;
+#  - quand Perfs change, le dépôt calculateurperformances fait la même publication de son côté ;
+#  - à la main : onglet Actions > « Publier sur Cloudflare » > Run workflow.
+#
+# Secrets nécessaires (Settings > Secrets and variables > Actions, ou au niveau de l'organisation) :
+#  - CLOUDFLARE_API_TOKEN : jeton Cloudflare avec le droit « Cloudflare Pages : Edit » ;
+#  - CLOUDFLARE_ACCOUNT_ID : identifiant du compte Cloudflare du club.
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cloudflare
+  cancel-in-progress: true
+
+jobs:
+  publier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Vérifier les réglages
+        id: reglages
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::notice::CLOUDFLARE_API_TOKEN ou CLOUDFLARE_ACCOUNT_ID n'est pas encore réglé : rien n'est publié."
+            echo "pret=non" >> "$GITHUB_OUTPUT"
+          else
+            echo "pret=oui" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.reglages.outputs.pret == 'oui'
+      - uses: actions/setup-node@v4
+        if: steps.reglages.outputs.pret == 'oui'
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        if: steps.reglages.outputs.pret == 'oui'
+      # Les versions allégées des photos sont gardées d'une publication à l'autre.
+      - uses: actions/cache@v4
+        if: steps.reglages.outputs.pret == 'oui'
+        with:
+          path: public/opt
+          key: photos-cf-${{ hashFiles('public/uploads/**', 'scripts/optimiser-images.mjs') }}
+          restore-keys: photos-cf-
+      - name: Construire le site
+        if: steps.reglages.outputs.pret == 'oui'
+        run: npm run build
+        env:
+          CF_PAGES: '1'
+          CF_PAGES_COMMIT_SHA: ${{ github.sha }}
+          SITE_URL: https://acbt60.fr
+          AVWX_TOKEN: ${{ secrets.AVWX_TOKEN }}
+      - name: Envoyer dans le projet Cloudflare « acbt60 »
+        if: steps.reglages.outputs.pret == 'oui'
+        run: npx --yes wrangler@4 pages deploy dist --project-name=acbt60 --branch=main --commit-hash=${{ github.sha }} --commit-message="acbt ${{ github.sha }}" --commit-dirty=true

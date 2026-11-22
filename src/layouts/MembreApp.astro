@@ -25,7 +25,7 @@ const policesFaces = `@font-face{font-family:'Manrope';font-style:normal;font-we
     <link rel="icon" href={url('/favicon.png')} type="image/png" />
     <link rel="apple-touch-icon" href={url('/icones/membre-192.png')} />
     <link rel="preload" href={manropeUrl} as="font" type="font/woff2" crossorigin />
-    <meta name="theme-color" content="#0b1e4f" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#002A5A" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0a1124" media="(prefers-color-scheme: dark)" />
     <link rel="manifest" href={url('/membre/manifest.webmanifest')} />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -54,17 +54,20 @@ const policesFaces = `@font-face{font-family:'Manrope';font-style:normal;font-we
     --accent-soft: #eaf2fd;
     --accent-line: #bcd0ee;
     --accent-text: #1a4c91;
-    --navy: #0b1e4f;           /* marine : bandeau du haut, boutons forts */
+    --navy: #002A5A;           /* marine : bandeau du haut, boutons forts */
     --on-navy: #ffffff;
     --on-navy-dim: #9aa8cc;
     --yellow: #ffad00;         /* accent de l'onglet actif */
+    /* Bandeau du haut : fond marine, logo et icônes en blanc (icônes à la taille de Perfs) */
     --bar: var(--navy);
     --bar-ink: #ffffff;
+    --bar-ic: #ffffff;
+    --bar-rouge: #ffffff;
     /* États */
     --ok: #1d8a4e; --ok-bg: #e8f5ee; --ok-line: #a9d6bc;
     --warn: #c98300; --warn-bg: #fff4d9; --warn-line: #f2d58f;
     --bad: #b3261e; --bad-bg: #fdecea; --bad-line: #f1b3ad;
-    --shadow: 0 1px 2px rgba(11,30,79,.06), 0 4px 14px rgba(11,30,79,.05);
+    --shadow: 0 1px 2px rgba(0,42,90,.06), 0 4px 14px rgba(0,42,90,.05);
     --font: 'Manrope', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --tab-h: 62px;
@@ -76,7 +79,7 @@ const policesFaces = `@font-face{font-family:'Manrope';font-style:normal;font-we
     :root:not([data-theme="light"]) {
       --bg: #0a1124; --surface: #121b33; --surface-2: #18233f; --ink: #eef2fa; --ink-2: #c7d0e4; --muted: #8792ad; --line: #202c4a;
       --accent: #8fa6ff; --accent-ink: #0a1124; --accent-soft: rgba(143,166,255,.14); --accent-line: #2e3c60; --accent-text: #afc0ff;
-      --navy: #16245a; --on-navy: #ffffff; --on-navy-dim: #9aa8cc; --yellow: #ffb81f; --bar: #0a1124; --bar-ink: #eef2fa;
+      --navy: #16245a; --on-navy: #ffffff; --on-navy-dim: #9aa8cc; --yellow: #ffb81f; --bar: #0a1124; --bar-ink: #eef2fa; --bar-ic: #eef2fa; --bar-rouge: currentColor;
       --ok: #40c97f; --ok-bg: rgba(64,201,127,.14); --ok-line: #22543a;
       --warn: #ffb81f; --warn-bg: rgba(255,184,31,.14); --warn-line: #5a4618;
       --bad: #ff6464; --bad-bg: rgba(255,100,100,.14); --bad-line: #5e2723;
@@ -86,7 +89,7 @@ const policesFaces = `@font-face{font-family:'Manrope';font-style:normal;font-we
   :root[data-theme="dark"] {
     --bg: #0a1124; --surface: #121b33; --surface-2: #18233f; --ink: #eef2fa; --ink-2: #c7d0e4; --muted: #8792ad; --line: #202c4a;
     --accent: #8fa6ff; --accent-ink: #0a1124; --accent-soft: rgba(143,166,255,.14); --accent-line: #2e3c60; --accent-text: #afc0ff;
-    --navy: #16245a; --on-navy: #ffffff; --on-navy-dim: #9aa8cc; --yellow: #ffb81f; --bar: #0a1124; --bar-ink: #eef2fa;
+    --navy: #16245a; --on-navy: #ffffff; --on-navy-dim: #9aa8cc; --yellow: #ffb81f; --bar: #0a1124; --bar-ink: #eef2fa; --bar-ic: #eef2fa; --bar-rouge: currentColor;
     --ok: #40c97f; --ok-bg: rgba(64,201,127,.14); --ok-line: #22543a;
     --warn: #ffb81f; --warn-bg: rgba(255,184,31,.14); --warn-line: #5a4618;
     --bad: #ff6464; --bad-bg: rgba(255,100,100,.14); --bad-line: #5e2723;
@@ -94,6 +97,9 @@ const policesFaces = `@font-face{font-family:'Manrope';font-style:normal;font-we
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
+  /* Fond marine derrière la barre d'état (iPhone, iPad) : iOS y teinte l'heure et la batterie avec la couleur de la page */
+  html { background: var(--bar); }
+  body { min-height: 100vh; min-height: 100dvh; }
   html { scroll-padding-top: 64px; }  /* la barre bleue ne masque pas la cible d'un lien interne */
   body {
     background: var(--bg);
