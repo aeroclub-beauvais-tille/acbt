@@ -77,8 +77,7 @@ const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
   .offre { padding: 28px 0 36px; background: var(--paper); }
   .prix { display: grid; gap: 10px; align-content: start; }
   .formule { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; }
-  .f-tete { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; }
-  .multi .f-tete { align-items: center; }
+  .f-tete { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
   .formule h2 { font-size: 1.15rem; margin: 0 0 2px; letter-spacing: -.01em; }
   .formule p { margin: 0; color: var(--muted); font-size: .88rem; line-height: 1.4; }
   .montant { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; text-align: right; }
@@ -91,7 +90,6 @@ const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
   .formule { border-top: 4px solid var(--accent); }
   .formule:not(.multi) { border-top-color: var(--sun); }
   .f-type { display: block; font-family: var(--font-body); font-size: .68rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
-  .multi .f-tete { align-items: baseline; }
   .tuiles { list-style: none; display: block; margin: 10px 0 0; padding: 0; border-top: 1px solid var(--line); }
   .tuiles li { display: flex; align-items: baseline; gap: 8px; padding: 10px 0; background: none; border-radius: 0; border-bottom: 1px dashed var(--line); }
   .tuiles li:last-child { border-bottom: 0; padding-bottom: 0; }
