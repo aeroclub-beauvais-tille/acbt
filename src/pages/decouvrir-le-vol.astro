@@ -17,7 +17,7 @@ const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
 <Base univers="decouvrir" title="Baptême de l'air" description={`Baptême de l'air, vol découverte et vol d'initiation à Beauvais-Tillé, dès ${n(Math.min(...t.formules.flatMap((f) => f.prix.map((p) => p.prix))))} €.`}>
   <PageHead eyebrow="Baptême de l'air" image={pages.decouvrir.image} title={pages.decouvrir.titre} lead={d.accroche}>
     <div class="cta-tete">
-      <a class="btn btn-primary" href={url('/contact?objet=Vol découverte')}>Réserver un baptême</a>
+      <a class="btn btn-jaune" href={url('/contact?objet=Vol découverte')}>Réserver un baptême</a>
     </div>
   </PageHead>
   <section class="offre">
@@ -71,6 +71,8 @@ const tel = `tel:${club.telephone.replace(/\s/g, '')}`;
   } else barre?.classList.add('visible');
 </script>
 <style>
+  .btn-jaune { background: var(--sun); color: var(--ink); }
+  .btn-jaune:hover { background: #ffc933; color: var(--ink); }
   .cta-tete { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 22px; }
   .offre { padding: 28px 0 36px; background: var(--paper); }
   .prix { display: grid; gap: 10px; align-content: start; }
