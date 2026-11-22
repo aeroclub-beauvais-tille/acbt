@@ -67,6 +67,9 @@
         "lien_texte": "La flotte",
         "lien": "/club/flotte"
       }
+    ],
+    "videos_mobile": [
+      "/uploads/accueil/video-accueil-patrouille.mp4"
     ]
   },
   "decouvrir": {

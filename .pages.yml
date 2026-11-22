@@ -160,6 +160,7 @@ content:
             fields:
               - { name: image, label: Photo, type: image }
               - { name: legende, label: Légende, type: string }
+          - { name: videos_mobile, label: Vidéos de fond sur téléphone (facultatif), type: file, list: true, description: "MP4 verticaux, sans son, légers (moins de 5 Mo chacun). Elles passent l'une après l'autre, en plein écran, seulement sur téléphone ; l'ordinateur garde les photos. Mettez une image JPG du même nom à côté de chaque vidéo pour l'aperçu avant lecture." }
           - name: cartes
             label: "Les 3 choix sous la photo d'accueil (dans l'ordre : baptême, devenir pilote, déjà pilote). Le prix « dès … € » du baptême est ajouté automatiquement"
             type: object
