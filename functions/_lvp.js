@@ -3,8 +3,18 @@
 // avec « Date et heure : 2026-11-22T04:43:00Z ». Ces mails arrivent sur meteo@acbt60.fr et passent par /api/maa.
 // État rangé dans la base D1 (table lvp) : une ligne par procédure (lvp, prelvp).
 
-// Sans mail de désactivation au bout de ce délai après sa RÉCEPTION, on considère la procédure terminée (mail perdu).
-const DUREE_MAX = 24 * 3600000;
+// Sans mail de désactivation, la procédure s'arrête d'elle-même le lendemain du jour de réception (J+1) à 03h00, heure de Paris.
+const HEURE_FIN = 3;
+
+/** J+1 à 03h00 heure de Paris, J étant le jour (à Paris) de l'instant donné. */
+export function finAuto(iso) {
+  const t = Date.parse(iso);
+  if (isNaN(t)) return 0;
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+    .formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+  const decalage = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute) - Math.floor(t / 60000) * 60000; // Paris - UTC
+  return Date.UTC(+p.year, +p.month - 1, +p.day + 1, HEURE_FIN) - decalage; // le lendemain (J+1) à 03h00
+}
 
 export async function tableLvp(db) {
   await db.prepare(`CREATE TABLE IF NOT EXISTS lvp (
@@ -42,7 +52,7 @@ export async function etatLvp(db) {
     await tableLvp(db);
     const { results } = await db.prepare('SELECT cle, actif, depuis, vu FROM lvp').all();
     const n = Date.now();
-    const en = (cle) => (results || []).find((r) => r.cle === cle && r.actif && n - Date.parse(r.vu || r.depuis) < DUREE_MAX);
+    const en = (cle) => (results || []).find((r) => r.cle === cle && r.actif && n < finAuto(r.vu || r.depuis));
     const l = en('lvp') || en('prelvp');
     return l ? { actif: true, type: l.cle === 'lvp' ? 'LVP' : 'Pré-LVP', depuis: l.depuis } : { actif: false };
   } catch { return null; }
