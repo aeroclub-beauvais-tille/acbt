@@ -162,9 +162,16 @@ const onglets = [
         </div>
       </div>
 
-      <h2 class="bt">Météo du terrain</h2>
+      <h2 class="bt">Vent et pistes <span class="bt-nb" id="vent-info"></span></h2>
+      <div class="carte-vent" id="vent" data-api={url('/membre/api/vent')}><p class="vide">Chargement du vent…</p></div>
+
+      <h2 class="bt bt-suite">Météo du terrain</h2>
       <div class="carte-metar"><Metar /></div>
       <div class="carte-metar carte-taf"><Taf /></div>
+
+      <h2 class="bt bt-notam">NOTAM LFOB <span class="bt-nb" id="notam-nb"></span></h2>
+      <div class="carte-notam nl" id="notam-liste" data-api={url('/membre/api/notam')}><p class="vide">Chargement des NOTAM…</p></div>
+      <p class="fl-info" id="notam-info"></p>
 
       <p class="aide-ios" id="aide-ios" hidden>Sur iPhone : touchez <b>Partager</b> en bas de Safari, puis <b>Sur l'écran d'accueil</b>.</p>
     </section>
@@ -329,7 +336,7 @@ const onglets = [
 </MembreApp>
 
 <script>
-  import { enregistrer, boutonInstaller, seDeconnecter, badges, maa, maaEnLigne, onglets, signalement, theme, avions, soleil, flotte } from '../../scripts/membre-app';
+  import { enregistrer, boutonInstaller, seDeconnecter, badges, maa, maaEnLigne, onglets, signalement, theme, avions, soleil, flotte, notam, vent } from '../../scripts/membre-app';
   enregistrer();
   theme(document.getElementById('btn-theme'));
   const montrer = onglets();
@@ -340,6 +347,8 @@ const onglets = [
   soleil();
   setInterval(soleil, 60_000);
   flotte();
+  notam();
+  vent();
   setInterval(maaEnLigne, 5 * 60_000); // nouveaux MAA reçus par mail
   setInterval(maa, 60_000); // le MAA peut commencer ou se terminer pendant la consultation
   signalement();
@@ -437,6 +446,53 @@ const onglets = [
 
   .carte-metar { padding: 15px 16px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 14px; }
   .carte-taf { margin-top: 10px; }
+
+  /* Vent et pistes : même rose des vents et mêmes composantes que le tableau de bord TV */
+  .bt-suite { margin-top: 22px; }
+  .bt-nb :global(.dot) { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); vertical-align: 0; }
+  .bt-nb :global(.dot.ko) { background: var(--bad); }
+  .carte-vent { padding: 14px 12px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+  .carte-vent > .vide { color: var(--muted); font-size: .86rem; font-weight: 600; margin: 0; padding: 8px 4px; }
+  .carte-vent :global(.vd) { display: flex; flex-direction: column; align-items: center; }
+  .carte-vent :global(.vd .t) { display: flex; align-items: baseline; gap: 14px; font-size: 2.1rem; font-weight: 800; line-height: 1.05; color: var(--ink); }
+  .carte-vent :global(.vd .t .sep) { align-self: center; width: 2px; height: 28px; border-radius: 2px; background: var(--muted); opacity: .45; }
+  .carte-vent :global(.vd .t small) { font-size: .8rem; font-weight: 700; color: var(--muted); }
+  .carte-vent :global(.vd .t small.raf) { color: var(--warn); }
+  .carte-vent :global(.vd .vsous) { margin-top: 4px; font-size: .8rem; font-weight: 700; color: var(--muted); text-align: center; }
+  .carte-vent :global(.vd svg) { width: min(100%, 300px); aspect-ratio: 1; margin-top: 4px; }
+  .carte-vent :global(.cone) { transition: transform 2.5s cubic-bezier(.4, 0, .2, 1); }
+  .carte-vent :global(.qfus) { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  .carte-vent :global(.qfu) { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; align-items: center; background: var(--surface-2); border: 1px solid transparent; border-radius: 11px; padding: 8px 10px; }
+  .carte-vent :global(.qfu .n) { font-family: var(--mono); font-size: 1.2rem; font-weight: 700; color: var(--muted); line-height: 1.1; }
+  .carte-vent :global(.qfu .n i) { display: block; font-style: normal; font-size: .62rem; font-weight: 600; opacity: .8; }
+  .carte-vent :global(.qfu b) { display: block; font-size: .88rem; font-weight: 800; color: var(--ink); }
+  .carte-vent :global(.qfu small) { display: block; font-size: .72rem; color: var(--muted); font-weight: 600; }
+  .carte-vent :global(.qfu.co) { border-color: var(--ok); background: var(--ok-bg); }
+  .carte-vent :global(.qfu.co .n), .carte-vent :global(.qfu.co b) { color: var(--ok); }
+  .carte-vent :global(.qfu.arr b) { color: var(--warn); }
+  .carte-vent :global(.qfu .att) { width: 14px; height: 14px; color: var(--warn); vertical-align: -2px; margin-right: 4px; }
+
+  /* NOTAM : même liste que le tableau de bord TV (badges par catégorie, mots d'indisponibilité en rouge), sans défilement */
+  .bt-notam { margin-top: 22px; }
+  .bt-nb { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 600; font-size: .74rem; }
+  .carte-notam { padding: 2px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+  .nl :global(.n) { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
+  .nl :global(.n:last-child) { border-bottom: 0; }
+  .nl :global(.ic) { width: 40px; height: 27px; border-radius: 6px; display: grid; place-items: center; font-weight: 900; font-size: 15px; color: #111; background: #f5c518; box-shadow: inset 0 0 0 2px #111, 0 0 0 1px #f5c518; letter-spacing: -.5px; }
+  .nl :global(.ic svg) { width: 19px; height: 19px; }
+  .nl :global(.ic.l3) { font-size: 11.5px; letter-spacing: .3px; }
+  .nl :global(.ic.l4) { font-size: 9.5px; letter-spacing: .2px; }
+  .nl :global(.ic.rouge) { background: #e0364f; color: #fff; box-shadow: inset 0 0 0 2px #fff3, 0 0 0 1px #e0364f; }
+  .nl :global(.ic.bleu) { background: #1e9bff; color: #fff; box-shadow: none; }
+  .nl :global(.ic.violet) { background: #8b6cff; color: #fff; box-shadow: none; }
+  .nl :global(.ic.neige) { background: #e8f6ff; color: #0b5fa5; box-shadow: inset 0 0 0 2px #0b5fa5; }
+  .nl :global(.ic.gris) { background: var(--surface-2); color: var(--ink-2); box-shadow: inset 0 0 0 1.5px var(--muted); }
+  .nl :global(b) { display: block; font-size: .86rem; font-weight: 700; line-height: 1.4; color: var(--ink); overflow-wrap: anywhere; }
+  .nl :global(b em) { font-style: normal; color: var(--bad); }
+  .nl :global(b .no) { font-weight: 600; color: var(--muted); font-size: .74rem; white-space: nowrap; }
+  .nl :global(small) { display: block; color: var(--muted); font-size: .76rem; font-weight: 600; margin-top: 4px; }
+  .nl :global(.actif) { display: inline-block; font-size: .62rem; font-weight: 900; letter-spacing: .6px; color: #fff; background: #23a55a; border-radius: 5px; padding: 1px 6px; margin-right: 7px; vertical-align: 1px; }
+  .nl :global(.vide) { color: var(--muted); font-size: .86rem; font-weight: 600; padding: 14px 0; margin: 0; }
 
   /* Soleil (onglet Météo, sous le MAA) : frise des 24 h comme le tableau de bord, sans aube ni crépuscule */
   .soleil { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 18px; padding: 30px 14px 10px; }

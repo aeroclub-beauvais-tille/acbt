@@ -24,7 +24,7 @@ export async function onRequestGet({ env, request, waitUntil }) {
   }
 }
 
-async function relayer(env, cache, waitUntil, cible) {
+export async function relayer(env, cache, waitUntil, cible) {
   // Clé d'API longue durée (portail Météo-France, « API Key ») : pas besoin de jeton OAuth
   if (env.METEOFRANCE_APIKEY) {
     // Les cartes sont gardées 10 min en cache chez Cloudflare : toutes les télés partagent les mêmes images (quota de l'API)
