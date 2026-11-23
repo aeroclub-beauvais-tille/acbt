@@ -3,12 +3,14 @@
 // avec « Date et heure : 2026-11-22T04:43:00Z ». Ces mails arrivent sur meteo@acbt60.fr et passent par /api/maa.
 // État rangé dans la base D1 (table lvp) : une ligne par procédure (lvp, prelvp).
 
-// Sans mail de désactivation au bout de ce délai, on considère la procédure terminée (mail perdu).
+// Sans mail de désactivation au bout de ce délai après sa RÉCEPTION, on considère la procédure terminée (mail perdu).
 const DUREE_MAX = 24 * 3600000;
 
 export async function tableLvp(db) {
   await db.prepare(`CREATE TABLE IF NOT EXISTS lvp (
     cle TEXT PRIMARY KEY, actif INTEGER NOT NULL, depuis TEXT, maj TEXT NOT NULL)`).run();
+  const { results } = await db.prepare("SELECT name FROM pragma_table_info('lvp')").all();
+  if (!(results || []).some((r) => r.name === 'vu')) { try { await db.prepare('ALTER TABLE lvp ADD COLUMN vu TEXT').run(); } catch { /* déjà là */ } }
 }
 
 const simple = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -28,9 +30,9 @@ export function lireLvp(sujet, texte, recu = new Date()) {
 /** Enregistre l'activation ou la désactivation (un mail plus ancien que l'état connu est ignoré). */
 export async function appliquerLvp(db, lu) {
   await tableLvp(db);
-  const r = await db.prepare(`INSERT INTO lvp (cle, actif, depuis, maj) VALUES (?1, ?2, ?3, ?3)
-    ON CONFLICT(cle) DO UPDATE SET actif = ?2, depuis = CASE WHEN ?2 = 1 AND lvp.actif = 1 THEN lvp.depuis ELSE ?3 END, maj = ?3
-    WHERE lvp.maj <= ?3`).bind(lu.cle, lu.actif ? 1 : 0, lu.date).run();
+  const r = await db.prepare(`INSERT INTO lvp (cle, actif, depuis, maj, vu) VALUES (?1, ?2, ?3, ?3, ?4)
+    ON CONFLICT(cle) DO UPDATE SET actif = ?2, depuis = CASE WHEN ?2 = 1 AND lvp.actif = 1 THEN lvp.depuis ELSE ?3 END, maj = ?3, vu = ?4
+    WHERE lvp.maj <= ?3`).bind(lu.cle, lu.actif ? 1 : 0, lu.date, new Date().toISOString()).run();
   return r.meta.changes > 0;
 }
 
@@ -38,9 +40,9 @@ export async function appliquerLvp(db, lu) {
 export async function etatLvp(db) {
   try {
     await tableLvp(db);
-    const { results } = await db.prepare('SELECT cle, actif, depuis FROM lvp').all();
+    const { results } = await db.prepare('SELECT cle, actif, depuis, vu FROM lvp').all();
     const n = Date.now();
-    const en = (cle) => (results || []).find((r) => r.cle === cle && r.actif && n - Date.parse(r.depuis) < DUREE_MAX);
+    const en = (cle) => (results || []).find((r) => r.cle === cle && r.actif && n - Date.parse(r.vu || r.depuis) < DUREE_MAX);
     const l = en('lvp') || en('prelvp');
     return l ? { actif: true, type: l.cle === 'lvp' ? 'LVP' : 'Pré-LVP', depuis: l.depuis } : { actif: false };
   } catch { return null; }
