@@ -1,4 +1,4 @@
-// Dépôt d'un bulletin MAA, de deux façons :
+// Dépôt d'un bulletin MAA (ou d'un mail LVP / Pré-LVP de l'aéroport, voir _lvp.js), de deux façons :
 //  - le PDF seul :          POST /api/maa   corps = le PDF (application/pdf)
 //  - le mail entier (MIME) : POST /api/maa   corps = le mail brut (message/rfc822). C'est ce qu'envoie le petit
 //    programme e-mail Cloudflare (workers/maa-mail) quand un mail arrive sur meteo@acbt60.fr : chaque PDF joint
@@ -6,6 +6,7 @@
 // Dans les deux cas : en-tête Authorization: Bearer <MAA_CLE> (variable secrète du projet Cloudflare acbt60).
 import { tableMaa, lireMaa, empreinte, json, appliquerMaa } from '../_maa.js';
 import { lireMail } from '../_mail.js';
+import { lireLvp, appliquerLvp } from '../_lvp.js';
 import { egal } from '../_session.js';
 
 const MAX = 5 * 1024 * 1024;
@@ -51,6 +52,9 @@ export async function onRequestPost({ request, env }) {
   const mail = lireMail(octets);
   const dateMail = new Date(mail.date);
   if (!url.searchParams.get('recu') && !isNaN(dateMail)) recu = dateMail;
+  // Mail du service trafic de l'aéroport : activation ou désactivation des LVP / Pré-LVP
+  const lvp = !mail.pdfs.length ? lireLvp(mail.sujet, mail.texte, recu) : null;
+  if (lvp) return json({ ok: true, de: mail.de, sujet: mail.sujet, lvp: { ...lvp, nouveau: await appliquerLvp(env.DB, lvp) } });
   if (!mail.pdfs.length) return json({ ok: false, de: mail.de, sujet: mail.sujet, erreur: 'Mail reçu, mais sans PDF joint.' }, 422);
   const resultats = [];
   for (const p of mail.pdfs) resultats.push(await deposer(env, p.octets, recu, p.nom));

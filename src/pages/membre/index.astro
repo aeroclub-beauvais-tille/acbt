@@ -122,6 +122,13 @@ const onglets = [
   <main class="content">
     <!-- ACCUEIL -->
     <section class="panneau" id="accueil">
+      <div class="lvp-banniere" id="lvp" hidden>
+        <span class="lvp-logo" aria-hidden="true">LVP</span>
+        <span class="maa-txt">
+          <strong>Procédures par faible visibilité</strong>
+          <span class="maa-num" id="lvp-depuis">LVP activées à LFOB</span>
+        </span>
+      </div>
       <div id="maa-zone" hidden>
         {meteo.map((m) => (
           <a class="maa-banniere" data-maa data-numero={m.numero} data-debut={m.debut?.toISOString()} data-fin={m.fin?.toISOString()} href={m.fichier ? asset(m.fichier) : (m.lien || undefined)} target="_blank" rel="noopener" hidden>
@@ -448,6 +455,9 @@ const onglets = [
   .maa-txt { flex: 1; min-width: 0; display: grid; gap: 1px; }
   .maa-txt strong { font-size: .82rem; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .maa-num { font-size: .8rem; font-weight: 700; opacity: .95; font-variant-numeric: tabular-nums; }
+  .lvp-banniere { display: flex; gap: 10px; align-items: center; color: #fff; background: linear-gradient(135deg, #c4161c, #e4482b); border-radius: 14px; padding: 11px 13px; box-shadow: 0 5px 16px rgba(196,22,28,.26); margin-bottom: 10px; }
+  .lvp-banniere[hidden] { display: none; }
+  .lvp-logo { flex: none; font-weight: 900; font-size: .78rem; letter-spacing: .04em; color: #c4161c; background: #fff; border-radius: 7px; padding: 6px 7px; line-height: 1; }
   .maa-pdf { flex: none; font-size: .7rem; font-weight: 700; background: rgba(255,255,255,.2); padding: 5px 8px; border-radius: 8px; }
 
   .carte-metar { padding: 15px 16px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 14px; }

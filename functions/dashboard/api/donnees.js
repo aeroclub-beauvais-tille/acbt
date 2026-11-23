@@ -3,6 +3,7 @@
 // Chaque source est facultative : si l'une ne répond pas, les autres s'affichent quand même.
 import { lireFlotte } from '../../membre/api/flotte.js';
 import { tableMaa, MAA_VISIBLES } from '../../_maa.js';
+import { etatLvp } from '../../_lvp.js';
 import { lireMessages } from '../../_messages.js';
 
 const AVWX_CLE = 'v1k-d7EgXdAiRybNQZ6gij20qSs0n9DEPki8lQD0jjo'; // clé publique déjà utilisée par le site
@@ -16,7 +17,7 @@ export async function onRequestGet({ env, request, waitUntil }) {
     const deja = await cache.match(new Request(CACHE));
     if (deja) return deja;
   }
-  const [flotte, maa, metar, taf, notam, historique, vigilance, messages, voisins, altitude] = await Promise.all([
+  const [flotte, maa, metar, taf, notam, historique, vigilance, messages, voisins, altitude, lvp] = await Promise.all([
     env.AEROGEST_PLANNING_URL
       ? lireFlotte(env.AEROGEST_PLANNING_URL, new Date(), fetch, { jour: true, instructeurs: true, brut: debug === 'instructeurs' }).catch(() => null)
       : null,
@@ -29,8 +30,9 @@ export async function onRequestGet({ env, request, waitUntil }) {
     env.DB ? lireMessages(env.DB).catch(() => null) : null,
     lireVoisins().catch(() => null),
     lireAltitude().catch(() => null),
+    env.DB ? etatLvp(env.DB) : null,
   ]);
-  const corps = { ok: true, maj: new Date().toISOString(), flotte, maa, metar, taf, notam, historique, vigilance, messages, voisins, altitude, cartes: { temsi: null, wintem: null, raison: env.AEROWEB_CODE ? 'a-brancher' : 'code' }, meteofrance: Boolean(env.METEOFRANCE_BASIC || env.METEOFRANCE_APIKEY), meteofranceExpire: expiration(env.METEOFRANCE_APIKEY) };
+  const corps = { ok: true, maj: new Date().toISOString(), flotte, maa, lvp, metar, taf, notam, historique, vigilance, messages, voisins, altitude, cartes: { temsi: null, wintem: null, raison: env.AEROWEB_CODE ? 'a-brancher' : 'code' }, meteofrance: Boolean(env.METEOFRANCE_BASIC || env.METEOFRANCE_APIKEY), meteofranceExpire: expiration(env.METEOFRANCE_APIKEY) };
   const rep = (portee) => new Response(JSON.stringify(corps), {
     headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `${portee}, max-age=50` },
   });

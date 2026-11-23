@@ -76,10 +76,26 @@ function sousParties(corps, frontiere) {
   return parts;
 }
 
-/** En-têtes utiles du mail (expéditeur, sujet, date) et toutes ses pièces jointes PDF. */
+/** Texte avec le bon jeu de caractères (utf-8, iso-8859-1, windows-1252…). */
+function texte(octets, charset) {
+  try { return new TextDecoder(charset || 'utf-8').decode(octets); } catch { return new TextDecoder('utf-8').decode(octets); }
+}
+
+/** En-tête encodé « =?utf-8?Q?D=C3=A9sactivation?= » ou « =?utf-8?B?…?= » remis en clair. */
+function enClair(valeur = '') {
+  return valeur.replace(/\?=\s+=\?/g, '?==?').replace(/=\?([^?]+)\?([QB])\?([^?]*)\?=/gi, (_, cs, enc, v) => {
+    const oct = enc.toUpperCase() === 'B'
+      ? base64(new TextEncoder().encode(v))
+      : quotedPrintable(new TextEncoder().encode(v.replace(/_/g, ' ')));
+    return texte(oct, cs);
+  });
+}
+
+/** En-têtes utiles du mail (expéditeur, sujet, date), son texte brut et toutes ses pièces jointes PDF. */
 export function lireMail(octets, profondeur = 0) {
   const { entetes, corps } = decouper(octets);
   const pdfs = [];
+  const textes = [];
   const visiter = (oct, niveau) => {
     if (niveau > 6) return;
     const { entetes: e, corps: c } = decouper(oct);
@@ -90,13 +106,19 @@ export function lireMail(octets, profondeur = 0) {
       return;
     }
     if (type.startsWith('message/rfc822')) { visiter(c, niveau + 1); return; }
-    const nom = parametre(e['content-disposition'], 'filename') || parametre(e['content-type'], 'name');
-    if (!type.startsWith('application/pdf') && !/\.pdf$/i.test(nom)) return;
+    const nom = enClair(parametre(e['content-disposition'], 'filename') || parametre(e['content-type'], 'name'));
     const enc = (e['content-transfer-encoding'] || '').toLowerCase();
-    const brut = enc === 'base64' ? base64(c) : enc === 'quoted-printable' ? quotedPrintable(c) : c;
+    const decode = () => (enc === 'base64' ? base64(c) : enc === 'quoted-printable' ? quotedPrintable(c) : c);
+    if (type.startsWith('text/') && !nom) {
+      const t = texte(decode(), parametre(e['content-type'], 'charset'));
+      textes.push(type.startsWith('text/html') ? t.replace(/<br\s*\/?>|<\/(p|div|tr)>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ') : t);
+      return;
+    }
+    if (!type.startsWith('application/pdf') && !/\.pdf$/i.test(nom)) return;
+    const brut = decode();
     const debut = chercher(brut, [37, 80, 68, 70, 45], 0); // « %PDF- »
     if (debut >= 0 && debut < 1024) pdfs.push({ nom: nom || 'maa.pdf', octets: brut.subarray(debut) });
   };
   visiter(octets, profondeur);
-  return { de: entetes.from || '', sujet: entetes.subject || '', date: entetes.date || '', pdfs };
+  return { de: enClair(entetes.from || ''), sujet: enClair(entetes.subject || ''), date: entetes.date || '', texte: textes.join('\n'), pdfs };
 }

@@ -176,6 +176,16 @@ export function maa(racine: ParentNode = document) {
  * Chaque bulletin ajoute un bandeau comme ceux écrits dans la page, puis maa() décide lesquels montrer.
  * Sans réseau (ou sur la maquette GitHub, sans serveur), on garde la dernière liste reçue sur l'appareil.
  */
+/** Logo rouge « LVP » tant que l'aéroport n'a pas envoyé le mail de désactivation (LVP ou Pré-LVP, même logo). */
+function lvp(etat?: { actif?: boolean; depuis?: string } | null) {
+  const el = document.querySelector<HTMLElement>('#lvp');
+  if (!el || etat == null) return;
+  el.hidden = !etat.actif;
+  const d = etat.depuis ? new Date(etat.depuis) : null;
+  const txt = el.querySelector<HTMLElement>('#lvp-depuis');
+  if (txt && d && !isNaN(+d)) txt.textContent = `LVP activées à LFOB depuis ${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')} UTC`;
+}
+
 type MaaEnLigne = { id: string; numero?: string; motif?: string; debut?: string; fin?: string };
 export async function maaEnLigne() {
   const zone = document.querySelector<HTMLElement>('#maa-zone');
@@ -184,7 +194,11 @@ export async function maaEnLigne() {
   let liste: MaaEnLigne[] | null = null;
   try {
     const r = await fetch(url('/membre/api/maa'), { cache: 'no-store', credentials: 'same-origin' });
-    if (r.ok && (r.headers.get('content-type') || '').includes('json')) liste = (await r.json()).maa ?? [];
+    if (r.ok && (r.headers.get('content-type') || '').includes('json')) {
+      const j = await r.json();
+      liste = j.maa ?? [];
+      lvp(j.lvp);
+    }
   } catch { /* hors ligne */ }
   if (!liste) return;
   zone.querySelectorAll('[data-maa-en-ligne]').forEach((el) => el.remove());

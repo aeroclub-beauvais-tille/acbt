@@ -28,7 +28,7 @@ interface Histo { t: string; vent: number | null; rafales: number | null; dir: n
 interface Donnees {
   ok: boolean; maj: string;
   flotte: { ok: boolean; avions: Avion[]; instructeurs?: Instructeur[] } | null;
-  maa: Maa[] | null; metar: Metar | null; taf: Taf | null;
+  maa: Maa[] | null; lvp?: { actif: boolean; depuis?: string } | null; metar: Metar | null; taf: Taf | null;
   notam: { ok: boolean; raison?: string; notam?: Notam[]; sup?: Notam[] } | null;
   historique: Histo[] | null;
   vigilance?: { maj: string | null; departements: { id: string; nom: string; couleur: number; phenomenes: { phenomene: string; couleur: number; debut: string; fin: string }[] }[] } | null;
@@ -891,9 +891,10 @@ function alertes() {
   const plus = (l: unknown[]) => (l.length > 1 ? ` (+${l.length - 1})` : '');
   const h: string[] = [];
   alerteAAL();
+  if (D.lvp?.actif) h.push(`<div class="al a-on a-lvp"><i class="lvp-logo">LVP</i><b>LVP en vigueur</b><span>faible visibilité à LFOB${D.lvp.depuis ? ` depuis ${hUtc(utc(D.lvp.depuis)!)} UTC` : ''}</span></div>`);
   if (snow.length) h.push(`<div class="al a-on"><b>SNOWTAM en vigueur</b><span>état des pistes publié · voir NOTAM</span></div>`);
-  if (enCours.length) h.push(`<div class="al a-on"><b>Alerte météo en cours</b><span>${esc(enCours[0].motif || 'MAA')}${enCours[0].fin ? ` jusqu’à ${t(enCours[0].fin)} UTC` : ''}${plus(enCours)}</span></div>`);
-  else if (aVenir.length) h.push(`<div class="al a-av"><b>Alerte météo à venir</b><span>${esc(aVenir[0].motif || 'MAA')} dès ${t(aVenir[0].debut)} UTC${plus(aVenir)}</span></div>`);
+  if (enCours.length) h.push(`<div class="al a-on"><b>Alerte météo en cours</b><span>${esc(maaPhen(enCours[0].phen) || enCours[0].motif || 'MAA')}${enCours[0].fin ? ` jusqu’à ${t(enCours[0].fin)} UTC` : ''}${plus(enCours)}</span></div>`);
+  else if (aVenir.length) h.push(`<div class="al a-av"><b>Alerte météo à venir</b><span>${esc(maaPhen(aVenir[0].phen) || aVenir[0].motif || 'MAA')} dès ${t(aVenir[0].debut)} UTC${plus(aVenir)}</span></div>`);
   if (!h.length) h.push(hiver ? `<div class="al a-ok"><b>Aucune alerte météo</b><span>ni MAA ni SNOWTAM, en cours ou à venir</span></div>` : `<div class="al a-ok"><b>Aucun MAA</b><span>en cours ou à venir</span></div>`);
   b.innerHTML = h.join('');
 }
