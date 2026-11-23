@@ -148,7 +148,11 @@ function lireInstructeurs(plannings) {
     for (const l of p?.lignes || []) {
       const nom = nomPrenom(texte(l.content).split('\n')[0]);
       if (!nom) continue;
-      if (!parNom.has(nom)) parNom.set(nom, { nom, creneaux: [] });
+      // Trigramme Aerogest de l'instructeur, écrit sous son nom : « (BAL - A) »
+      // et ses qualifications après le tiret : « (JBT - A,FE) » → examinateur (FE)
+      const m = texte(l.content).match(/\(\s*([A-Z]{2,4})\s*-\s*([^)]*)\)/);
+      const code = m?.[1] || null, fe = /\bFE\b/.test(m?.[2] || '');
+      if (!parNom.has(nom)) parNom.set(nom, { nom, code, fe, creneaux: [] });
       const i = parNom.get(nom);
       const ajouter = (r, flottant) => {
         const info = infobulle(r.tooltip);

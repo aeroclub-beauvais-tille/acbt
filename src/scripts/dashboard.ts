@@ -17,7 +17,7 @@ interface Avion {
   enVol?: { depuis: string } | null; volsJour?: { debut: string; fin: string | null; temps: string | null }[];
 }
 interface Creneau { debut: string; fin: string; texte: string | null; type: string | null; pilote: string | null; avion: string | null; flottant: boolean }
-interface Instructeur { nom: string; creneaux: Creneau[] }
+interface Instructeur { nom: string; code?: string | null; fe?: boolean; creneaux: Creneau[] }
 interface Nuage { type: string; hauteur: number | null; cb: string | null }
 interface Cond { regles: string | null; ventDir: number | 'VRB' | null; ventForce: number | null; rafales: number | null; ventVar?: [number, number] | null; visibilite: number | 'CAVOK' | null; nuages: Nuage[]; temps: { code: string; texte: string }[] }
 interface Metar extends Cond { raw: string; heure: string | null; temperature: number | null; rosee: number | null; qnh: number | null }
@@ -63,6 +63,30 @@ function jourTxt(j: string) {
 }
 const qui = (r: Resa) => [r.pilote, r.instructeur && `avec ${court(r.instructeur)}`].filter(Boolean).join(' · ');
 // « DALBART Baptiste » → « DALBART B. »
+// Trigrammes Aerogest des instructeurs (lus dans le planning instructeurs ; table de secours donnée par le club)
+const TRIGRAMMES: Record<string, string> = { BAL: 'BALIN Jean', JBT: 'BINET Justin', PVH: 'VAN HEES Pierre', GEN: 'GENIN Thomas', YVO: 'YVON Auguste' };
+function nomComplet(n: string | null | undefined) {
+  const t = String(n || '').replace(/\(.*?\)/g, '').trim();
+  if (!/^[A-Z]{2,4}$/.test(t)) return t || null;
+  const i = (D?.flotte?.instructeurs ?? []).find((x) => x.code === t);
+  return i?.nom || TRIGRAMMES[t] || t;
+}
+// Qualification affichée après le nom d'un instructeur : (FI), ou (FI/FE) pour un examinateur
+const FE_CLUB = ['BINET Justin'];
+function qualif(nom: string | null) {
+  if (!nom) return '';
+  const i = (D?.flotte?.instructeurs ?? []).find((x) => x.nom === nom);
+  if (!i && !Object.values(TRIGRAMMES).includes(nom)) return '';
+  return i?.fe || FE_CLUB.includes(nom) ? ' (FI/FE)' : ' (FI)';
+}
+const courtQ = (n: string | null | undefined) => { const c = nomComplet(n); return c ? court(c) + qualif(c) : ''; };
+// « BALIN J. (FI) - Vol d'initiation » ; « PILOTE N. + INSTRUCTEUR N. » quand ils diffèrent ; jamais deux fois le même nom
+function quiResa(r: { pilote?: string | null; instructeur?: string | null; type?: string | null }) {
+  const noms = [...new Set([courtQ(r.pilote), courtQ(r.instructeur)].filter(Boolean))].join(' + ');
+  const type = r.type && !/^vol standard$/i.test(r.type) ? r.type : '';
+  return [noms, type].filter(Boolean).join(' - ');
+}
+
 function court(nom: string | null) {
   const m = String(nom || '').trim().split(/\s+/);
   if (m.length < 2) return m[0] || '';
@@ -194,7 +218,7 @@ function cal(j: string) {
   return `<span class="cal ${kj}"><i>${esc(wd)}</i><b>${d.getUTCDate()}</b>${mois}</span>`;
 }
 function activite(l: Avion[]) {
-  const quiC = (r: { pilote?: string | null; instructeur?: string | null }) => [court(r.pilote ?? null), r.instructeur && `+ ${court(r.instructeur)}`].filter(Boolean).join(' ');
+  const quiC = quiResa;
   const cell = (cls: string, t: string, sous = '') => `<div class="ac ${cls}"><b>${t}</b>${sous ? `<small>${esc(sous)}</small>` : ''}</div>`;
   let h = '<div class="act"><div class="ar th"><span>Avion</span><span>Prochaine réservation</span><span>Dernier vol</span></div>';
   for (const a of l) {
@@ -390,7 +414,9 @@ function reservations() {
       b += barre(mins(x.debut, auj), mins(x.fin, auj), 'mnt', motif, x.fin.slice(0, 8) > auj ? `jusqu’au ${x.fin.slice(6, 8)}/${x.fin.slice(4, 6)}` : `jusqu’à ${agH(x.fin)}`);
     }
     for (const r of (a.jour ?? []).filter((r) => r.debut.slice(0, 8) === auj)) {
-      b += barre(mins(r.debut, auj), mins(r.fin, auj), classeType(r.type), court(r.pilote) || r.type || 'Réservé', `${agH(r.debut)} – ${agH(r.fin)}`, r.instructeur ? `avec ${court(r.instructeur)}` : '');
+      const pil = courtQ(r.pilote), ins = courtQ(r.instructeur);
+      const typ = r.type && !/^vol standard$/i.test(r.type) ? r.type : '';
+      b += barre(mins(r.debut, auj), mins(r.fin, auj), classeType(r.type), pil || r.type || 'Réservé', `${agH(r.debut)} – ${agH(r.fin)}`, ins && ins !== pil ? `avec ${ins}` : typ);
     }
     // Temps réellement volé (départ → arrivée enregistrés dans Aerogest) : bande verte en bas de la ligne
     for (const v of a.volsJour ?? []) {
