@@ -58,11 +58,12 @@ export function rendreVent(m: Vent | null | undefined, station: boolean, coneAng
   const gauche = !m ? '—' : f === 0 ? 'Calme' : m.ventDir === 'VRB' ? 'VRB' : dir != null ? `${String(dir).padStart(3, '0')}°` : '—';
   const sous = station ? '' : m?.ventVar ? `<div class="vsous">variable ${String(m.ventVar[0]).padStart(3, '0')}° à ${String(m.ventVar[1]).padStart(3, '0')}°</div>` : m?.ventDir === 'VRB' && f ? '<div class="vsous">direction variable</div>' : '';
   const droite = f == null || f === 0 ? '' : `<i class="sep"></i><span>${f} kt</span>${g ? `<small class="raf">rafales ${g} kt</small>` : ''}`;
-  // Composantes pour chaque sens de piste. Sens conseillé sur CHAQUE piste = celui qui a le vent de face (à partir de 3 kt),
-  // sauf vent vraiment plein travers (à moins de 10° de la perpendiculaire) : aucun sens n'est alors mis en avant
+  // Composantes pour chaque sens de piste. Piste préférentielle sur CHAQUE piste = le sens qui a le vent de face
+  // (même par vent faible, dès qu'une direction est connue), sauf vent vraiment plein travers
+  // (à moins de 10° de la perpendiculaire) : aucun sens n'est alors mis en avant pour cette piste
   const comp = (cap: number, v: number) => { const a = ((dir! - cap) * Math.PI) / 180; return { face: Math.round(v * Math.cos(a)), trav: Math.round(v * Math.sin(a)) }; };
   const conseilles = new Set<string>();
-  if (dir != null && f != null && f >= 3) {
+  if (dir != null && f) {
     for (const p of PISTES) {
       const cosA = Math.cos(((dir - p.a[1]) * Math.PI) / 180);
       if (Math.abs(cosA) >= Math.sin((10 * Math.PI) / 180)) conseilles.add(cosA > 0 ? p.a[0] : p.b[0]);
@@ -80,7 +81,12 @@ export function rendreVent(m: Vent | null | undefined, station: boolean, coneAng
     const t2 = `${att}${Math.abs(c.trav)} kt travers${cote(c.trav)}` + (cg ? `<br>rafales ${Math.abs(cg.trav)} kt travers` : '');
     return `<div class="qfu${conseilles.has(n) ? ' co' : c.face < 0 ? ' arr' : ''}"><span class="n">${n}<i>${p3(cap)}°</i></span><div><b>${t1}</b><small>${t2}</small></div></div>`;
   }).join('');
-  return { svg: s, gauche, droite, sous, qfus };
+  // Ligne « Pistes préférentielles » en tête des cartes (toute la largeur), dans l'ordre 12/30 puis 04/22
+  const ordre = PISTES.flatMap((p) => [p.a[0], p.b[0]]).filter((n) => conseilles.has(n));
+  const pref = ordre.length
+    ? `<div class="pref"><span>${ordre.length > 1 ? 'Pistes préférentielles' : 'Piste préférentielle'}</span>${ordre.map((n) => `<b>${n}</b>`).join('')}<small>face au vent</small></div>`
+    : `<div class="pref pref-non"><span>Pistes préférentielles</span><small>${dir == null || !f ? (f === 0 ? 'vent calme : au choix' : 'vent variable : au choix') : 'vent plein travers'}</small></div>`;
+  return { svg: s, gauche, droite, sous, qfus: pref + qfus };
 }
 
 // Lecture d'une réponse de l'API Observation v2 (infrahoraire-6m) : dernière mesure, en nœuds, direction arrondie à 10°
