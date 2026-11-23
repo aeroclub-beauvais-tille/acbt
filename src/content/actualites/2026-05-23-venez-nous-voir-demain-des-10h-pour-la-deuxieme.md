@@ -1,5 +1,5 @@
 ---
-titre: "Venez nous voir demain dès 10h pour la deuxième journée des portes…"
+titre: "Venez nous voir demain dès 10h pour la deuxième journée des portes ouvertes du club"
 date: 2026-05-23
 image: /uploads/actualites/2026/venez-nous-voir-demain-des-10h-pour-la-deuxieme/01.jpg
 galerie:
@@ -12,4 +12,4 @@ galerie:
   - /uploads/actualites/2026/venez-nous-voir-demain-des-10h-pour-la-deuxieme/07.jpg
   - /uploads/actualites/2026/venez-nous-voir-demain-des-10h-pour-la-deuxieme/08.jpg
 ---
-Venez nous voir demain dès 10h pour la deuxième journée des portes ouvertes du club🛩️🛩️🛩️🛩️
+

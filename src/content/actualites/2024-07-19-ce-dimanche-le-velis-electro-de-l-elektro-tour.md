@@ -7,6 +7,4 @@ galerie:
   - /uploads/actualites/2024/ce-dimanche-le-velis-electro-de-l-elektro-tour/02.jpg
   - /uploads/actualites/2024/ce-dimanche-le-velis-electro-de-l-elektro-tour/03.jpg
 ---
-🛩️⚡
-
 Vous pouvez retrouver l'aventure de toute l'équipe de ce tour de France en avion électrique sur leur blog : https://elektro-tour.fr/blog/

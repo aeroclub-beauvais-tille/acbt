@@ -1,12 +1,10 @@
 ---
-titre: "[ ÉVÉNEMENTS ]"
+titre: "Le week-end du 13 au 14 mai 2023 de 10h00 à 18h00 venez découvrir le monde de l’aviation"
 date: 2023-04-19
 image: /uploads/actualites/2023/evenements/01.jpg
 galerie:
   - /uploads/actualites/2023/evenements/01.jpg
 ---
-Le week-end du 13 au 14 mai 2023 de 10h00 à 18h00 venez découvrir le monde de l’aviation !
-
 Au programme :
 
 -vols de découverte (réservation conseillée)

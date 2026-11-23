@@ -1,5 +1,5 @@
 ---
-titre: "👑galette des rois à l'aéroclub :"
+titre: "Galette des rois à l'aéroclub"
 date: 2026-01-10
 image: /uploads/actualites/2026/galette-des-rois-a-l-aeroclub/01.jpg
 galerie:
@@ -16,10 +16,10 @@ galerie:
   - /uploads/actualites/2026/galette-des-rois-a-l-aeroclub/11.jpg
   - /uploads/actualites/2026/galette-des-rois-a-l-aeroclub/12.jpg
 ---
-Aujourd’hui, l'ambiance était à la fête à l’aéroclub : place à la gourmandise pour notre traditionnelle Galette des Rois. ✨
+Aujourd’hui, l'ambiance était à la fête à l’aéroclub : place à la gourmandise pour notre traditionnelle Galette des Rois.
 
 Un immense plaisir de voir autant de membres réunis pour ce moment de convivialité.
 
 Nous avons pu échanger sur nos derniers vols et nos projets pour l’année 2026, le tout dans la bonne humeur.
 
-Félicitations à nos reines et rois du jour ! 👑 Un grand merci à tous les participants pour ce beau moment de cohésion.
+Félicitations à nos reines et rois du jour ! Un grand merci à tous les participants pour ce beau moment de cohésion.

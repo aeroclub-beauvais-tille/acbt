@@ -1,5 +1,5 @@
 ---
-titre: "✈️☀️ UN MAGNIFIQUE WEEK-END DANS LES NUAGES"
+titre: "Un magnifique week-end dans les nuages"
 date: 2026-06-17
 image: /uploads/actualites/2026/un-magnifique-week-end-dans-les-nuages/01.jpg
 galerie:
@@ -16,11 +16,9 @@ galerie:
   - /uploads/actualites/2026/un-magnifique-week-end-dans-les-nuages/11.jpg
   - /uploads/actualites/2026/un-magnifique-week-end-dans-les-nuages/12.jpg
 ---
-☀️✈️
-
 ​Retour en images sur une superbe journée de partage et de solidarité sur l'aérodrome ! Le week-end dernier, les deux aéroclubs locaux — notre AéroClub de Beauvais - Tillé et l'ACB (Aéroclub du Beauvaisis) — ont uni leurs forces et leurs ailes pour offrir des baptêmes de l'air inoubliables en partenariat avec le Kiwanis.
 
-​Au programme : de grands sourires, un ciel bleu magnifique, la découverte des joies du pilotage à bord de notre fidèle "Petit Prince", et surtout beaucoup d'émotion pour les petits comme pour les grands ! 👦👧✨
+​Au programme : de grands sourires, un ciel bleu magnifique, la découverte des joies du pilotage à bord de notre fidèle "Petit Prince", et surtout beaucoup d'émotion pour les petits comme pour les grands !
 
 ​Un immense merci :
 
@@ -30,6 +28,6 @@ galerie:
 
 ​À tous les participants pour leur bonne humeur communicative !
 
-​Ensemble, on va toujours plus haut. 🛫💙
+​Ensemble, on va toujours plus haut.
 
 ​#Kiwanis

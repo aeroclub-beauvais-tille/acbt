@@ -1,5 +1,5 @@
 ---
-titre: "Retour en images sur l'assemblée générale de ce samedi 29 mars 🛩️"
+titre: "Retour en images sur l'assemblée générale de ce samedi 29 mars"
 date: 2025-03-31
 image: /uploads/actualites/2025/retour-en-images-sur-l-assemblee-generale-de-ce/01.jpg
 galerie:

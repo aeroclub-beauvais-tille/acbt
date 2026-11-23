@@ -16,4 +16,4 @@ galerie:
   - /uploads/actualites/2025/lors-de-ces-deux-dernieres-semaines-de-beau-temps/11.jpg
   - /uploads/actualites/2025/lors-de-ces-deux-dernieres-semaines-de-beau-temps/12.jpg
 ---
-Retour en images sur des superbes navigations au Touquet, au Tréport et la traditionnelle journée de nettoyage avec comme thème la musique 🎷:
+Retour en images sur des superbes navigations au Touquet, au Tréport et la traditionnelle journée de nettoyage avec comme thème la musique :

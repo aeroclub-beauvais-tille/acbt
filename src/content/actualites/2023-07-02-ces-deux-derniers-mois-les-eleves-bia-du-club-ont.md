@@ -16,4 +16,4 @@ galerie:
   - /uploads/actualites/2023/ces-deux-derniers-mois-les-eleves-bia-du-club-ont/11.jpg
   - /uploads/actualites/2023/ces-deux-derniers-mois-les-eleves-bia-du-club-ont/12.jpg
 ---
-Ces deux derniers mois, les élèves BIA du club ont eu l'occasion de découvrir différents lieux. Voici quelques photos des visites du Musée de l'Air et de l'Espace, du Musée du Warluis, de la tour de contrôle ainsi que du salon du Bourget. Nous leur réservons encore quelques belles aventures prochainement ! ✈️
+Ces deux derniers mois, les élèves BIA du club ont eu l'occasion de découvrir différents lieux. Voici quelques photos des visites du Musée de l'Air et de l'Espace, du Musée du Warluis, de la tour de contrôle ainsi que du salon du Bourget. Nous leur réservons encore quelques belles aventures prochainement !

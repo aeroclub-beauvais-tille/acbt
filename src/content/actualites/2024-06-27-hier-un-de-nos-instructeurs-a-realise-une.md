@@ -16,4 +16,4 @@ galerie:
   - /uploads/actualites/2024/hier-un-de-nos-instructeurs-a-realise-une/11.jpg
   - /uploads/actualites/2024/hier-un-de-nos-instructeurs-a-realise-une/12.jpg
 ---
-Hier, un de nos instructeurs a réalisé une navigation vers le Tréport avec ses élèves dont un en navigation solo. Ils ont eu la chance d'admirer les falaises, tout en étant accompagnés du beau temps ! ☀️
+Hier, un de nos instructeurs a réalisé une navigation vers le Tréport avec ses élèves dont un en navigation solo. Ils ont eu la chance d'admirer les falaises, tout en étant accompagnés du beau temps !

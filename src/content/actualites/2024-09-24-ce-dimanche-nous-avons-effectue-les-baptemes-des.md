@@ -10,4 +10,4 @@ galerie:
   - /uploads/actualites/2024/ce-dimanche-nous-avons-effectue-les-baptemes-des/05.jpg
   - /uploads/actualites/2024/ce-dimanche-nous-avons-effectue-les-baptemes-des/06.jpg
 ---
-Ce dimanche nous avons effectué les baptêmes des Miss et Dauphines du Comité Miss Canton Grandvilliers ! Nous avons été ravis de vous accueillir ! 🛩️
+Ce dimanche nous avons effectué les baptêmes des Miss et Dauphines du Comité Miss Canton Grandvilliers ! Nous avons été ravis de vous accueillir !

@@ -16,4 +16,4 @@ galerie:
   - /uploads/actualites/2025/retour-en-images-de-la-navigation-de-yanis-vers/11.jpg
   - /uploads/actualites/2025/retour-en-images-de-la-navigation-de-yanis-vers/12.jpg
 ---
-Merci encore pour ces superbes clichés !! 🛩️
+Merci encore pour ces superbes clichés !!

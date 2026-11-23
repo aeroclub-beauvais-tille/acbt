@@ -26,7 +26,7 @@ const DOSSIER_ACTUS = path.join(RACINE, 'src/content/actualites');
 const DOSSIER_PHOTOS = path.join(RACINE, 'public/uploads/actualites');
 const REGISTRE = path.join(RACINE, 'src/data/facebook-copiees.json');
 
-if (!PAGE || !CLE) {
+if ((!PAGE || !CLE) && !process.argv.includes('--nettoyer')) {
   console.log('FACEBOOK_PAGE_ID ou FACEBOOK_PAGE_TOKEN absent : rien à faire.');
   process.exit(0);
 }
@@ -57,18 +57,48 @@ const slug = (s) => {
 };
 const yaml = (s) => JSON.stringify(s);
 
+// Émojis, pictogrammes et mots-dièses retirés : le site n'utilise pas d'émojis.
+const sansEmojis = (t) => t
+  .replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\u{1F3FB}-\u{1F3FF}‍️⃣]/gu, '')
+  .replace(/(^|\s)#[\p{L}\p{N}_]+/gu, '$1');
+
+// Mots à remettre en forme quand un titre était écrit tout en majuscules.
+const NOMS = { acbt: 'ACBT', bia: 'BIA', ppl: 'PPL', lapl: 'LAPL', beauvais: 'Beauvais', 'tillé': 'Tillé', tille: 'Tillé', ffa: 'FFA', unilasalle: 'UniLaSalle', 'f-gcal': 'F-GCAL', 'f-bxek': 'F-BXEK', 'f-btbs': 'F-BTBS', 'f-btbj': 'F-BTBJ', 'f-bixa': 'F-BIXA', 'beauvais-tille': 'Beauvais-Tillé', 'beauvais-tillé': 'Beauvais-Tillé' };
+function formeTitre(t) {
+  t = t.replace(/\s+/g, ' ').replace(/\s+([,.;:!?…])/g, (m, p) => (/[;:!?]/.test(p) ? ' ' + p : p)).trim();
+  t = t.replace(/[\s:;,.!-]+$/, '').trim();
+  const lettres = t.replace(/[^\p{L}]/gu, '');
+  const maj = lettres.replace(/[^\p{Lu}]/gu, '');
+  if (lettres.length > 6 && maj.length / lettres.length > 0.6) {
+    t = t.toLowerCase().replace(/[\p{L}\-]+/gu, (m) => NOMS[m] || m);
+    t = t.charAt(0).toUpperCase() + t.slice(1);
+  }
+  // Un mot en majuscules dans un titre normal (ASSEMBLÉE GÉNÉRALE du club) : même traitement, mot par mot.
+  t = t.replace(/(?<![\p{L}\p{N}-])[\p{Lu}]{4,}(?:[\s'-]+[\p{Lu}]{2,})*(?![\p{L}\p{N}-])/gu, (m) => {
+    const bas = m.toLowerCase().replace(/[\p{L}\-]+/gu, (w) => NOMS[w] || w);
+    return m === t.slice(0, m.length) ? bas.charAt(0).toUpperCase() + bas.slice(1) : bas;
+  });
+  return t.charAt(0).toUpperCase() + t.slice(1);
+}
+
 // Titre : la première phrase ou la première ligne, raccourcie proprement.
-// Les mots-dièses (#aeroclub…) sont retirés : ils n'ont pas de sens sur le site.
+// Les étiquettes entre crochets ([Congrats!], [PORTES OUVERTES]…) ne restent pas dans le titre.
 function decouper(message) {
-  const texte = message
-    .replace(/\r/g, '')
-    .replace(/(^|\s)#[\p{L}\p{N}_]+/gu, '$1')
+  const texte = sansEmojis(message.replace(/\r/g, ''))
     .split('\n').map((l) => l.replace(/[ \t]+/g, ' ').trim()).join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
-  const [premiere, ...reste] = texte.split(/\n+/);
-  let titre = premiere.trim();
-  let suite = reste.filter(Boolean).join('\n\n').trim();
+  let lignes = texte.split(/\n+/).filter((l) => /[\p{L}\p{N}]/u.test(l));
+  // Étiquette seule en tête ([ÉVÉNEMENTS]) : on la garde comme repli si rien de mieux.
+  let etiquette = '';
+  const tete = (lignes[0] || '').match(/^\[\s*([^\]]+?)\s*\]\s*(.*)$/);
+  if (tete) {
+    etiquette = tete[1].replace(/[!?.]+$/, '');
+    lignes[0] = tete[2];
+    if (!lignes[0]) lignes.shift();
+  }
+  let titre = (lignes[0] || '').trim();
+  let suite = lignes.slice(1).join('\n\n').trim();
   const phrase = titre.match(/^(.{12,90}?[.!?…])(\s|$)/);
   if (phrase && phrase[1].length < titre.length) {
     suite = (titre.slice(phrase[1].length).trim() + (suite ? '\n\n' + suite : '')).trim();
@@ -78,12 +108,35 @@ function decouper(message) {
     // Trop long : on coupe à une virgule ou entre deux mots, et l'actu reprend tout le texte.
     const virgule = titre.slice(0, 80).lastIndexOf(', ');
     titre = virgule > 25 ? titre.slice(0, virgule) : titre.slice(0, 75).replace(/\s+\S*$/, '') + '…';
-    suite = texte.split(/\n+/).filter(Boolean).join('\n\n');
+    suite = lignes.join('\n\n');
   }
-  titre = titre.replace(/[.!]+$/, '').trim();
+  if (!titre && etiquette) titre = etiquette;
+  titre = formeTitre(titre.replace(/[.!]+$/, ''));
   // Une ligne qui commence par # ne doit pas devenir un intertitre dans l'actu.
   const corps = (suite || '').replace(/^(\s*)#/gm, '$1\\#');
   return { titre: titre || 'Nouvelles du club', corps };
+}
+
+// Remise au propre des actus déjà copiées (node scripts/importer-facebook.mjs --nettoyer) :
+// le titre et le texte sont refaits à partir de ce qui est dans le fichier.
+if (process.argv.includes('--nettoyer')) {
+  let n = 0;
+  for (const nom of Object.values(registre)) {
+    const f = path.join(DOSSIER_ACTUS, nom + '.md');
+    if (!fs.existsSync(f)) continue;
+    const brut = fs.readFileSync(f, 'utf8');
+    const m = brut.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+    if (!m) continue;
+    const ancienTitre = JSON.parse(m[1].match(/^titre: (.*)$/m)[1]);
+    const corps = m[2].replace(/\\#/g, '#').trim();
+    const message = ancienTitre.endsWith('…') ? corps : `${ancienTitre}\n${corps}`;
+    const { titre, corps: nouveau } = decouper(message);
+    const entete = m[1].replace(/^titre: .*$/m, `titre: ${yaml(titre)}`);
+    const sortie = `---\n${entete}\n---\n${nouveau}\n`;
+    if (sortie !== brut) { fs.writeFileSync(f, sortie); n++; }
+  }
+  console.log(`${n} actu(s) remise(s) au propre.`);
+  process.exit(0);
 }
 
 // Photos de la publication, dans la meilleure taille disponible.
