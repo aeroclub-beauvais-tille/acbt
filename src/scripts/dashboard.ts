@@ -935,7 +935,7 @@ function montrer(i: number) {
   if (i === 3 && !$('maa').dataset.ok) defiler($('maa'));
   // TAF : mesuré à chaque affichage de l'écran, pour ne défiler que s'il ne tient pas
   if (i === 3 && document.getElementById('taf-per')) defiler($('taf-per'));
-  if (i === 4) { flWintem++; cartesAero(); defiler($('voisins')); } // METAR voisins : repart du début (pause 3 s) à chaque affichage
+  if (i === 4) { flWintem++; cartesAero(); defiler($('voisins'), false); } // METAR voisins : repart du début (pause 3 s) à chaque affichage
 }
 
 // Accueil : si les NOTAM défilent, l'écran reste le temps d'un tour complet (3 s de pause au début + défilement) puis des actifs une 2e fois ; sinon durée standard
