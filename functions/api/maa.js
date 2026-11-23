@@ -1,11 +1,29 @@
-// Dépôt d'un bulletin MAA (PDF), envoyé automatiquement par le script qui surveille la boîte mail du club
-// (scripts/maa-gmail.gs) ou, plus tard, par un Email Worker Cloudflare.
-//   POST /api/maa   Authorization: Bearer <MAA_CLE>   corps = le PDF (application/pdf)
-// La clé est la variable secrète MAA_CLE du projet Cloudflare (Réglages > Variables et secrets).
+// Dépôt d'un bulletin MAA, de deux façons :
+//  - le PDF seul :          POST /api/maa   corps = le PDF (application/pdf)
+//  - le mail entier (MIME) : POST /api/maa   corps = le mail brut (message/rfc822). C'est ce qu'envoie le petit
+//    programme e-mail Cloudflare (workers/maa-mail) quand un mail arrive sur meteo@acbt60.fr : chaque PDF joint
+//    est lu, et seuls les vrais MAA (ligne « VALID ») sont gardés.
+// Dans les deux cas : en-tête Authorization: Bearer <MAA_CLE> (variable secrète du projet Cloudflare acbt60).
 import { tableMaa, lireMaa, empreinte, json, appliquerMaa } from '../_maa.js';
+import { lireMail } from '../_mail.js';
 import { egal } from '../_session.js';
 
 const MAX = 5 * 1024 * 1024;
+const MAX_MAIL = 25 * 1024 * 1024;
+
+async function deposer(env, octets, recu, nom) {
+  if (!octets.length || octets.length > MAX) return { ok: false, nom, erreur: 'PDF vide ou trop gros.' };
+  const lu = await lireMaa(octets, recu);
+  if (!lu) return { ok: false, nom, erreur: "PDF reçu, mais ce n'est pas un MAA (ligne « VALID » introuvable)." };
+  const id = await empreinte(octets);
+  await tableMaa(env.DB);
+  const r = await env.DB.prepare(`INSERT OR IGNORE INTO maa (id, numero, motif, debut, fin, recu, nom, pdf, phen, ref)
+    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`)
+    .bind(id, lu.numero, lu.motif, lu.debut, lu.fin, new Date().toISOString(), nom || null, octets, lu.phen, lu.annule || lu.amende)
+    .run();
+  if (r.meta.changes > 0) await appliquerMaa(env.DB, id, lu);
+  return { ok: true, nouveau: r.meta.changes > 0, id, ...lu };
+}
 
 export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ ok: false, erreur: 'Base D1 non reliée (liaison DB manquante).' }, 503);
@@ -17,20 +35,25 @@ export async function onRequestPost({ request, env }) {
     return json({ ok: false, erreur: 'Clé refusée.' }, 401);
   }
   const octets = new Uint8Array(await request.arrayBuffer());
-  if (!octets.length || octets.length > MAX) return json({ ok: false, erreur: 'PDF vide ou trop gros.' }, 413);
-  if (String.fromCharCode(...octets.subarray(0, 5)) !== '%PDF-') return json({ ok: false, erreur: "Ce n'est pas un PDF." }, 400);
+  if (!octets.length || octets.length > MAX_MAIL) return json({ ok: false, erreur: 'Envoi vide ou trop gros.' }, 413);
 
   const url = new URL(request.url);
-  const recu = new Date(url.searchParams.get('recu') || Date.now());
-  const lu = await lireMaa(octets, isNaN(recu) ? new Date() : recu);
-  if (!lu) return json({ ok: false, erreur: "PDF reçu, mais ce n'est pas un MAA (ligne « VALID » introuvable)." }, 422);
+  let recu = new Date(url.searchParams.get('recu') || Date.now());
+  if (isNaN(recu)) recu = new Date();
 
-  const id = await empreinte(octets);
-  await tableMaa(env.DB);
-  const r = await env.DB.prepare(`INSERT OR IGNORE INTO maa (id, numero, motif, debut, fin, recu, nom, pdf, phen, ref)
-    VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)`)
-    .bind(id, lu.numero, lu.motif, lu.debut, lu.fin, new Date().toISOString(), url.searchParams.get('nom') || null, octets, lu.phen, lu.annule || lu.amende)
-    .run();
-  if (r.meta.changes > 0) await appliquerMaa(env.DB, id, lu);
-  return json({ ok: true, nouveau: r.meta.changes > 0, id, ...lu });
+  // Un PDF seul (ancienne façon)
+  if (String.fromCharCode(...octets.subarray(0, 5)) === '%PDF-') {
+    const r = await deposer(env, octets, recu, url.searchParams.get('nom'));
+    return json(r, r.ok ? 200 : 422);
+  }
+
+  // Un mail entier : on prend chacune de ses pièces jointes PDF
+  const mail = lireMail(octets);
+  const dateMail = new Date(mail.date);
+  if (!url.searchParams.get('recu') && !isNaN(dateMail)) recu = dateMail;
+  if (!mail.pdfs.length) return json({ ok: false, de: mail.de, sujet: mail.sujet, erreur: 'Mail reçu, mais sans PDF joint.' }, 422);
+  const resultats = [];
+  for (const p of mail.pdfs) resultats.push(await deposer(env, p.octets, recu, p.nom));
+  const ok = resultats.some((r) => r.ok);
+  return json({ ok, de: mail.de, sujet: mail.sujet, maa: resultats }, ok ? 200 : 422);
 }
