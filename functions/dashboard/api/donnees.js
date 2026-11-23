@@ -159,7 +159,25 @@ async function jetonNms(env, cache, waitUntil, hote) {
   return j.access_token;
 }
 
+// Si la FAA ne répond pas (panne passagère, jeton refusé…), on renvoie la dernière liste reçue (gardée 24 h),
+// pour que la TV et l'appli n'affichent pas « NOTAM indisponibles » à chaque raté.
+const CACHE_NOTAM_SECOURS = 'https://cache.acbt60.local/dashboard/api/notam-secours';
 export async function lireNotam(env, cache, waitUntil, debug, lieu = 'LFOB') {
+  if (debug) return lireNotamFaa(env, cache, waitUntil, debug, lieu);
+  let n;
+  try { n = await lireNotamFaa(env, cache, waitUntil, debug, lieu); } catch (e) { n = { ok: false, raison: String(e?.message || e) }; }
+  if (!cache) return n;
+  const cle = new Request(CACHE_NOTAM_SECOURS);
+  if (n?.ok) {
+    if (!n.secours) waitUntil?.(cache.put(cle, new Response(JSON.stringify({ ...n, recu: new Date().toISOString() }), { headers: { 'Cache-Control': 'public, max-age=86400' } })));
+    return n;
+  }
+  if (n?.raison === 'cle') return n;
+  const vieux = await cache.match(cle).then((r) => (r ? r.json() : null)).catch(() => null);
+  return vieux?.ok ? { ...vieux, secours: true, raisonPanne: n?.raison } : n;
+}
+
+async function lireNotamFaa(env, cache, waitUntil, debug, lieu = 'LFOB') {
   if (!debug) lieu = 'LFOB';
   if (!env.FAA_CLIENT_ID || !env.FAA_CLIENT_SECRET) return { ok: false, raison: 'cle' };
   if (cache && !debug) {
