@@ -149,6 +149,14 @@ const onglets = [
         </a>
       </template>
 
+      <!-- Ordre choisi par le club : METAR, vent et pistes, TAF, puis soleil -->
+      <div class="carte-metar"><Metar /></div>
+
+      <h2 class="bt bt-suite">Vent et pistes <span class="bt-nb" id="vent-info"></span></h2>
+      <div class="carte-vent" id="vent" data-api={url('/membre/api/vent')}><p class="vide">Chargement du vent…</p></div>
+
+      <div class="carte-metar carte-taf"><Taf /></div>
+
       <div class="soleil" id="soleil" aria-label="Soleil à LFOB, heures locales">
         <div class="sol-frise" aria-hidden="true">
           <span class="a" data-soleil-a></span><span class="j" data-soleil-j></span>
@@ -162,13 +170,6 @@ const onglets = [
           <div class="aero"><small>Nuit aéro.</small><b><span data-soleil="nuitAero">--:--</span></b></div>
         </div>
       </div>
-
-      <h2 class="bt">Vent et pistes <span class="bt-nb" id="vent-info"></span></h2>
-      <div class="carte-vent" id="vent" data-api={url('/membre/api/vent')}><p class="vide">Chargement du vent…</p></div>
-
-      <h2 class="bt bt-suite">Météo du terrain</h2>
-      <div class="carte-metar"><Metar /></div>
-      <div class="carte-metar carte-taf"><Taf /></div>
 
       <p class="aide-ios" id="aide-ios" hidden>Sur iPhone : touchez <b>Partager</b> en bas de Safari, puis <b>Sur l'écran d'accueil</b>.</p>
     </section>
@@ -449,7 +450,8 @@ const onglets = [
   .maa-pdf { flex: none; font-size: .7rem; font-weight: 700; background: rgba(255,255,255,.2); padding: 5px 8px; border-radius: 8px; }
 
   .carte-metar { padding: 15px 16px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 14px; }
-  .carte-taf { margin-top: 10px; }
+  .carte-taf { margin-top: 14px; }
+  #soleil { margin: 14px 0 0; }
 
   /* Vent et pistes : même rose des vents et mêmes composantes que le tableau de bord TV */
   .bt-suite { margin-top: 22px; }
