@@ -1,6 +1,8 @@
 // Fonctions de l'appli « Espace membre » côté téléphone : connexion, installation, documents hors ligne.
 import { url } from '../lib/utils';
 import { ephemeride, heureLocale } from '../lib/soleil';
+import { rendreVent, lireMesure, ventStation, type Vent } from '../lib/vent';
+import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
 
 const CLE = 'acbt-membre';
 const DOCS = 'acbt-membre-docs';
@@ -746,4 +748,68 @@ export function flotte() {
   charger();
   setInterval(() => { if (!document.hidden) charger(); }, 60_000); // toutes les minutes
   document.addEventListener('visibilitychange', () => { if (!document.hidden) charger(); }); // au retour dans l'appli
+}
+
+/* NOTAM de LFOB (onglet Météo) : même liste que le tableau de bord TV, sans défilement automatique */
+export function notam() {
+  const liste = document.getElementById('notam-liste');
+  const nb = document.getElementById('notam-nb');
+  const info = document.getElementById('notam-info');
+  if (!liste) return;
+  const api = liste.dataset.api!;
+  const vide = (t: string) => `<p class="vide">${esc(t)}</p>`;
+  let charge = false;
+  const charger = async () => {
+    let d: { ok: boolean; raison?: string; notam?: Notam[] } | null = null;
+    try { d = await fetch(api, { cache: 'no-store' }).then((r) => r.json()); } catch { /* hors ligne */ }
+    if (!d?.ok) {
+      // Hors ligne : on garde la dernière liste affichée
+      if (!charge) { liste.innerHTML = vide(notamIndispo(d?.raison)); if (nb) nb.textContent = ''; }
+      return;
+    }
+    const l = trierNotam(d.notam);
+    liste.innerHTML = l.length ? l.map((x) => ligneNotam(x)).join('') : vide(NOTAM_VIDE);
+    if (nb) nb.textContent = `${l.length} en vigueur`;
+    if (info) info.textContent = `Source FAA · ${NOTAM_INFO} · heures UTC`;
+    charge = true;
+  };
+  charger();
+  setInterval(() => { if (!document.hidden) charger(); }, 10 * 60_000); // la source est relue toutes les 10 min
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) charger(); });
+}
+
+/* Vent et pistes (onglet Météo) : même bloc que le tableau de bord TV.
+   Station Météo-France de Beauvais-Tillé (une mesure toutes les 6 min), METAR en secours si sa mesure a plus de 40 min. */
+export function vent() {
+  const boite = document.getElementById('vent');
+  const info = document.getElementById('vent-info');
+  if (!boite) return;
+  const api = boite.dataset.api!;
+  let coneAng: number | null = null;
+  let charge = false;
+  const hU = (t: number) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+  const charger = async () => {
+    let d: { ok: boolean; mesures?: unknown; metar?: (Vent & { heure?: string | null }) | null } | null = null;
+    try { d = await fetch(api, { cache: 'no-store' }).then((r) => r.json()); } catch { /* hors ligne */ }
+    if (!d?.ok) { if (!charge) boite.innerHTML = '<p class="vide">Vent indisponible pour le moment.</p>'; return; }
+    const o = lireMesure(d.mesures);
+    const st = o && Date.now() - o.t < 40 * 60000 ? o : null;
+    const metar = d.metar ?? null;
+    const m = st ? ventStation(st) : metar;
+    if (!m) { if (!charge) boite.innerHTML = '<p class="vide">Vent indisponible pour le moment.</p>'; return; }
+    if (info) info.innerHTML = st ? `<span class="dot"></span>&nbsp;Station LFOB (seuil 30) · ${hU(st.t)} UTC`
+      : `<span class="dot ko"></span>&nbsp;Secours METAR ${metar?.heure ? hU(Date.parse(metar.heure)) + ' UTC' : ''}`;
+    const { svg, gauche, droite, sous, qfus } = rendreVent(m, !!st, coneAng);
+    boite.innerHTML = `<div class="vd"><div class="t"><span>${gauche}</span>${droite}</div>${sous}${svg}</div><div class="qfus">${qfus}</div>`;
+    const g = boite.querySelector<SVGGElement>('.cone');
+    if (g) {
+      const v = Number(g.dataset.vers);
+      if (coneAng != null && v !== coneAng) { g.getBoundingClientRect(); requestAnimationFrame(() => { g.style.transform = `rotate(${v}deg)`; }); }
+      coneAng = v;
+    } else coneAng = null;
+    charge = true;
+  };
+  charger();
+  setInterval(() => { if (!document.hidden) charger(); }, 2 * 60_000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) charger(); });
 }

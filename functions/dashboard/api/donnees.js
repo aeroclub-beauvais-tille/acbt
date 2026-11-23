@@ -59,7 +59,7 @@ async function lireMaa(env) {
 }
 
 // METAR et TAF de LFOB (AVWX), réduits à ce que l'écran affiche
-async function avwx(env, quoi) {
+export async function avwx(env, quoi) {
   const r = await fetch(`https://avwx.rest/api/${quoi}/LFOB?options=&format=json&onfail=cache`, {
     headers: { Authorization: `BEARER ${env.AVWX_TOKEN || AVWX_CLE}` },
   });
@@ -157,7 +157,7 @@ async function jetonNms(env, cache, waitUntil, hote) {
   return j.access_token;
 }
 
-async function lireNotam(env, cache, waitUntil, debug, lieu = 'LFOB') {
+export async function lireNotam(env, cache, waitUntil, debug, lieu = 'LFOB') {
   if (!debug) lieu = 'LFOB';
   if (!env.FAA_CLIENT_ID || !env.FAA_CLIENT_SECRET) return { ok: false, raison: 'cle' };
   if (cache && !debug) {

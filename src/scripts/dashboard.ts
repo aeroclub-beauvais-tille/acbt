@@ -1,6 +1,8 @@
 // Tableau de bord TV du club : quatre écrans en alternance (Accueil, Réservations, Météo, Radar et satellite).
 // La scène est dessinée en 1920 × 1080 puis mise à l'échelle de l'écran. Données : /dashboard/api/donnees (chaque minute).
 import { ephemeride, heureLocale, type Ephemeride } from '../lib/soleil';
+import { rendreVent, lireMesure, type Obs } from '../lib/vent';
+import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
 
 /* ------------------------------------------------------------------ */
 /* Types des données renvoyées par /dashboard/api/donnees              */
@@ -22,7 +24,6 @@ interface Metar extends Cond { raw: string; heure: string | null; temperature: n
 interface Periode extends Cond { type: string; probabilite: number | null; debut: string | null; fin: string | null; raw: string }
 interface Taf { raw: string; heure: string | null; periodes: Periode[] }
 interface Maa { id: string; numero: string | null; motif: string | null; debut: string | null; fin: string | null; phen?: string | null }
-interface Notam { numero: string; snow?: boolean; sujet: string | null; debut: string | null; fin: string | null; texte: string }
 interface Histo { t: string; vent: number | null; rafales: number | null; dir: number | null; plafond: number | null }
 interface Donnees {
   ok: boolean; maj: string;
@@ -214,49 +215,19 @@ function activite(l: Avion[]) {
   return h + '</div>';
 }
 
-// Badge carré par catégorie (2 premières lettres du code Q) : lettre + nom, façon ForeFlight
-const ANTENNE = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 11v10"/><circle cx="12" cy="9" r="1.6" fill="currentColor"/><path d="M8.5 5.5a5 5 0 0 0 0 7M15.5 5.5a5 5 0 0 1 0 7M5.5 3a9 9 0 0 0 0 12.5M18.5 3a9 9 0 0 1 0 12.5"/></svg>';
-const CATS: [RegExp, string, string, string][] = [
-  [/^M[XY]/, 'TWY', 'Taxiway', 'jaune'], [/^M[KNP]/, 'APN', 'Aire de trafic', 'jaune'], [/^M/, 'RWY', 'Piste', 'rouge'],
-  [/^L/, 'LGT', 'Balisage', 'jaune'], [/^[NI]/, ANTENNE, 'Radionav', 'gris'], [/^G/, 'GNSS', 'GNSS', 'bleu'],
-  [/^C/, 'COM', 'Comm', 'bleu'], [/^[AR]/, 'AIR', 'Espace', 'violet'], [/^P/, 'PROC', 'Procédure', 'violet'],
-  [/^W/, 'ACT', 'Activité', 'violet'], [/^S/, 'SVC', 'Service', 'gris'], [/^F/, 'AD', 'Aérodrome', 'gris'],
-];
-// Ordre d'affichage des NOTAM par badge (après « en cours / à venir ») : pistes d'abord
-const ORDRE = ['RWY', 'TWY', 'APN', 'LGT', ANTENNE, 'GNSS', 'COM', 'AIR', 'PROC', 'ACT', 'SVC', 'AD', 'INFO'];
-const cat = (q: string | null) => CATS.find(([re]) => re.test(q || '')) ?? [null, 'INFO', 'Divers', 'gris'] as const;
-// Mots d'indisponibilité en rouge (abréviations développées comme ForeFlight)
-const ROUGES = /\b(CLSD|CLOSED|U\/S|UNSERVICEABLE|OUT OF ORDER|OUT OF SERVICE|NOT AVBL|NOT AVAILABLE|SUSPENDED|PROHIBITED|FORBIDDEN|UNUSABLE|INUTILISABLE|HORS SERVICE|FERME|FERMEE|INTERDIT|INTERDITE|WITHDRAWN)\b/g;
-const texteNotam = (t: string) => esc(t).replace(ROUGES, (m) => `<em>${m === 'CLSD' ? 'CLOSED' : m === 'U/S' ? 'UNSERVICEABLE' : m === 'NOT AVBL' ? 'NOT AVAILABLE' : m}</em>`);
-const actif = (debut: string | null) => { const d = utc(debut); return !!d && d.getTime() <= Date.now(); };
-function validite(debut: string | null, fin: string | null) {
-  const d = utc(debut), f = fin && /^\d{4}-/.test(fin) ? new Date(fin) : null;
-  const t = (x: Date) => `${jmUtc(x)} · ${hUtc(x)}`;
-  if (!d) return '';
-  if (fin === 'PERM') return `Depuis le ${t(d)} · permanent`;
-  return d.getTime() <= Date.now() ? (f ? `Jusqu’au ${t(f)} UTC` : '') : `${t(d)} → ${f ? t(f) : '…'} UTC`;
-}
 function notams() {
   const n = D?.notam;
   const vide = (t: string) => `<p class="vide">${t}</p>`;
   if (!n || !n.ok) {
-    const t = n?.raison === 'cle' ? 'En attente de la clé de l’API NOTAM (FAA) dans Cloudflare.' : 'NOTAM indisponibles pour le moment.';
-    $('notam').innerHTML = vide(t); $('notam-info').textContent = '';
+    $('notam').innerHTML = vide(notamIndispo(n?.raison)); $('notam-info').textContent = '';
     return;
   }
-  const ligne = (x: Notam, sup: boolean) => {
-    const [, l, nom, coul] = sup ? [null, 'SUP', 'SUP AIP', 'gris'] : x.snow ? [null, 'SNOW', 'SNOWTAM · état des pistes', 'neige'] : cat(x.sujet);
-    return `<div class="n"><span class="ic ${coul}${l.length > 2 && !l.startsWith('<') ? ' l' + l.length : ''}" title="${nom}">${l}</span><div><b>${texteNotam(x.texte)} <span class="no">${esc(x.numero || '')}</span></b><small>${actif(x.debut) ? '<span class="actif">ACTIF</span>' : ''}${esc(validite(x.debut, x.fin))}</small></div></div>`;
-  };
-  // Procédures (SID, STAR, approches) masquées pour l'instant : elles concernent surtout les vols IFR
-  // La source renvoie parfois le même NOTAM deux fois : un seul par numéro
-  const vus = new Set<string>();
-  const l = [...(n.notam ?? [])].filter((x) => { const k = x.numero || x.texte; if (vus.has(k)) return false; vus.add(k); return true; }).filter((x) => x.snow || cat(x.sujet)[1] !== 'PROC').sort((a, b) => Number(b.snow) - Number(a.snow) || Number(actif(b.debut)) - Number(actif(a.debut)) || ORDRE.indexOf(cat(a.sujet)[1]) - ORDRE.indexOf(cat(b.sujet)[1]) || String(b.debut).localeCompare(String(a.debut)));
-  $('notam-info').textContent = `${l.length} en vigueur · hors obstacles et procédures IFR`;
+  const l = trierNotam(n.notam);
+  $('notam-info').textContent = `${l.length} en vigueur · ${NOTAM_INFO}`;
   // Liste complète ; si elle dépasse le cadre, elle défile en boucle (copie à la suite, environ 25 px par seconde)
-  const html = l.map((x) => ligne(x, false)).join('');
+  const html = l.map((x) => ligneNotam(x)).join('');
   const boite = $('notam');
-  if (!l.length) { boite.innerHTML = vide('Aucun NOTAM en vigueur (hors obstacles et procédures IFR).'); return; }
+  if (!l.length) { boite.innerHTML = vide(NOTAM_VIDE); return; }
   if (boite.dataset.html === html && boite.dataset.ok) return;
   boite.dataset.html = html;
   defileNotam();
@@ -575,18 +546,8 @@ function metarBloc() {
     + (tend ? ligne('Tendance 2 h', esc(maj(tend))) : '') + '</div>';
 }
 
-// Vent et pistes de LFOB : couronne façon station météo, les deux pistes à leur orientation réelle
-// (QFU 122°/302° et 040°/220°, la petite piste au nord de la grande), cône bleu d'où vient le vent.
-// Cap magnétique exact sur 3 chiffres (040°)
-const p3 = (c: number) => String(c).padStart(3, '0');
-// La 04/22 est posée sur le rayon 040° du cercle, pour qu'elle pointe visuellement vers la bonne graduation
-const PISTES = [
-  { a: ['12', 122], b: ['30', 302], cap: 122, cx: -2.5, cy: 3, l: 58 },
-  { a: ['04', 40], b: ['22', 220], cap: 40, cx: 15, cy: -17.9, l: 24 },
-] as const;
 // Vent mesuré par la station Météo-France de Beauvais-Tillé (60639001), une mesure toutes les 6 min (API Observation v2).
 // Repli sur le METAR (toutes les 30 min) si la station ne répond pas ou si rien de neuf depuis 18 min.
-interface Obs { dir: number | null; f: number; g: number | null; t: number }
 let OBS: Obs | null = null;
 let obsLu = 0;
 let obsRecu = 0; // dernière fois qu'une NOUVELLE mesure est arrivée
@@ -596,13 +557,11 @@ async function lireObs() {
   try {
     const r = await fetch(`/dashboard/api/mf?chemin=${encodeURIComponent('/public/DPObs/v2/station/infrahoraire-6m?id_station=60639001&format=json')}`, { cache: 'no-store', credentials: 'same-origin' });
     const l = await r.json();
-    const o = Array.isArray(l) ? l.filter((x) => x && typeof x.ff === 'number').sort((a, b) => Date.parse(b.validity_time) - Date.parse(a.validity_time))[0] : null;
+    const o = lireMesure(l);
     if (!o) return;
-    const kt = (ms: number) => Math.round(ms * 1.94384);
-    const f = kt(o.ff), g = typeof o.raf10 === 'number' ? kt(o.raf10) : null;
-    const t = Date.parse(o.validity_time);
+    const t = o.t;
     if (!OBS || t > OBS.t) obsRecu = Date.now();
-    OBS = { dir: f > 0 && typeof o.dd === 'number' ? Math.round(o.dd / 10) * 10 % 360 || 360 : null, f, g: g != null && g - f >= 5 && g >= 10 ? g : null, t };
+    OBS = o;
   } catch { /* on garde la dernière mesure ou le METAR */ }
 }
 
@@ -612,68 +571,11 @@ function ventBloc() {
   const st = OBS && Date.now() - obsRecu <= 18 * 60000 && Date.now() - OBS.t < 40 * 60000 ? OBS : null;
   // La station ne donne pas de secteur de variation : « variable » seulement quand on affiche le METAR
   const m = st ? { ventDir: st.dir ?? (st.f ? 'VRB' : null), ventForce: st.f, rafales: st.g, ventVar: null as [number, number] | null } : metar;
-  const dir = typeof m?.ventDir === 'number' ? m.ventDir : null;
-  const f = m?.ventForce ?? null;
-  const g = m?.rafales ?? null;
   // Point vert : la station envoie bien ses mesures ; rouge : rien de neuf depuis 18 min (3 mesures de 6 min manquées) ou repli sur le METAR
   const capte = !!st;
   $('vent-info').innerHTML = st ? `<span class="dot${capte ? '' : ' ko'}"></span>&nbsp;Station LFOB (seuil 30) · ${hUtc(new Date(st.t))} UTC`
     : metar ? `<span class="dot ko"></span>&nbsp;Secours METAR (station muette) ${metar.heure ? hUtc(new Date(metar.heure)) + ' UTC' : ''}` : '';
-  const R = 54;
-  const pt = (deg: number, r: number, x0 = 0, y0 = 0) => [x0 + r * Math.sin((deg * Math.PI) / 180), y0 - r * Math.cos((deg * Math.PI) / 180)];
-  let s = '<svg viewBox="-70 -70 140 140" aria-hidden="true">';
-  for (let d = 0; d < 360; d += 10) {
-    const [x1, y1] = pt(d, R), [x2, y2] = pt(d, R - 6);
-    s += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${d === 0 ? 'var(--bad)' : 'var(--muted)'}" stroke-width="2.6" stroke-linecap="round"/>`;
-  }
-  for (const [t, d] of [['N', 0], ['E', 90], ['S', 180], ['O', 270]] as const) {
-    const [x, y] = pt(d, R + 9);
-    s += `<text x="${x.toFixed(1)}" y="${(y + 3.2).toFixed(1)}" fill="var(--muted)" font-size="9" font-weight="800" text-anchor="middle">${t}</text>`;
-  }
-  if (dir != null && f) {
-    const [a, b] = m!.ventVar ?? [dir - 15, dir + 15];
-    const ouv = ((b - a) % 360 + 360) % 360;
-    const r2 = R - 7;
-    // Cône dessiné vers le nord puis tourné : à chaque nouvelle mesure il pivote en douceur (par le plus court chemin)
-    const [ax, ay] = pt(a - dir, r2), [bx, by] = pt(b - dir, r2);
-    const vers = coneAng == null ? dir : coneAng + ((((dir - coneAng) % 360) + 540) % 360) - 180;
-    s += `<g class="cone" data-vers="${vers}" style="transform:rotate(${coneAng ?? vers}deg)"><path d="M0 0 L${ax.toFixed(2)} ${ay.toFixed(2)} A${r2} ${r2} 0 ${ouv > 180 ? 1 : 0} 1 ${bx.toFixed(2)} ${by.toFixed(2)} Z" fill="#1e9bff" opacity=".5"/></g>`;
-  }
-  // Pistes : bande grise, axe en pointillés, numéros aux seuils (le 12 au nord-ouest, le 04 au sud-ouest)
-  for (const p of PISTES) {
-    const [x1, y1] = pt(p.cap + 180, p.l / 2, p.cx, p.cy), [x2, y2] = pt(p.cap, p.l / 2, p.cx, p.cy);
-    s += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="var(--ink2)" stroke-width="6.5" stroke-linecap="butt" opacity=".9"/>`
-      + `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="var(--panel)" stroke-width=".7" stroke-dasharray="2.5 2"/>`;
-    const [lx1, ly1] = pt(p.cap + 180, p.l / 2 + 6, p.cx, p.cy), [lx2, ly2] = pt(p.cap, p.l / 2 + 6, p.cx, p.cy);
-    s += `<text x="${lx1.toFixed(1)}" y="${(ly1 + 2.3).toFixed(1)}" fill="var(--ink)" font-size="6.5" font-weight="800" text-anchor="middle" font-family="JetBrains Mono, monospace">${p.a[0]}</text>`
-      + `<text x="${lx2.toFixed(1)}" y="${(ly2 + 2.3).toFixed(1)}" fill="var(--ink)" font-size="6.5" font-weight="800" text-anchor="middle" font-family="JetBrains Mono, monospace">${p.b[0]}</text>`;
-  }
-  s += '</svg>';
-  const gauche = !m ? '—' : f === 0 ? 'Calme' : m.ventDir === 'VRB' ? 'VRB' : dir != null ? `${String(dir).padStart(3, '0')}°` : '—';
-  const sous = st ? '' : m?.ventVar ? `<div class="vsous">variable ${String(m.ventVar[0]).padStart(3, '0')}° à ${String(m.ventVar[1]).padStart(3, '0')}°</div>` : m?.ventDir === 'VRB' && f ? '<div class="vsous">direction variable</div>' : '';
-  const droite = f == null || f === 0 ? '' : `<i class="sep"></i><span>${f} kt</span>${g ? `<small class="raf">rafales ${g} kt</small>` : ''}`;
-  // Composantes pour chaque sens de piste. Sens conseillé sur CHAQUE piste = celui qui a le vent de face (à partir de 3 kt),
-  // sauf vent vraiment plein travers (à moins de 10° de la perpendiculaire) : aucun sens n'est alors mis en avant
-  const comp = (cap: number, v: number) => { const a = ((dir! - cap) * Math.PI) / 180; return { face: Math.round(v * Math.cos(a)), trav: Math.round(v * Math.sin(a)) }; };
-  const conseilles = new Set<string>();
-  if (dir != null && f != null && f >= 3) {
-    for (const p of PISTES) {
-      const cosA = Math.cos(((dir - p.a[1]) * Math.PI) / 180);
-      if (Math.abs(cosA) >= Math.sin((10 * Math.PI) / 180)) conseilles.add(cosA > 0 ? p.a[0] : p.b[0]);
-    }
-  }
-  const qfus = PISTES.flatMap((p) => [p.a, p.b]).map(([n, cap]) => {
-    if (dir == null || f == null) return `<div class="qfu"><span class="n">${n}<i>${p3(cap)}°</i></span><div><b>${f === 0 ? 'Vent calme' : 'Vent variable'}</b><small>pas de composante</small></div></div>`;
-    const c = comp(cap, f), cg = g ? comp(cap, g) : null;
-    const t1 = c.face >= 0 ? `${c.face} kt de face` : `${-c.face} kt arrière`;
-    const cote = (v: number) => (v > 0 ? ' droite' : v < 0 ? ' gauche' : '');
-    const tMax = Math.max(Math.abs(c.trav), cg ? Math.abs(cg.trav) : 0);
-    const trop = tMax >= TRAVERS_MAX;
-    // Petit panneau « attention » quand le travers (rafales comprises) atteint la limite du DR400
-    const att = trop ? `<svg class="att" viewBox="0 0 24 24" aria-label="Vent de travers ≥ ${TRAVERS_MAX} kt (limite DR400)"><path d="M12 2.5 1.5 21h21z" fill="currentColor"/><path d="M12 9.5v5.2M12 17.6v.1" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>` : '';
-    const t2 = `${att}${Math.abs(c.trav)} kt travers${cote(c.trav)}` + (cg ? `<br>rafales ${Math.abs(cg.trav)} kt travers` : '');
-    return `<div class="qfu${conseilles.has(n) ? ' co' : c.face < 0 ? ' arr' : ''}"><span class="n">${n}<i>${p3(cap)}°</i></span><div><b>${t1}</b><small>${t2}</small></div></div>`;
-  }).join('');
+  const { svg: s, gauche, droite, sous, qfus } = rendreVent(m, !!st, coneAng);
   const avant = $('vent').querySelector('.qfus')?.innerHTML;
   $('vent').innerHTML = `<div class="vd"><div class="t"><span>${gauche}</span>${droite}</div>${sous}${s}</div><div class="qfus">${qfus}</div>`;
   const g2 = $('vent').querySelector<SVGGElement>('.cone');
@@ -686,7 +588,6 @@ function ventBloc() {
   if (avant != null && avant !== qfus) $('vent').classList.add('maj'), setTimeout(() => $('vent').classList.remove('maj'), 900);
 }
 let coneAng: number | null = null;
-const TRAVERS_MAX = 22; // kt, limite de vent de travers du DR400
 
 function tafBloc() {
   const t = D?.taf;
