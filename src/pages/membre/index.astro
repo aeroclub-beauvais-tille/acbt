@@ -467,28 +467,25 @@ const onglets = [
   .bt-suite { margin-top: 22px; }
   .bt-nb :global(.dot) { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); vertical-align: 0; }
   .bt-nb :global(.dot.ko) { background: var(--bad); }
-  .carte-vent { padding: 14px 12px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+  .carte-vent { padding: 12px 10px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
   .carte-vent > .vide { color: var(--muted); font-size: .86rem; font-weight: 600; margin: 0; padding: 8px 4px; }
   .carte-vent :global(.vd) { display: flex; flex-direction: column; align-items: center; }
-  .carte-vent :global(.vd .t) { display: flex; align-items: baseline; gap: 14px; font-size: 2.1rem; font-weight: 800; line-height: 1.05; color: var(--ink); }
-  .carte-vent :global(.vd .t .sep) { align-self: center; width: 2px; height: 28px; border-radius: 2px; background: var(--muted); opacity: .45; }
+  .carte-vent :global(.vd .t) { display: flex; align-items: baseline; gap: 12px; font-size: 1.7rem; font-weight: 800; line-height: 1.05; color: var(--ink); }
+  .carte-vent :global(.vd .t .sep) { align-self: center; width: 2px; height: 22px; border-radius: 2px; background: var(--muted); opacity: .45; }
   .carte-vent :global(.vd .t small) { font-size: .8rem; font-weight: 700; color: var(--muted); }
   .carte-vent :global(.vd .t small.raf) { color: var(--warn); }
   .carte-vent :global(.vd .vsous) { margin-top: 4px; font-size: .8rem; font-weight: 700; color: var(--muted); text-align: center; }
-  .carte-vent :global(.vd svg) { width: min(100%, 300px); aspect-ratio: 1; margin-top: 4px; }
+  .carte-vent :global(.vd svg) { width: min(100%, 220px); aspect-ratio: 1; margin-top: 4px; }
   .carte-vent :global(.cone) { transition: transform 2.5s cubic-bezier(.4, 0, .2, 1); }
-  .carte-vent :global(.qfus) { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-  .carte-vent :global(.qfu) { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; align-items: center; background: var(--surface-2); border: 1px solid transparent; border-radius: 11px; padding: 8px 10px; }
-  .carte-vent :global(.qfu .n) { font-family: var(--mono); font-size: 1.2rem; font-weight: 700; color: var(--muted); line-height: 1.1; }
-  .carte-vent :global(.qfu .n i) { display: block; font-style: normal; font-size: .62rem; font-weight: 600; opacity: .8; }
-  .carte-vent :global(.qfu b) { display: block; font-size: .88rem; font-weight: 800; color: var(--ink); }
-  .carte-vent :global(.qfu small) { display: block; font-size: .72rem; color: var(--muted); font-weight: 600; }
+  .carte-vent :global(.qfus) { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+  .carte-vent :global(.qfu) { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 6px; align-items: center; background: var(--surface-2); border: 1px solid transparent; border-radius: 10px; padding: 6px 7px; }
+  .carte-vent :global(.qfu .n) { font-family: var(--mono); font-size: 1.02rem; font-weight: 700; color: var(--muted); line-height: 1.1; }
+  .carte-vent :global(.qfu .n i) { display: block; font-style: normal; font-size: .56rem; font-weight: 600; opacity: .8; }
+  .carte-vent :global(.qfu b) { display: block; font-size: .8rem; font-weight: 800; color: var(--ink); white-space: nowrap; }
+  .carte-vent :global(.qfu small) { display: block; font-size: .64rem; color: var(--muted); font-weight: 600; white-space: nowrap; letter-spacing: -.01em; }
   .carte-vent :global(.qfu.co) { border-color: var(--ok); background: var(--ok-bg); }
   .carte-vent :global(.qfu.co .n), .carte-vent :global(.qfu.co b) { color: var(--ok); }
   .carte-vent :global(.qfu.arr b) { color: var(--warn); }
-  .carte-vent :global(.qfus .pref) { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 0 2px 2px; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-  .carte-vent :global(.qfus .pref b) { font-family: var(--mono); font-size: .95rem; letter-spacing: 0; color: var(--ok); background: var(--ok-bg); border: 1px solid var(--ok); border-radius: 6px; padding: 0 8px; }
-  .carte-vent :global(.qfus .pref small) { text-transform: none; letter-spacing: 0; font-size: .74rem; font-weight: 600; }
   .carte-vent :global(.qfu .att) { width: 14px; height: 14px; color: var(--warn); vertical-align: -2px; margin-right: 4px; }
 
   /* NOTAM : même liste que le tableau de bord TV (badges par catégorie, mots d'indisponibilité en rouge), sans défilement */

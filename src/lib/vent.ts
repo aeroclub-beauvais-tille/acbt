@@ -81,12 +81,7 @@ export function rendreVent(m: Vent | null | undefined, station: boolean, coneAng
     const t2 = `${att}${Math.abs(c.trav)} kt travers${cote(c.trav)}` + (cg ? `<br>rafales ${Math.abs(cg.trav)} kt travers` : '');
     return `<div class="qfu${conseilles.has(n) ? ' co' : c.face < 0 ? ' arr' : ''}"><span class="n">${n}<i>${p3(cap)}°</i></span><div><b>${t1}</b><small>${t2}</small></div></div>`;
   }).join('');
-  // Ligne « Pistes préférentielles » en tête des cartes (toute la largeur), dans l'ordre 12/30 puis 04/22
-  const ordre = PISTES.flatMap((p) => [p.a[0], p.b[0]]).filter((n) => conseilles.has(n));
-  const pref = ordre.length
-    ? `<div class="pref"><span>${ordre.length > 1 ? 'Pistes préférentielles' : 'Piste préférentielle'}</span>${ordre.map((n) => `<b>${n}</b>`).join('')}<small>face au vent</small></div>`
-    : `<div class="pref pref-non"><span>Pistes préférentielles</span><small>${dir == null || !f ? (f === 0 ? 'vent calme : au choix' : 'vent variable : au choix') : 'vent plein travers'}</small></div>`;
-  return { svg: s, gauche, droite, sous, qfus: pref + qfus };
+  return { svg: s, gauche, droite, sous, qfus };
 }
 
 // Lecture d'une réponse de l'API Observation v2 (infrahoraire-6m) : dernière mesure, en nœuds, direction arrondie à 10°
