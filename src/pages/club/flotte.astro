@@ -7,7 +7,7 @@ import { asset, url } from '../../lib/utils';
 const avions = (await getCollection('avions', (a) => a.data.actif)).sort((a, b) => a.data.ordre - b.data.ordre);
 import pages from '../../data/pages.json';
 ---
-<Base univers="voler" title="La flotte" description="Les avions de l'aéroclub de Beauvais-Tillé : Robin DR400, DR300 et Jodel D120.">
+<Base univers="voler" title="La flotte" description="Les avions de l'aéroclub de Beauvais-Tillé : Robin DR400, DR300, DR315 et Jodel D120.">
   <PageHead eyebrow="Notre flotte" image={pages.flotte.image} title={pages.flotte.titre.replace('{nombre}', String(avions.length))} lead={pages.flotte.texte} />
   <section class="flotte" aria-label="Les avions">
     {avions.map((a, i) => (
@@ -16,7 +16,7 @@ import pages from '../../data/pages.json';
           <span class="a-num">{String(i + 1).padStart(2, '0')} / {String(avions.length).padStart(2, '0')}</span>
           {a.data.usage && <span class="a-usage">{a.data.usage}</span>}
         </div>
-        <div class="a-grille">
+        <div class:list={["a-grille", { "sans-photo": !a.data.photos[0] }]}>
           {a.data.immatriculation && <p class="immat" data-glisse={i % 2 ? 1 : -1} aria-hidden="true">{a.data.immatriculation}</p>}
           {a.data.photos[0] && (
             <div class="a-photo" data-clip>
@@ -62,6 +62,9 @@ import pages from '../../data/pages.json';
   .a-grille { position: relative; display: grid; gap: clamp(24px, 4vw, 64px); grid-template-columns: 1.5fr 1fr; align-items: start; }
   .avion:nth-child(even) .a-grille { grid-template-columns: 1fr 1.5fr; }
   .avion:nth-child(even) .a-photo { order: 2; }
+  /* Avion sans photo (pas encore prise) : la fiche occupe la largeur, sans case vide à côté */
+  .a-grille.sans-photo, .avion:nth-child(even) .a-grille.sans-photo { grid-template-columns: minmax(0, 1fr); }
+  .sans-photo .a-infos { max-width: 640px; }
   .a-photo { border-radius: var(--radius); overflow: hidden; aspect-ratio: 4 / 3; background: var(--paper-2); }
   .a-photo img { width: 100%; height: 100%; object-fit: cover; }
   .a-infos h2 { font-size: clamp(1.9rem, 3.2vw, 3rem); margin: 0 0 24px; }
