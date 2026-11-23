@@ -1,0 +1,47 @@
+// Procédures par faible visibilité (LVP) et Pré-LVP de l'aéroport de Beauvais.
+// Le service trafic de l'aéroport envoie un mail « Activation - LVP » / « Désactivation - Pré-LVP »…
+// avec « Date et heure : 2026-11-22T04:43:00Z ». Ces mails arrivent sur meteo@acbt60.fr et passent par /api/maa.
+// État rangé dans la base D1 (table lvp) : une ligne par procédure (lvp, prelvp).
+
+// Sans mail de désactivation au bout de ce délai, on considère la procédure terminée (mail perdu).
+const DUREE_MAX = 24 * 3600000;
+
+export async function tableLvp(db) {
+  await db.prepare(`CREATE TABLE IF NOT EXISTS lvp (
+    cle TEXT PRIMARY KEY, actif INTEGER NOT NULL, depuis TEXT, maj TEXT NOT NULL)`).run();
+}
+
+const simple = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/** Lit un mail LVP : { cle: 'lvp' | 'prelvp', actif, date } ou null si ce n'en est pas un. */
+export function lireLvp(sujet, texte, recu = new Date()) {
+  for (const source of [sujet, texte]) {
+    const m = simple(source).match(/\b(activation|desactivation)\s*[-–:]\s*(pre\s*-?\s*lvp|lvp)\b/);
+    if (!m) continue;
+    const d = simple(texte + ' ' + sujet).match(/date et heure\s*:\s*(\d{4}-\d\d-\d\dt\d\d:\d\d(?::\d\d)?z)/);
+    const date = d ? new Date(d[1].toUpperCase()) : recu;
+    return { cle: m[2].startsWith('pre') ? 'prelvp' : 'lvp', actif: m[1] === 'activation', date: isNaN(date) ? recu.toISOString() : date.toISOString() };
+  }
+  return null;
+}
+
+/** Enregistre l'activation ou la désactivation (un mail plus ancien que l'état connu est ignoré). */
+export async function appliquerLvp(db, lu) {
+  await tableLvp(db);
+  const r = await db.prepare(`INSERT INTO lvp (cle, actif, depuis, maj) VALUES (?1, ?2, ?3, ?3)
+    ON CONFLICT(cle) DO UPDATE SET actif = ?2, depuis = CASE WHEN ?2 = 1 AND lvp.actif = 1 THEN lvp.depuis ELSE ?3 END, maj = ?3
+    WHERE lvp.maj <= ?3`).bind(lu.cle, lu.actif ? 1 : 0, lu.date).run();
+  return r.meta.changes > 0;
+}
+
+/** État pour l'appli et la TV : { actif, type: 'LVP' | 'Pré-LVP', depuis } (la LVP l'emporte sur la Pré-LVP). */
+export async function etatLvp(db) {
+  try {
+    await tableLvp(db);
+    const { results } = await db.prepare('SELECT cle, actif, depuis FROM lvp').all();
+    const n = Date.now();
+    const en = (cle) => (results || []).find((r) => r.cle === cle && r.actif && n - Date.parse(r.depuis) < DUREE_MAX);
+    const l = en('lvp') || en('prelvp');
+    return l ? { actif: true, type: l.cle === 'lvp' ? 'LVP' : 'Pré-LVP', depuis: l.depuis } : { actif: false };
+  } catch { return null; }
+}
