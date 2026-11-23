@@ -1,0 +1,53 @@
+name: Copier les publications Facebook en actus
+
+# Toutes les 3 heures, les nouvelles publications avec photos de la page Facebook du club
+# deviennent des actualités du site (scripts/importer-facebook.mjs), puis le site est republié.
+#
+# Secrets nécessaires (Settings > Secrets and variables > Actions) :
+#  - FACEBOOK_PAGE_ID : identifiant de la page ACBT60 ;
+#  - FACEBOOK_PAGE_TOKEN : clé d'accès à la page (sans date d'expiration).
+# Sans ces secrets, rien ne se passe. Si la clé cesse de fonctionner, cette tâche
+# échoue et GitHub envoie un mail d'alerte.
+on:
+  schedule:
+    - cron: '41 */3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: facebook
+  cancel-in-progress: false
+
+jobs:
+  copier:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Lire la page Facebook
+        id: import
+        run: node scripts/importer-facebook.mjs
+        env:
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_TOKEN: ${{ secrets.FACEBOOK_PAGE_TOKEN }}
+      - name: Enregistrer les nouvelles actus
+        if: steps.import.outputs.ajoutees != '' && steps.import.outputs.ajoutees != '0'
+        run: |
+          git config user.name "Facebook ACBT60"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/content/actualites public/uploads/actualites src/data/facebook-copiees.json
+          git commit -m "Actus : ${{ steps.import.outputs.ajoutees }} publication(s) Facebook copiée(s)"
+          git pull --rebase origin main
+          git push origin HEAD:main
+      # Un envoi fait par cette tâche ne relance pas la publication tout seul : on la demande.
+      - name: Republier le site
+        if: steps.import.outputs.ajoutees != '' && steps.import.outputs.ajoutees != '0'
+        run: gh workflow run cloudflare.yml --ref main
+        env:
+          GH_TOKEN: ${{ github.token }}
