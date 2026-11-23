@@ -16,4 +16,4 @@ galerie:
   - /uploads/actualites/2024/retour-en-images-sur-les-baptemes-de-ce-dimanche/11.jpg
   - /uploads/actualites/2024/retour-en-images-sur-les-baptemes-de-ce-dimanche/12.jpg
 ---
-Nous avons effectués un total de 150 baptêmes avec l'Aéroclub du Beauvaisis , et tout ceci accompagné d'un grand soleil !! 🛩️☀️
+Nous avons effectués un total de 150 baptêmes avec l'Aéroclub du Beauvaisis , et tout ceci accompagné d'un grand soleil !!

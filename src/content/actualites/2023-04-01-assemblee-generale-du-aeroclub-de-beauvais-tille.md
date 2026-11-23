@@ -1,5 +1,5 @@
 ---
-titre: "ASSEMBLÉE GÉNÉRALE du AéroClub de Beauvais - Tillé"
+titre: "Assemblée générale du AéroClub de Beauvais - Tillé"
 date: 2023-04-01
 image: /uploads/actualites/2023/assemblee-generale-du-aeroclub-de-beauvais-tille/01.jpg
 galerie:

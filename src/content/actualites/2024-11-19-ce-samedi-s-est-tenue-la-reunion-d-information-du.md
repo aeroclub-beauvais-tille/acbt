@@ -9,4 +9,4 @@ galerie:
   - /uploads/actualites/2024/ce-samedi-s-est-tenue-la-reunion-d-information-du/04.jpg
   - /uploads/actualites/2024/ce-samedi-s-est-tenue-la-reunion-d-information-du/05.jpg
 ---
-Ce samedi s'est tenue la réunion d'information du club, les pilotes étaient nombreux au rendez-vous ! Retour en images ⬇️
+Ce samedi s'est tenue la réunion d'information du club, les pilotes étaient nombreux au rendez-vous ! Retour en images

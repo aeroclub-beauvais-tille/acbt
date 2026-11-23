@@ -14,11 +14,9 @@ galerie:
   - /uploads/actualites/2026/depart-de-l-aeroclub-acbt-pour-un-vol-magique-au/09.jpg
   - /uploads/actualites/2026/depart-de-l-aeroclub-acbt-pour-un-vol-magique-au/10.jpg
 ---
-🌅✈️
-
 Ce soir, nous avons profité du beau temps pour faire un vol au coucher du soleil autour de Beauvais.
 
-📸 Pêle-mêle du vol :
+Pêle-mêle du vol :
 
 Le soleil couchant en approche finale
 

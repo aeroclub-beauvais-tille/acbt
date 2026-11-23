@@ -16,4 +16,4 @@ galerie:
   - /uploads/actualites/2023/voici-les-photos-des-baptemes-de-ce-samedi-9/11.jpg
   - /uploads/actualites/2023/voici-les-photos-des-baptemes-de-ce-samedi-9/12.jpg
 ---
-Voici les photos des baptêmes de ce samedi 9 septembre des Miss et Dauphines du Comité Miss Canton Grandvilliers . Nous vous souhaitons à toutes une bonne continuation ! 🛩
+Voici les photos des baptêmes de ce samedi 9 septembre des Miss et Dauphines du Comité Miss Canton Grandvilliers . Nous vous souhaitons à toutes une bonne continuation !

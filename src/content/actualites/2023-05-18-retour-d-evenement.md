@@ -1,5 +1,5 @@
 ---
-titre: "[Retour d'évènement]"
+titre: "Nous sommes très heureux d'avoir partagé notre passion pour l'aviation le…"
 date: 2023-05-18
 image: /uploads/actualites/2023/retour-d-evenement/01.jpg
 galerie:

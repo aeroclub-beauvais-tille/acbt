@@ -17,6 +17,6 @@ galerie:
 ---
 C'est avec une grande fierté que s'est déroulée la cérémonie de remise des diplômes des BIA ce samedi au Musée de l'aviation - Warluis.
 
-Félicitations à nos diplômés ! 😁✈️
+Félicitations à nos diplômés !
 
 Un grand merci également à l'armée de l'air pour leur implication dans l'évènement
