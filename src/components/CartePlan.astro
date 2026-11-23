@@ -32,10 +32,11 @@ const lien = `https://www.openstreetmap.org/?mlat=${club.latitude}&mlon=${club.l
       maxZoom: 19,
       attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     }).addTo(carte);
-    L.marker(pos, { icon: pin, title: el.dataset.titre })
+    const repere = L.marker(pos, { icon: pin, title: el.dataset.titre })
       .addTo(carte)
-      .bindPopup(`<strong>${el.dataset.titre}</strong><br>${(el.dataset.acces ?? '').split('|').join('<br>')}`)
-      .openPopup();
+      .bindPopup(`<strong>${el.dataset.titre}</strong><br>${(el.dataset.acces ?? '').split('|').join('<br>')}`);
+    // Sur une petite carte (téléphone), la bulle cacherait le plan : elle s'ouvre seulement en touchant le repère.
+    if (el.clientWidth >= 600) repere.openPopup();
   });
 </script>
 <style>

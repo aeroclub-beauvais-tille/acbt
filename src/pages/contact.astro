@@ -20,7 +20,14 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
       <form id="contact" class="card" data-reveal="left"><div class="card-body">
         <label>Nom et prénom<input name="nom" required /></label>
         <label>E-mail<input type="email" name="email" required /></label>
-        <label>Téléphone<input type="tel" name="tel" /></label>
+        <fieldset class="rappel">
+          <legend>Comment préférez-vous être recontacté ?</legend>
+          <div class="choix">
+            <label><input type="radio" name="rappel" value="Par e-mail" checked /><span>Par e-mail</span></label>
+            <label><input type="radio" name="rappel" value="Par téléphone" /><span>Par téléphone</span></label>
+          </div>
+        </fieldset>
+        <label><span>Téléphone <span class="tel-facultatif">(facultatif)</span></span><input type="tel" name="tel" autocomplete="tel" /></label>
         <label>Objet
           <select name="objet">
             <option>Vol découverte</option><option>Vol d'initiation</option><option>Bon cadeau</option><option>Inscription</option><option>Autre question</option>
@@ -35,7 +42,7 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
         <label><span>Message <span class="facultatif">(facultatif)</span></span><textarea name="message" rows="5" required></textarea></label>
         <input type="checkbox" name="botcheck" class="piege" tabindex="-1" autocomplete="off" aria-hidden="true" />
         <button class="btn btn-primary" type="submit">Envoyer</button>
-        <p class="meta envoi" role="status" aria-live="polite" style="margin-top:10px">{cleFormulaire(club.formulaire_cle) ? 'Votre message part directement au club, qui vous répond par e-mail.' : "Le message s'ouvre dans votre logiciel de messagerie."}</p>
+        <p class="meta envoi" role="status" aria-live="polite" style="margin-top:10px">{cleFormulaire(club.formulaire_cle) ? 'Votre message part directement au club, qui vous recontacte par e-mail ou par téléphone, comme vous le préférez.' : "Le message s'ouvre dans votre logiciel de messagerie."}</p>
       </div></form>
       <div data-reveal="right" data-delay="0.15">
         <h2>{pages.contact.intertitres.carte}</h2>
@@ -75,13 +82,21 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
   };
   form.objet.addEventListener('change', majObjet);
   majObjet();
+  // Rappel par téléphone : le numéro devient obligatoire (l'e-mail l'est toujours).
+  const majRappel = () => {
+    const tel = form.rappel.value === 'Par téléphone';
+    form.tel.required = tel;
+    form.querySelector('.tel-facultatif').hidden = tel;
+  };
+  form.querySelectorAll('input[name=rappel]').forEach((r) => r.addEventListener('change', majRappel));
+  majRappel();
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = new FormData(form);
     const visible = (n) => !form[n].closest('label').hidden;
     const detail = () => [visible('formule') && `Formule : ${f.get('formule')}`, visible('creneau') && f.get('creneau') && `Créneaux souhaités : ${f.get('creneau')}`].filter(Boolean).map((x) => x + '\n').join('') + (visible('formule') ? '\n' : '');
     if (!cle) {
-      const body = `${detail()}${f.get('message')}\n\n${f.get('nom')}\n${f.get('email')}\n${f.get('tel') || ''}`;
+      const body = `${detail()}${f.get('message')}\n\n${f.get('nom')}\n${f.get('email')}\n${f.get('tel') || ''}\nÀ recontacter : ${f.get('rappel')}`;
       location.href = `mailto:${email}?subject=${encodeURIComponent('[Site] ' + f.get('objet'))}&body=${encodeURIComponent(body)}`;
       return;
     }
@@ -98,7 +113,7 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
           subject: `[Site ACBT] ${f.get('objet')} – ${f.get('nom')}`,
           from_name: 'Site de l’ACBT',
           replyto: f.get('email'),
-          'Nom': f.get('nom'), 'E-mail': f.get('email'), 'Téléphone': f.get('tel') || '—', 'Objet': f.get('objet'),
+          'Nom': f.get('nom'), 'E-mail': f.get('email'), 'Téléphone': f.get('tel') || '—', 'À recontacter': f.get('rappel'), 'Objet': f.get('objet'),
           ...(visible('formule') ? { 'Formule': f.get('formule') } : {}),
           ...(visible('creneau') ? { 'Créneaux souhaités': f.get('creneau') || '—' } : {}),
           'Message': f.get('message') || '—',
@@ -106,11 +121,13 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
       });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j.success === false) throw new Error(j.message || 'Erreur');
+      const parTel = f.get('rappel') === 'Par téléphone';
       form.reset();
       if (objet) form.objet.value = objet;
       majObjet();
+      majRappel();
       etat.dataset.etat = 'ok';
-      etat.textContent = 'Merci, votre message est bien parti. Le club vous répond par e-mail.';
+      etat.textContent = parTel ? 'Merci, votre message est bien parti. Le club vous rappelle au numéro indiqué.' : 'Merci, votre message est bien parti. Le club vous répond par e-mail.';
     } catch {
       etat.dataset.etat = 'ko';
       etat.innerHTML = `Le message n'a pas pu partir. Réessayez, ou écrivez à <a href="mailto:${email}">${email}</a>.`;
@@ -120,7 +137,17 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
   });
 </script>
 <style>
-  .formulaire label[hidden], .facultatif[hidden] { display: none; }
+  .formulaire label[hidden], .facultatif[hidden], .tel-facultatif[hidden] { display: none; }
+  .facultatif, .tel-facultatif { font-weight: 400; color: var(--muted); }
+  /* Choix du rappel : deux boutons côte à côte, pas de ronds natifs */
+  .rappel { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
+  .rappel legend { font-weight: 600; font-size: .92rem; margin-bottom: 6px; padding: 0; }
+  .choix { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .choix label { margin: 0; position: relative; }
+  .choix input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .choix span { display: block; text-align: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; font-weight: 500; transition: background .2s, border-color .2s, color .2s; }
+  .choix input:checked + span { background: var(--marine, #002a5a); border-color: var(--marine, #002a5a); color: #fff; }
+  .choix input:focus-visible + span { outline: 2px solid var(--sun, #f5b800); outline-offset: 2px; }
   .piege { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
   .envoi[data-etat='ok'] { color: #1d8a4e; font-weight: 600; }
   .envoi[data-etat='ko'] { color: #b3261e; font-weight: 600; }

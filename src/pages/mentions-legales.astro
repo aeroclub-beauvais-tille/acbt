@@ -26,6 +26,7 @@ const manquants = [!l.rna && !l.siret && 'numéro RNA ou SIRET', !l.directeur_pu
         <strong>{club.nom}</strong> ({club.sigle}), {l.statut.toLowerCase()}, fondée le {club.fondation}.<br />
         Siège : {club.adresse}.<br />
         Téléphone : <a href={`tel:${club.telephone.replace(/\s/g, '')}`}>{club.telephone}</a>. E-mail : <a href={`mailto:${club.email}`}>{club.email}</a>.
+        {(l as any).denomination && <><br />Dénomination officielle : {(l as any).denomination}, inscrite au Répertoire national des associations.</>}
         {l.rna && <><br />Numéro RNA : {l.rna}.</>}
         {l.siret && <><br />SIRET : {l.siret}.</>}
       </p>
@@ -45,7 +46,7 @@ const manquants = [!l.rna && !l.siret && 'numéro RNA ou SIRET', !l.directeur_pu
 
       <h2 id="cookies">Cookies et services tiers</h2>
       <p>Ce site ne dépose aucun cookie publicitaire et n'utilise aucun outil de mesure d'audience. Aucun bandeau de consentement n'est donc nécessaire.</p>
-      <p>Pour s'afficher, certaines pages font appel à des services extérieurs, qui reçoivent alors votre adresse IP comme pour toute visite d'un site : les polices de caractères (Google Fonts), le fond de carte du plan d'accès (OpenStreetMap) et, dans l'espace membre, les logos de quelques sites partenaires.</p>
+      <p>Les polices de caractères sont hébergées sur le site lui-même. Pour s'afficher, certaines pages font appel à des services extérieurs, qui reçoivent alors votre adresse IP comme pour toute visite d'un site : le fond de carte du plan d'accès (OpenStreetMap) et, dans l'espace membre, les logos de quelques sites partenaires.</p>
 
       <h2 id="responsabilite">Responsabilité</h2>
       <p>Les informations de ce site sont données à titre indicatif et peuvent évoluer, notamment les tarifs et les horaires : contactez le club pour toute confirmation.</p>

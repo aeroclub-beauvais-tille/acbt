@@ -6,7 +6,7 @@
   "deroulement": [
     {
       "titre": "Vous réservez",
-      "texte": "Par téléphone ou par le formulaire de contact. Nous convenons ensemble d'une date."
+      "texte": "Par téléphone ou par le formulaire de contact. Le club vous rappelle ou vous répond par e-mail pour convenir ensemble d'une date."
     },
     {
       "titre": "Accueil au club-house",
@@ -29,6 +29,10 @@
     {
       "question": "Peut-on offrir un vol ?",
       "reponse": "Oui, toutes nos formules existent en bon cadeau. Contactez-nous, nous vous l'envoyons et la personne choisit ensuite sa date."
+    },
+    {
+      "question": "Comment régler le vol ?",
+      "reponse": "Par virement (classique ou Wero), par chèque ou en espèces. La carte bancaire et les chèques ANCV ne sont pas acceptés."
     },
     {
       "question": "Où faut-il se présenter ?",
