@@ -32,9 +32,12 @@ import pages from '../../data/pages.json';
     document.querySelectorAll<HTMLElement>('.news').forEach((n) => {
       const ok = (!state.annee || n.dataset.annee === state.annee);
       n.style.display = ok ? '' : 'none';
+      n.toggleAttribute('data-cache', !ok);
     });
+    // On ne lit pas l'attribut style des cartes : l'animation d'apparition y écrit « transform: none »,
+    // ce qui faisait passer une année déjà affichée pour vide (2026 disparaissait après un aller-retour).
     document.querySelectorAll<HTMLElement>('.annee-bloc').forEach((b) => {
-      b.style.display = b.querySelector('.news:not([style*="none"])') ? '' : 'none';
+      b.style.display = b.querySelector('.news:not([data-cache])') ? '' : 'none';
     });
   }
   document.querySelectorAll<HTMLElement>('.filters').forEach((group) => {
