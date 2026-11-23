@@ -656,7 +656,7 @@ const maaEvolution = (p?: string | null) => [/\bOBS\b/.test(p || '') ? 'observé
 function maaBloc() {
   const l = (D?.maa ?? []).slice(0, 10);
   const n = Date.now();
-  $('maa-info').textContent = D?.maa == null ? '' : l.length ? `${l.length} en vigueur ou à venir · heure locale` : '';
+  $('maa-info').textContent = D?.maa == null ? '' : l.length ? `${l.length} en vigueur ou à venir · LT` : '';
   const t = (iso: string | null) => { const d = utc(iso); return d ? `${jmLoc(d)} ${hLoc(d)}` : '…'; };
   const boite = $('maa');
   boite.classList.toggle('liste', l.length > 0);
@@ -893,10 +893,10 @@ function alertes() {
   const plus = (l: unknown[]) => (l.length > 1 ? ` (+${l.length - 1})` : '');
   const h: string[] = [];
   alerteAAL();
-  if (D.lvp?.actif) h.push(`<div class="al a-on a-lvp"><i class="lvp-logo">LVP</i><b>LVP en vigueur</b><span>faible visibilité à LFOB${D.lvp.depuis ? ` depuis ${hLoc(utc(D.lvp.depuis)!)}` : ''}</span></div>`);
+  if (D.lvp?.actif) h.push(`<div class="al a-on a-lvp"><i class="lvp-logo">LVP</i><b>LVP en vigueur</b><span>faible visibilité à LFOB${D.lvp.depuis ? ` depuis ${hLoc(utc(D.lvp.depuis)!)} LT` : ''}</span></div>`);
   if (snow.length) h.push(`<div class="al a-on"><b>SNOWTAM en vigueur</b><span>état des pistes publié · voir NOTAM</span></div>`);
-  if (enCours.length) h.push(`<div class="al a-on"><b>Alerte météo en cours</b><span>${esc(maaPhen(enCours[0].phen) || enCours[0].motif || 'MAA')}${enCours[0].fin ? ` jusqu’à ${t(enCours[0].fin)}` : ''}${plus(enCours)}</span></div>`);
-  else if (aVenir.length) h.push(`<div class="al a-av"><b>Alerte météo à venir</b><span>${esc(maaPhen(aVenir[0].phen) || aVenir[0].motif || 'MAA')} dès ${t(aVenir[0].debut)}${plus(aVenir)}</span></div>`);
+  if (enCours.length) h.push(`<div class="al a-on"><b>Alerte météo en cours</b><span>${esc(maaPhen(enCours[0].phen) || enCours[0].motif || 'MAA')}${enCours[0].fin ? ` jusqu’à ${t(enCours[0].fin)} LT` : ''}${plus(enCours)}</span></div>`);
+  else if (aVenir.length) h.push(`<div class="al a-av"><b>Alerte météo à venir</b><span>${esc(maaPhen(aVenir[0].phen) || aVenir[0].motif || 'MAA')} dès ${t(aVenir[0].debut)} LT${plus(aVenir)}</span></div>`);
   if (!h.length) h.push(hiver ? `<div class="al a-ok"><b>Aucune alerte météo</b><span>ni MAA ni SNOWTAM, en cours ou à venir</span></div>` : `<div class="al a-ok"><b>Aucun MAA</b><span>en cours ou à venir</span></div>`);
   b.innerHTML = h.join('');
 }

@@ -183,7 +183,7 @@ function lvp(etat?: { actif?: boolean; depuis?: string } | null) {
   el.hidden = !etat.actif;
   const d = etat.depuis ? new Date(etat.depuis) : null;
   const txt = el.querySelector<HTMLElement>('#lvp-depuis');
-  if (txt && d && !isNaN(+d)) txt.textContent = `LVP activées à LFOB depuis ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })}`;
+  if (txt && d && !isNaN(+d)) txt.textContent = `LVP activées à LFOB depuis ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })} LT`;
 }
 
 type MaaEnLigne = { id: string; numero?: string; motif?: string; debut?: string; fin?: string };
