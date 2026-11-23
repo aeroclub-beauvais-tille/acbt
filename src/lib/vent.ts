@@ -57,7 +57,7 @@ export function rendreVent(m: Vent | null | undefined, station: boolean, coneAng
   s += '</svg>';
   const gauche = !m ? '—' : f === 0 ? 'Calme' : m.ventDir === 'VRB' ? 'VRB' : dir != null ? `${String(dir).padStart(3, '0')}°` : '—';
   const sous = station ? '' : m?.ventVar ? `<div class="vsous">variable ${String(m.ventVar[0]).padStart(3, '0')}° à ${String(m.ventVar[1]).padStart(3, '0')}°</div>` : m?.ventDir === 'VRB' && f ? '<div class="vsous">direction variable</div>' : '';
-  const droite = f == null || f === 0 ? '' : `<i class="sep"></i><span>${f} kt</span>${g ? `<small class="raf">rafales ${g} kt</small>` : ''}`;
+  const droite = f == null || f === 0 ? '' : `<i class="sep"></i><span>${f}${g ? `<b class="raf">G${g}</b>` : ''} kt</span>`;
   // Composantes pour chaque sens de piste. Piste préférentielle sur CHAQUE piste = le sens qui a le vent de face
   // (même par vent faible, dès qu'une direction est connue), sauf vent vraiment plein travers
   // (à moins de 10° de la perpendiculaire) : aucun sens n'est alors mis en avant pour cette piste
