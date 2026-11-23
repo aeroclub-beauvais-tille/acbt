@@ -654,7 +654,7 @@ function maaBloc() {
   const l = (D?.maa ?? []).slice(0, 10);
   const n = Date.now();
   $('maa-info').textContent = D?.maa == null ? '' : l.length ? `${l.length} en vigueur ou à venir · LT` : '';
-  const t = (iso: string | null) => { const d = utc(iso); return d ? `${jmLoc(d)} ${hLoc(d)}` : '…'; };
+  const t = (iso: string | null) => { const d = utc(iso); return d ? `${jmLoc(d)} · ${hLoc(d)}` : '…'; };
   const boite = $('maa');
   boite.classList.toggle('liste', l.length > 0);
   if (D?.maa == null || !l.length) {
@@ -909,7 +909,7 @@ function alertes() {
   const b = $('alertes');
   if (!D || D.maa == null) { b.innerHTML = ''; return; }
   const n = Date.now();
-  const t = (iso: string | null) => { const d = utc(iso); return d ? (jmLoc(d) === jmLoc(new Date()) ? hLoc(d) : `${jmLoc(d)} ${hLoc(d)}`) : '…'; };
+  const t = (iso: string | null) => { const d = utc(iso); return d ? (jmLoc(d) === jmLoc(new Date()) ? hLoc(d) : `${jmLoc(d)} · ${hLoc(d)}`) : '…'; };
   const enCours = D.maa.filter((m) => m.debut && Date.parse(m.debut) <= n);
   const aVenir = D.maa.filter((m) => !(m.debut && Date.parse(m.debut) <= n));
   // SNOWTAM seulement en saison hivernale, du 1er novembre au 31 mars inclus
