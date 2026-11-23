@@ -486,6 +486,9 @@ const onglets = [
   .carte-vent :global(.qfu.co) { border-color: var(--ok); background: var(--ok-bg); }
   .carte-vent :global(.qfu.co .n), .carte-vent :global(.qfu.co b) { color: var(--ok); }
   .carte-vent :global(.qfu.arr b) { color: var(--warn); }
+  .carte-vent :global(.qfus .pref) { grid-column: 1 / -1; display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 0 2px 2px; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .carte-vent :global(.qfus .pref b) { font-family: var(--mono); font-size: .95rem; letter-spacing: 0; color: var(--ok); background: var(--ok-bg); border: 1px solid var(--ok); border-radius: 6px; padding: 0 8px; }
+  .carte-vent :global(.qfus .pref small) { text-transform: none; letter-spacing: 0; font-size: .74rem; font-weight: 600; }
   .carte-vent :global(.qfu .att) { width: 14px; height: 14px; color: var(--warn); vertical-align: -2px; margin-right: 4px; }
 
   /* NOTAM : même liste que le tableau de bord TV (badges par catégorie, mots d'indisponibilité en rouge), sans défilement */

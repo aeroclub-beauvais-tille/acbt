@@ -375,6 +375,9 @@ const modeles = { 'F-BTBJ': 'DR315', ...Object.fromEntries(avions.map((a) => [a.
   .qfu b { font-size: 19px; font-weight: 800; display: block; } .qfu small { font-size: 14.5px; color: var(--muted); font-weight: 600; }
   .qfu.co { border-color: var(--ok); background: var(--okbg); } .qfu.co .n, .qfu.co b { color: var(--ok); }
   .qfu.arr b { color: var(--warn); }
+  .qfus .pref { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; padding: 2px 2px 4px; font-size: 15px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .qfus .pref b { font-family: var(--mono); font-size: 22px; letter-spacing: 0; color: var(--ok); background: var(--okbg); border: 1.5px solid var(--ok); border-radius: 8px; padding: 1px 12px; }
+  .qfus .pref small { text-transform: none; letter-spacing: 0; font-size: 15px; font-weight: 600; }
   .qfu .att { width: 17px; height: 17px; color: var(--warn); vertical-align: -3px; margin-right: 5px; }
   .per { display: grid; grid-template-columns: 1fr auto; gap: 4px 14px; padding: 12px 14px; border-radius: 12px; border: 1px solid transparent; margin-top: 8px; border-left: 3px solid var(--line); }
   .per.on { border-color: var(--ok); background: var(--okbg); border-left-width: 3px; }
