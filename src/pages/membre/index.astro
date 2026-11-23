@@ -75,6 +75,7 @@ const modeles = { 'F-BTBJ': 'DR315', ...Object.fromEntries(flotte.map((a) => [a.
 
 const onglets = [
   { id: 'accueil', nom: 'Météo', svg: 'M17.5 19a4.5 4.5 0 1 0-.9-8.9A6 6 0 1 0 6 19h11.5z' },
+  { id: 'notam', nom: 'NOTAM', svg: 'M12 3 2 20h20L12 3zM12 10v4M12 17h.01' },
   { id: 'flotte', nom: 'Flotte', svg: 'M12 14l4.5-4.5M3.5 18a9.5 9.5 0 1 1 17 0M12 14h.01' },
   { id: 'avions', nom: 'Avions', svg: 'M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z' },
   { id: 'preparer', nom: 'Préparer', svg: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4v12m10-6H2' },
@@ -169,11 +170,14 @@ const onglets = [
       <div class="carte-metar"><Metar /></div>
       <div class="carte-metar carte-taf"><Taf /></div>
 
-      <h2 class="bt bt-notam">NOTAM LFOB <span class="bt-nb" id="notam-nb"></span></h2>
+      <p class="aide-ios" id="aide-ios" hidden>Sur iPhone : touchez <b>Partager</b> en bas de Safari, puis <b>Sur l'écran d'accueil</b>.</p>
+    </section>
+
+    <!-- NOTAM -->
+    <section class="panneau" id="notam" hidden>
+      <h1 class="titre">NOTAM LFOB <span class="bt-nb" id="notam-nb"></span></h1>
       <div class="carte-notam nl" id="notam-liste" data-api={url('/membre/api/notam')}><p class="vide">Chargement des NOTAM…</p></div>
       <p class="fl-info" id="notam-info"></p>
-
-      <p class="aide-ios" id="aide-ios" hidden>Sur iPhone : touchez <b>Partager</b> en bas de Safari, puis <b>Sur l'écran d'accueil</b>.</p>
     </section>
 
     <!-- FLOTTE -->
@@ -473,7 +477,8 @@ const onglets = [
   .carte-vent :global(.qfu .att) { width: 14px; height: 14px; color: var(--warn); vertical-align: -2px; margin-right: 4px; }
 
   /* NOTAM : même liste que le tableau de bord TV (badges par catégorie, mots d'indisponibilité en rouge), sans défilement */
-  .bt-notam { margin-top: 22px; }
+  #notam .titre { display: flex; align-items: baseline; gap: 10px; }
+  #notam .titre .bt-nb { color: var(--muted); }
   .bt-nb { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 600; font-size: .74rem; }
   .carte-notam { padding: 2px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
   .nl :global(.n) { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); align-items: start; }
