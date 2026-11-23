@@ -3,6 +3,7 @@
 import { ephemeride, heureLocale, type Ephemeride } from '../lib/soleil';
 import { rendreVent, lireMesure, type Obs } from '../lib/vent';
 import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
+import { court, nomCourt, quiResa as quiResaNoms, typeVol } from '../lib/noms-resa';
 
 /* ------------------------------------------------------------------ */
 /* Types des données renvoyées par /dashboard/api/donnees              */
@@ -61,39 +62,9 @@ function jourTxt(j: string) {
   const t = dateJ(j).toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'UTC' });
   return t.charAt(0).toUpperCase() + t.slice(1);
 }
-const qui = (r: Resa) => [r.pilote, r.instructeur && `avec ${court(r.instructeur)}`].filter(Boolean).join(' · ');
-// « DALBART Baptiste » → « DALBART B. »
-// Trigrammes Aerogest des instructeurs (lus dans le planning instructeurs ; table de secours donnée par le club)
-const TRIGRAMMES: Record<string, string> = { BAL: 'BALIN Jean', JBT: 'BINET Justin', PVH: 'VAN HEES Pierre', GEN: 'GENIN Thomas', YVO: 'YVON Auguste' };
-function nomComplet(n: string | null | undefined) {
-  const t = String(n || '').replace(/\(.*?\)/g, '').trim();
-  if (!/^[A-Z]{2,4}$/.test(t)) return t || null;
-  const i = (D?.flotte?.instructeurs ?? []).find((x) => x.code === t);
-  return i?.nom || TRIGRAMMES[t] || t;
-}
-// Qualification affichée après le nom d'un instructeur : (FI), ou (FI/FE) pour un examinateur
-const FE_CLUB = ['BINET Justin'];
-function qualif(nom: string | null) {
-  if (!nom) return '';
-  const i = (D?.flotte?.instructeurs ?? []).find((x) => x.nom === nom);
-  if (!i && !Object.values(TRIGRAMMES).includes(nom)) return '';
-  return i?.fe || FE_CLUB.includes(nom) ? ' (FI/FE)' : ' (FI)';
-}
-const courtQ = (n: string | null | undefined) => { const c = nomComplet(n); return c ? court(c) + qualif(c) : ''; };
-// « BALIN J. (FI) - Vol d'initiation » ; « PILOTE N. + INSTRUCTEUR N. » quand ils diffèrent ; jamais deux fois le même nom
-function quiResa(r: { pilote?: string | null; instructeur?: string | null; type?: string | null }) {
-  const noms = [...new Set([courtQ(r.pilote), courtQ(r.instructeur)].filter(Boolean))].join(' + ');
-  const type = r.type && !/^vol standard$/i.test(r.type) ? r.type : '';
-  return [noms, type].filter(Boolean).join(' - ');
-}
-
-function court(nom: string | null) {
-  const m = String(nom || '').trim().split(/\s+/);
-  if (m.length < 2) return m[0] || '';
-  const maj = m.filter((w) => w === w.toUpperCase() && /[A-ZÀ-Ý]/.test(w));
-  const pre = m.filter((w) => !maj.includes(w));
-  return pre.length && maj.length ? `${maj.join(' ')} ${pre[0][0]}.` : m.join(' ');
-}
+const INS = () => D?.flotte?.instructeurs ?? [];
+const courtQ = (n: string | null | undefined) => nomCourt(n, INS());
+const quiResa = (r: { pilote?: string | null; instructeur?: string | null; type?: string | null }) => quiResaNoms(r, INS());
 const utc = (iso: string | null) => (iso ? new Date(iso) : null);
 const hUtc = (d: Date) => `${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
 const jmLoc = (d: Date) => d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Paris' });
@@ -415,7 +386,7 @@ function reservations() {
     }
     for (const r of (a.jour ?? []).filter((r) => r.debut.slice(0, 8) === auj)) {
       const pil = courtQ(r.pilote), ins = courtQ(r.instructeur);
-      const typ = r.type && !/^vol standard$/i.test(r.type) ? r.type : '';
+      const typ = typeVol(r.type);
       b += barre(mins(r.debut, auj), mins(r.fin, auj), classeType(r.type), pil || r.type || 'Réservé', `${agH(r.debut)} – ${agH(r.fin)}`, ins && ins !== pil ? `avec ${ins}` : typ);
     }
     // Temps réellement volé (départ → arrivée enregistrés dans Aerogest) : bande verte en bas de la ligne

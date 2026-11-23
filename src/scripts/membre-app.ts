@@ -3,6 +3,7 @@ import { url } from '../lib/utils';
 import { ephemeride, heureLocale } from '../lib/soleil';
 import { rendreVent, lireMesure, ventStation, type Vent } from '../lib/vent';
 import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
+import { quiResa } from '../lib/noms-resa';
 
 const CLE = 'acbt-membre';
 const DOCS = 'acbt-membre-docs';
@@ -678,7 +679,7 @@ function jourPasse(j: string) {
   if (j === jourParis(new Date(Date.now() - 86400000))) return 'Hier';
   return `${j.slice(6, 8)}/${j.slice(4, 6)}`;
 }
-const qui = (r: Resa) => [r.pilote, r.instructeur && `avec ${r.instructeur}`].filter(Boolean).join(' ');
+const qui = (r: Resa) => quiResa(r);
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 
 export function flotte() {
@@ -741,7 +742,7 @@ export function flotte() {
         const dd = lireAg(a.dernier.debut), ff = lireAg(a.dernier.fin);
         const [dj, dm] = jm(a.dernier.debut); const [fj, fm] = jm(a.dernier.fin);
         const min = (fj === dj ? 0 : 1440) + fm - dm;
-        const nom = [a.dernier.pilote, a.dernier.instructeur && `avec ${a.dernier.instructeur}`].filter(Boolean).join(' ');
+        const nom = quiResa(a.dernier);
         lignes.push(ligne('Dernier vol', nom, `${dd.h} → ${ff.h}`, `${jourPasse(ff.j)} · ${min > 0 ? duree(min) : a.dernier.temps ?? ''}`, '', 'dernier'));
       } else if (a.dernierVol) {
         const m = a.dernierVol.match(/^(\d\d)\/(\d\d)\/(\d{4})\s+(\d\d:\d\d)/);
