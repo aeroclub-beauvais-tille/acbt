@@ -825,15 +825,44 @@ function imagesInit() {
 /* Chargement, rotation des écrans, mise à l'échelle                   */
 /* ------------------------------------------------------------------ */
 let derniere = 0;
+let aromeLance = false;
+// Une source qui rate un appel (Aerogest, AVWX, FAA…) ne vide pas son écran : on garde sa dernière valeur reçue
+// pendant 30 min au plus. Ex. NOTAM « indisponibles » pendant une minute → la liste précédente reste affichée.
+const RECU: Record<string, number> = {};
+const GARDE = 30 * 60000;
+function garderDernieres(d: Donnees): Donnees {
+  const n = Date.now();
+  const nouv = d as unknown as Record<string, unknown>, avant = (D ?? {}) as unknown as Record<string, unknown>;
+  for (const k of Object.keys({ ...avant, ...nouv })) {
+    const v = nouv[k];
+    const rate = v == null || (typeof v === 'object' && (v as { ok?: boolean }).ok === false);
+    if (!rate) RECU[k] = n;
+    else if (avant[k] != null && n - (RECU[k] ?? 0) < GARDE) nouv[k] = avant[k];
+  }
+  return d;
+}
+// Dernières données gardées sur la télé : après un rechargement (nouvelle version du site), l'écran se remplit
+// tout de suite au lieu d'afficher « Connexion aux données… » le temps du premier appel.
+const MEMO = 'acbt-dashboard-donnees';
+function memoriser() { try { localStorage.setItem(MEMO, JSON.stringify({ t: derniere, recu: RECU, d: D })); } catch { /* stockage plein ou bloqué */ } }
+function relire() {
+  try {
+    const m = JSON.parse(localStorage.getItem(MEMO) || 'null');
+    if (!m?.d?.ok || Date.now() - m.t > GARDE) return;
+    D = m.d; derniere = m.t; Object.assign(RECU, m.recu || {});
+  } catch { /* rien de gardé */ }
+}
 async function charger() {
   try {
     const r = await fetch('/dashboard/api/donnees', { cache: 'no-store', credentials: 'same-origin' });
     if (r.status === 401) { location.href = `/dashboard/connexion/?retour=${encodeURIComponent(location.pathname + location.search)}`; return; }
     const d = (await r.json()) as Donnees;
     if (!d?.ok) throw new Error('données');
-    const premier = !D;
-    D = d;
+    const premier = !aromeLance;
+    aromeLance = true;
+    D = garderDernieres(d);
     derniere = Date.now();
+    memoriser();
     if (premier) arome();
     await lireObs();
     $('etat').classList.remove('ko');
@@ -992,6 +1021,7 @@ export function demarrer() {
   document.querySelectorAll<HTMLElement>('#points button').forEach((b) => b.addEventListener('click', () => { pauseJusqua = Date.now() + 120000; montrer(Number(b.dataset.e)); }));
   montrer(fige ?? 0);
   horloge();
+  relire();
   dessiner();
   charger();
   imagesInit();
