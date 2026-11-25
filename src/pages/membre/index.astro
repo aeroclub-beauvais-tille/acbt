@@ -760,18 +760,13 @@ const onglets = [
   }
   /* PC et tablette en paysage : mise en page en colonnes, façon tableau de bord TV (le téléphone ne change pas) */
   @media (min-width: 1100px) {
-    .content { max-width: none; padding-inline: 28px; }
-    .topbar { padding-inline: 28px; }
+    .content { max-width: 1760px; padding-inline: 28px; }
+    .topbar { padding-inline: max(14px, calc((100% - 1760px) / 2 + 28px)); }
     /* NOTAM sur deux colonnes ; flotte sur quatre colonnes sur un très grand écran (comme la TV) */
     #notam-liste { columns: 2; column-gap: 22px; }
     #notam-liste > :global(*) { break-inside: avoid; }
   }
   @media (min-width: 1500px) { .fl-liste { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-  /* Grand écran (PC, TV) : tout le contenu grossit avec la largeur pour remplir l'écran */
-  @media (min-width: 1400px) { .content, .tabbar { zoom: 1.12; } }
-  @media (min-width: 1650px) { .content, .tabbar { zoom: 1.25; } }
-  @media (min-width: 1900px) { .content, .tabbar { zoom: 1.38; } }
-  @media (min-width: 2300px) { .content, .tabbar { zoom: 1.6; } }
   @media (min-width: 1400px) { .carte-voisins { grid-template-columns: 1fr 1fr; } }
   /* Grand écran : la barre d'onglets reste groupée au centre, alignée sur le contenu */
   @media (min-width: 820px) {
