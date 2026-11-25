@@ -969,7 +969,7 @@ function alertes() {
   const raison = (m: Maa) => esc(maaPhen(m.phen) || maaMotif(m.motif) || 'MAA');
   const textes = [
     ...enCours.map((m) => `${raison(m)}${m.fin ? ` ${jusqu(t(m.fin))} LT` : ''}`),
-    ...aVenir.map((m) => `${raison(m)} dès ${t(m.debut)} LT`),
+    ...aVenir.map((m) => { const x = t(m.debut); return `${raison(m)} dès ${x.includes('/') ? 'le ' : ''}${x} LT`; }),
   ];
   maaNb = textes.length;
   if (maaNb) {
