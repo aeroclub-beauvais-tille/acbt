@@ -207,6 +207,7 @@ const modeles = { 'F-BTBJ': 'DR315', ...Object.fromEntries(avions.map((a) => [a.
   .alt td:first-child { font-family: var(--mono); color: var(--ink); font-size: 16px; }
   .alt .fl { display: inline-block; width: 18px; height: 18px; vertical-align: -3px; margin-right: 6px; color: var(--accent); }
   .alt .t { color: var(--muted); font-weight: 600; }
+  .alt th:not(:first-child), .alt td:not(:first-child) { text-align: center; } /* heures centrées au-dessus de leur colonne */
   .voisins-p { flex: 1; display: flex; flex-direction: column; }
   #voisins { flex: 1; min-height: 0; overflow: hidden; position: relative; }
   #voisins .def { animation: defile var(--duree, 60s) linear 3s infinite; } #voisins .def > div { padding-bottom: 0 !important; display: flow-root; } /* boucle sans repère : la marge du dernier METAR fait la jonction */
