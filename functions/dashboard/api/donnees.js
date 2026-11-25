@@ -120,12 +120,12 @@ async function lireVoisins() {
   return VOISINS.filter(([id]) => dernier[id]).map(([id, nom]) => ({ id, nom, raw: dernier[id].rawOb, obs: new Date(dernier[id].obsTime * 1000).toISOString() }));
 }
 
-// Vents et températures en altitude au-dessus de LFOB (Open-Meteo, modèles Météo-France AROME/ARPEGE, sans clé) :
-// 925 hPa ≈ 2500 ft, 850 hPa ≈ FL050, 700 hPa ≈ FL100 ; maintenant, +3 h et +6 h
+// Vents et températures en altitude au-dessus de LFOB (Open-Meteo, modèle Météo-France ARPEGE, sans clé) :
+// 950 hPa = FL020, 850 hPa = FL050, 700 hPa = FL100 (niveaux et modèle ARPEGE de la WINTEM officielle) ; maintenant, +3 h et +6 h
 async function lireAltitude() {
-  const niv = [['2500 ft', 925], ['FL050', 850], ['FL100', 700]];
+  const niv = [['FL020', 950], ['FL050', 850], ['FL100', 700]];
   const champs = niv.flatMap(([, p]) => [`wind_speed_${p}hPa`, `wind_direction_${p}hPa`, `temperature_${p}hPa`]).join(',');
-  const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=49.4544&longitude=2.1128&hourly=${champs}&wind_speed_unit=kn&forecast_hours=9&models=meteofrance_seamless&timezone=GMT`);
+  const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=49.4544&longitude=2.1128&hourly=${champs}&wind_speed_unit=kn&forecast_hours=9&models=meteofrance_arpege_europe&timezone=GMT`);
   if (!r.ok) return null;
   const h = (await r.json()).hourly;
   if (!h?.time?.length) return null;
