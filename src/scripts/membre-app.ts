@@ -853,7 +853,7 @@ export function vent() {
     const metar = d.metar ?? null;
     const m = st ? ventStation(st) : metar;
     if (!m) { if (!charge) boite.innerHTML = '<p class="vide">Vent indisponible pour le moment.</p>'; return; }
-    if (info) info.innerHTML = st ? `<span class="dot"></span>&nbsp;Station LFOB (seuil 30) · ${hU(st.t)} UTC`
+    if (info) info.innerHTML = st ? `<span class="dot"></span>&nbsp;Station LFOB<span class="seuil"> (seuil 30)</span> · ${hU(st.t)} UTC`
       : `<span class="dot ko"></span>&nbsp;Secours METAR ${metar?.heure ? hU(Date.parse(metar.heure)) + ' UTC' : ''}`;
     const { svg, gauche, droite, sous, qfus } = rendreVent(m, !!st, coneAng);
     boite.innerHTML = `<div class="vd"><div class="t"><span>${gauche}</span>${droite}</div>${sous}${ligneTemperature(st)}${svg}</div><div class="qfus">${qfus}</div>`;
