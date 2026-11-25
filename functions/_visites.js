@@ -12,6 +12,18 @@ let pret = false;
 let sel = { jour: '', valeur: '' };
 
 export const jourParis = (d = new Date()) => new Intl.DateTimeFormat('fr-CA', { timeZone: 'Europe/Paris' }).format(d);
+export const heureParis = (d = new Date()) => Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', hour: 'numeric', hourCycle: 'h23' }).formatToParts(d).find((x) => x.type === 'hour')?.value || 0) % 24;
+
+/** Empreinte du visiteur pour la journée (16 caractères), impossible à relier à une adresse ou à un autre jour. */
+export async function empreinte(db, request, jour) {
+  const ua = request.headers.get('User-Agent') || '';
+  const ip = request.headers.get('CF-Connecting-IP') || '';
+  const h = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${await selDuJour(db, jour)}|${ip}|${ua}`)));
+  return [...h.slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+export const estRobot = (ua) => !ua || ROBOTS.test(ua);
+export const estApercu = (url) => /\.acbt60\.pages\.dev$/.test(url.hostname) || url.hostname === 'localhost';
 
 export async function tableVisites(db) {
   if (pret) return;
@@ -19,7 +31,10 @@ export async function tableVisites(db) {
     db.prepare('CREATE TABLE IF NOT EXISTS reglages (cle TEXT PRIMARY KEY, valeur TEXT NOT NULL)'),
     db.prepare(`CREATE TABLE IF NOT EXISTS visites (
       id INTEGER PRIMARY KEY AUTOINCREMENT, t TEXT NOT NULL, jour TEXT NOT NULL, section TEXT NOT NULL,
-      page TEXT NOT NULL, source TEXT, appareil TEXT, pays TEXT, ville TEXT, v TEXT)`),
+      page TEXT NOT NULL, source TEXT, appareil TEXT, pays TEXT, ville TEXT, v TEXT, heure INTEGER)`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS evenements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, t TEXT NOT NULL, jour TEXT NOT NULL, page TEXT NOT NULL, e TEXT NOT NULL, d TEXT, n REAL, v TEXT)`),
+    db.prepare('CREATE INDEX IF NOT EXISTS evenements_jour ON evenements (jour, e)'),
     db.prepare('CREATE INDEX IF NOT EXISTS visites_jour ON visites (jour, section)'),
   ]);
   pret = true;
@@ -69,7 +84,7 @@ export function appareil(ua) {
   return 'ordinateur';
 }
 
-function pageNette(chemin) {
+export function pageNette(chemin) {
   let p = chemin;
   try { p = decodeURIComponent(p); } catch { /* tel quel */ }
   p = p.toLowerCase().replace(/\/index\.html?$/, '/').replace(/\/{2,}/g, '/');
@@ -84,14 +99,12 @@ export function aCompter(request, rep, url) {
   if (!(request.headers.get('Accept') || '').includes('text/html')) return false;
   const but = `${request.headers.get('Sec-Purpose') || ''} ${request.headers.get('Purpose') || ''} ${request.headers.get('X-Moz') || ''}`;
   if (/prefetch|prerender/i.test(but)) return false;
-  const ua = request.headers.get('User-Agent') || '';
-  if (!ua || ROBOTS.test(ua)) return false;
+  if (estRobot(request.headers.get('User-Agent') || '')) return false;
   const p = url.pathname;
   if (p === '/dashboard' || p.startsWith('/dashboard/')) return false; // TV du club : une seule télé, pas utile
   if (p.startsWith('/api/') || p.startsWith('/admin') || p.startsWith('/statistiques') || p.includes('/api/')) return false;
   // Les adresses d'aperçu (branche.acbt60.pages.dev) ne comptent pas
-  if (/\.acbt60\.pages\.dev$/.test(url.hostname) || url.hostname === 'localhost') return false;
-  return true;
+  return !estApercu(url);
 }
 
 export async function compter(request, env, url) {
@@ -102,17 +115,15 @@ export async function compter(request, env, url) {
     const maintenant = new Date();
     const jour = jourParis(maintenant);
     const ua = request.headers.get('User-Agent') || '';
-    const ip = request.headers.get('CF-Connecting-IP') || '';
-    const empreinte = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${await selDuJour(db, jour)}|${ip}|${ua}`)));
-    const v = [...empreinte.slice(0, 8)].map((b) => b.toString(16).padStart(2, '0')).join('');
+    const v = await empreinte(db, request, jour);
     const cf = request.cf || {};
-    await db.prepare('INSERT INTO visites (t, jour, section, page, source, appareil, pays, ville, v) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)')
+    await db.prepare('INSERT INTO visites (t, jour, section, page, source, appareil, pays, ville, v, heure) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)')
       .bind(maintenant.toISOString(), jour, section(url.pathname), pageNette(url.pathname), provenance(request, url), appareil(ua),
-        cf.country || null, cf.city ? String(cf.city).slice(0, 60) : null, v)
+        cf.country || null, cf.city ? String(cf.city).slice(0, 60) : null, v, heureParis(maintenant))
       .run();
     if (Math.random() < 0.002) {
       const limite = jourParis(new Date(Date.now() - GARDER_JOURS * 864e5));
-      await db.prepare('DELETE FROM visites WHERE jour < ?1').bind(limite).run();
+      await db.batch([db.prepare('DELETE FROM visites WHERE jour < ?1').bind(limite), db.prepare('DELETE FROM evenements WHERE jour < ?1').bind(limite)]);
     }
   } catch { /* le comptage ne doit jamais gêner le site */ }
 }

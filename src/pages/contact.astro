@@ -137,6 +137,7 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
     const detail = () => [visible('formule') && `Formule : ${f.get('formule')}`, visible('creneau') && f.get('creneau') && `Créneaux souhaités : ${f.get('creneau')}`].filter(Boolean).map((x) => x + '\n').join('') + (visible('formule') ? '\n' : '');
     if (!cle) {
       const body = `${detail()}${f.get('message')}\n\n${f.get('nom')}\n${f.get('email')}\n${f.get('tel') || ''}\nÀ recontacter : ${f.get('rappel')}`;
+      window.acbtStat?.('formulaire', String(f.get('objet') || ''));
       location.href = `mailto:${email}?subject=${encodeURIComponent('[Site] ' + f.get('objet'))}&body=${encodeURIComponent(body)}`;
       return;
     }
@@ -162,6 +163,7 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j.success === false) throw new Error(j.message || 'Erreur');
       const parTel = f.get('rappel') === 'Par téléphone';
+      window.acbtStat?.('formulaire', String(f.get('objet') || ''));
       form.reset();
       if (objet) form.objet.value = objet;
       majObjet();
@@ -169,6 +171,7 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
       etat.dataset.etat = 'ok';
       etat.textContent = parTel ? 'Merci, votre message est bien parti. Le club vous rappelle au numéro indiqué.' : 'Merci, votre message est bien parti. Le club vous répond par e-mail.';
     } catch {
+      window.acbtStat?.('formulaire-erreur', String(f.get('objet') || ''));
       etat.dataset.etat = 'ko';
       etat.innerHTML = `Le message n'a pas pu partir. Réessayez, ou écrivez à <a href="mailto:${email}">${email}</a>.`;
     } finally {
