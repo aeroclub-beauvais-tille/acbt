@@ -156,30 +156,44 @@ const onglets = [
         </a>
       </template>
 
-      <!-- Ordre choisi par le club : soleil, METAR, vent et pistes, TAF -->
-      <div class="soleil" id="soleil" aria-label="Soleil à LFOB, heures locales">
-        <div class="sol-frise" aria-hidden="true">
-          <span class="a" data-soleil-a></span><span class="j" data-soleil-j></span>
-          <span class="now" data-soleil-now><em data-soleil-h></em></span>
+      <!-- Ordre sur téléphone (choisi par le club) : soleil, METAR, vent et pistes, TAF, vents en altitude, METAR voisins.
+           Sur PC/tablette : colonne de gauche (soleil, METAR, TAF, altitude) et de droite (vent, voisins), alignées en haut. -->
+      <div class="col-g">
+        <div class="soleil" id="soleil" aria-label="Soleil à LFOB, heures locales">
+          <div class="sol-frise" aria-hidden="true">
+            <span class="a" data-soleil-a></span><span class="j" data-soleil-j></span>
+            <span class="now" data-soleil-now><em data-soleil-h></em></span>
+          </div>
+          <div class="sol-graduations" aria-hidden="true"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span></div>
+          <div class="sol-cases">
+            <div class="aero"><small>Jour aéro.</small><b><span data-soleil="jourAero">--:--</span></b></div>
+            <div><small>Lever</small><b><span data-soleil="lever">--:--</span></b></div>
+            <div><small>Coucher</small><b><span data-soleil="coucher">--:--</span></b></div>
+            <div class="aero"><small>Nuit aéro.</small><b><span data-soleil="nuitAero">--:--</span></b></div>
+          </div>
         </div>
-        <div class="sol-graduations" aria-hidden="true"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span></div>
-        <div class="sol-cases">
-          <div class="aero"><small>Jour aéro.</small><b><span data-soleil="jourAero">--:--</span></b></div>
-          <div><small>Lever</small><b><span data-soleil="lever">--:--</span></b></div>
-          <div><small>Coucher</small><b><span data-soleil="coucher">--:--</span></b></div>
-          <div class="aero"><small>Nuit aéro.</small><b><span data-soleil="nuitAero">--:--</span></b></div>
+
+        <div class="carte-metar"><Metar /></div>
+
+        <div class="carte-metar carte-taf"><Taf /></div>
+
+        <div class="bloc-alt">
+          <h2 class="bt bt-suite">Vents en altitude LFOB <span class="bt-nb">kt · modèle AROME</span></h2>
+          <div class="carte-alt" id="altitude" data-api={url('/membre/api/aero')}><p class="vide">Chargement…</p></div>
         </div>
       </div>
 
-      <div class="carte-metar"><Metar /></div>
+      <div class="col-d">
+        <div class="bloc-vent">
+          <h2 class="bt bt-suite">Vent et pistes <span class="bt-nb" id="vent-info"></span></h2>
+          <div class="carte-vent" id="vent" data-api={url('/membre/api/vent')}><p class="vide">Chargement du vent…</p></div>
+        </div>
 
-      <div class="bloc-vent">
-        <h2 class="bt bt-suite">Vent et pistes <span class="bt-nb" id="vent-info"></span></h2>
-        <div class="carte-vent" id="vent" data-api={url('/membre/api/vent')}><p class="vide">Chargement du vent…</p></div>
+        <div class="bloc-voisins">
+          <h2 class="bt bt-suite">METAR voisins <span class="bt-nb" id="voisins-h"></span></h2>
+          <div class="carte-voisins" id="voisins"><p class="vide">Chargement…</p></div>
+        </div>
       </div>
-
-      <div class="carte-metar carte-taf"><Taf /></div>
-
 
       <p class="aide-ios" id="aide-ios" hidden>Sur iPhone : touchez <b>Partager</b> en bas de Safari, puis <b>Sur l'écran d'accueil</b>.</p>
     </section>
@@ -352,7 +366,7 @@ const onglets = [
 </MembreApp>
 
 <script>
-  import { enregistrer, boutonInstaller, seDeconnecter, badges, maa, maaEnLigne, onglets, signalement, theme, avions, soleil, flotte, notam, vent } from '../../scripts/membre-app';
+  import { enregistrer, boutonInstaller, seDeconnecter, badges, maa, maaEnLigne, onglets, signalement, theme, avions, soleil, flotte, notam, vent, aero } from '../../scripts/membre-app';
   enregistrer();
   theme(document.getElementById('btn-theme'));
   const montrer = onglets();
@@ -365,6 +379,7 @@ const onglets = [
   flotte();
   notam();
   vent();
+  aero();
   setInterval(maaEnLigne, 5 * 60_000); // nouveaux MAA reçus par mail
   setInterval(maa, 60_000); // le MAA peut commencer ou se terminer pendant la consultation
   signalement();
@@ -470,6 +485,35 @@ const onglets = [
   .bt-suite { margin-top: 22px; }
   .bt-nb :global(.dot) { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); vertical-align: 0; }
   .bt-nb :global(.dot.ko) { background: var(--bad); }
+  /* Téléphone : les deux colonnes s'effacent, l'ordre du club est rétabli (soleil, METAR, vent, TAF, altitude, voisins) */
+  #accueil:not([hidden]) { display: flex; flex-direction: column; }
+  .col-g, .col-d { display: contents; }
+  #lvp, #maa-zone, #maa-rien { order: 0; }
+  .soleil { order: 1; } .carte-metar { order: 2; } .bloc-vent { order: 3; } .carte-taf { order: 4; } .bloc-alt { order: 5; } .bloc-voisins { order: 6; } .aide-ios { order: 9; }
+  .carte-alt, .carte-voisins { padding: 12px 12px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
+  .carte-alt { overflow-x: auto; }
+  .carte-alt :global(.alt) { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .carte-alt :global(.alt th) { font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); text-align: center; padding: 0 4px 6px; }
+  .carte-alt :global(.alt th:first-child) { text-align: left; }
+  .carte-alt :global(.alt td) { padding: 7px 4px; border-top: 1px solid var(--line); font-size: .95rem; font-weight: 700; white-space: nowrap; text-align: center; color: var(--ink); }
+  .carte-alt :global(.alt td:first-child) { font-family: var(--mono); text-align: left; }
+  .carte-alt :global(.alt .fl) { display: inline-block; width: 15px; height: 15px; vertical-align: -2px; margin-right: 4px; color: var(--accent); }
+  .carte-alt :global(.alt .t) { color: var(--muted); font-weight: 600; }
+  @media (max-width: 480px) {
+    .carte-alt { padding-inline: 8px; }
+    .carte-alt :global(.alt th) { font-size: .62rem; letter-spacing: .02em; padding-inline: 2px; }
+    .carte-alt :global(.alt td) { font-size: .8rem; padding-inline: 2px; }
+    .carte-alt :global(.alt .fl) { width: 11px; height: 11px; margin-right: 2px; vertical-align: -1px; }
+    .carte-alt :global(.alt .t) { display: block; font-size: .72rem; }
+  }
+  .carte-voisins { display: grid; gap: 8px; }
+  .carte-voisins :global(.mv) { font-family: var(--mono); font-size: .84rem; line-height: 1.4; color: var(--text); padding: 7px 10px 7px 12px; border-radius: 8px; background: var(--bg); border-left: 4px solid var(--k, var(--muted)); overflow-wrap: anywhere; }
+  .carte-voisins :global(.mv b) { color: var(--ink); }
+  .carte-voisins :global(.mv .nm) { font-family: var(--font); font-weight: 700; color: var(--muted); font-size: .74rem; margin-left: 6px; }
+  #voisins-h { display: flex; gap: 10px; }
+  #voisins-h :global(.lgc) { display: inline-flex; align-items: center; gap: 4px; }
+  #voisins-h :global(.lgc i) { width: 8px; height: 8px; border-radius: 50%; background: var(--k); }
+  .bloc-voisins :global(.VFR) { --k: var(--ok); } .bloc-voisins :global(.MVFR) { --k: var(--accent); } .bloc-voisins :global(.IFR) { --k: var(--bad); } .bloc-voisins :global(.LIFR) { --k: #c050ff; }
   .carte-vent { padding: 12px 10px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
   .carte-vent > .vide { color: var(--muted); font-size: .86rem; font-weight: 600; margin: 0; padding: 8px 4px; }
   .carte-vent :global(.vd) { display: flex; flex-direction: column; align-items: center; }
@@ -671,20 +715,15 @@ const onglets = [
   @media (min-width: 1100px) {
     .content { max-width: 1440px; padding-inline: 28px; }
     .topbar { padding-inline: max(14px, calc((100% - 1440px) / 2 + 28px)); }
-    /* Météo : alertes sur toute la largeur ; à gauche soleil, METAR et TAF ; à droite vent et pistes */
-    #accueil:not([hidden]) { max-width: none; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); grid-template-rows: auto auto auto auto 1fr; gap: 14px 22px; align-items: start; }
-    #accueil > * { margin: 0 !important; }
-    #accueil > #lvp, #accueil > #maa-zone, #accueil > #maa-rien { grid-column: 1 / -1; }
-    #accueil > #lvp { grid-row: 1; } #accueil > #maa-zone, #accueil > #maa-rien { grid-row: 2; }
-    #accueil > .soleil { grid-column: 1; grid-row: 3; }
-    #accueil > .carte-metar:not(.carte-taf) { grid-column: 1; grid-row: 4; }
-    /* Le TAF s'étire pour que les deux colonnes finissent à la même hauteur */
-    #accueil > .carte-taf { grid-column: 1; grid-row: 5; align-self: stretch; }
-    /* Vent et pistes : une seule carte, titre compris, alignée en haut et en bas sur la colonne de gauche */
-    #accueil > .bloc-vent { grid-column: 2; grid-row: 3 / 6; align-self: stretch; display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 14px 10px; }
-    #accueil > .bloc-vent > .bt-suite { margin: 0 2px 6px; }
-    #accueil > .bloc-vent > .carte-vent { flex: 1; border: 0; padding: 0; background: none; display: flex; flex-direction: column; justify-content: center; }
-    #accueil > .aide-ios { grid-column: 1 / -1; grid-row: 6; }
+    /* Météo : alertes sur toute la largeur ; à gauche soleil, METAR, TAF et altitude ; à droite vent et voisins. Alignées en haut, chaque case à sa taille. */
+    #accueil:not([hidden]) { max-width: none; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px 22px; align-items: start; }
+    #accueil > #lvp, #accueil > #maa-zone, #accueil > #maa-rien, #accueil > .aide-ios { grid-column: 1 / -1; margin: 0; }
+    .col-g, .col-d { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .col-g > *, .col-d > * { margin: 0 !important; }
+    /* Vent, altitude et voisins : une seule carte, titre compris */
+    .bloc-vent, .bloc-alt, .bloc-voisins { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 14px 10px; }
+    .bloc-vent > .bt-suite, .bloc-alt > .bt-suite, .bloc-voisins > .bt-suite { margin: 0 2px 8px; }
+    .carte-vent, .carte-alt, .carte-voisins { border: 0; padding: 0; background: none; }
     /* NOTAM sur deux colonnes ; flotte sur quatre colonnes sur un très grand écran (comme la TV) */
     #notam-liste { columns: 2; column-gap: 22px; }
     #notam-liste > :global(*) { break-inside: avoid; }

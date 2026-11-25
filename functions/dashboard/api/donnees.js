@@ -111,7 +111,7 @@ async function lireHistorique() {
 
 // METAR bruts des terrains voisins (aviationweather.gov, sans clé), le plus récent de chacun, dans l'ordre ci-dessous
 const VOISINS = [['LFAQ', 'Albert-Bray'], ['LFAT', 'Le Touquet'], ['LFOP', 'Rouen'], ['LFOE', 'Évreux'], ['LFPT', 'Pontoise'], ['LFPG', 'Roissy-CDG'], ['LFPB', 'Le Bourget'], ['LFPO', 'Orly']];
-async function lireVoisins() {
+export async function lireVoisins() {
   const r = await fetch(`https://aviationweather.gov/api/data/metar?ids=${VOISINS.map((v) => v[0]).join(',')}&hours=2&format=json`, { headers: { 'User-Agent': 'ACBT tableau de bord' } });
   if (!r.ok) return null;
   const l = await r.json();
@@ -122,7 +122,7 @@ async function lireVoisins() {
 
 // Vents et températures en altitude au-dessus de LFOB (Open-Meteo, modèle Météo-France AROME, sans clé) :
 // 950 hPa = FL020, 850 hPa = FL050, 700 hPa = FL100 (niveaux de la WINTEM officielle ; modèle AROME comme la WINTEM du club) ; maintenant, +3 h et +6 h
-async function lireAltitude() {
+export async function lireAltitude() {
   const niv = [['FL020', 950], ['FL050', 850], ['FL100', 700]];
   const champs = niv.flatMap(([, p]) => [`wind_speed_${p}hPa`, `wind_direction_${p}hPa`, `temperature_${p}hPa`]).join(',');
   const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=49.4544&longitude=2.1128&hourly=${champs}&wind_speed_unit=kn&forecast_hours=9&models=meteofrance_arome_france&timezone=GMT`);
