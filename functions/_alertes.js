@@ -34,7 +34,7 @@ export async function noterEnvoi(db, quoi) {
   await db.prepare("INSERT OR REPLACE INTO reglages (cle, valeur) VALUES ('dernier_push', ?1)").bind(JSON.stringify({ ...quoi, date: new Date().toISOString() })).run();
 }
 
-/** Mot de passe admin : MOT_DE_PASSE_ADMIN, ou à défaut celui des archives Perfs (ARCHIVE_PASSWORD). */
+/** Mot de passe admin, un seul pour tout le site : MOT_DE_PASSE_ADMIN (l'ancien ARCHIVE_PASSWORD reste accepté tant qu'il n'est pas défini). */
 export function estAdmin(env, motDePasse) {
   const attendu = String(env.MOT_DE_PASSE_ADMIN || env.ARCHIVE_PASSWORD || '').trim();
   return !!attendu && egal(String(motDePasse || '').trim(), attendu);
