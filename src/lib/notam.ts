@@ -1,7 +1,7 @@
 // Liste des NOTAM : même rendu sur le tableau de bord TV et dans l'espace membre.
 // Données : API /dashboard/api/donnees (TV) ou /membre/api/notam (appli), toutes deux via lireNotam() (FAA NMS).
 
-export interface Notam { numero: string; snow?: boolean; sujet: string | null; debut: string | null; fin: string | null; texte: string }
+export interface Notam { numero: string; snow?: boolean; sujet: string | null; debut: string | null; fin: string | null; texte: string; horaires?: string | null }
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const p2 = (n: number) => String(n).padStart(2, '0');
@@ -54,11 +54,25 @@ export const notamIndispo = (raison?: string) => raison === 'cle' ? 'En attente 
 // Détail d'un NOTAM (appli, au toucher) : catégorie, validité en LT et UTC, texte complet
 const hLoc = (d: Date) => d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).replace(' ', ' · ');
 const deux = (d: Date) => `${hLoc(d)} LT <small>(${jmUtc(d)} · ${hUtc(d)} UTC)</small>`;
+// Créneaux du champ D) (UTC) traduits en LT : « 1500-1545 » → « 16:00 → 16:45 LT (15:00 → 15:45 UTC) »
+function horairesLT(h: string, ref: Date | null) {
+  const decalage = (jour: Date) => { const p = new Date(jour.toLocaleString('en-US', { timeZone: 'Europe/Paris' })); const u = new Date(jour.toLocaleString('en-US', { timeZone: 'UTC' })); return Math.round((p.getTime() - u.getTime()) / 60000); };
+  const dec = decalage(new Date(Math.max(Date.now(), ref?.getTime() ?? 0)));
+  const loc = (hhmm: string) => { const m = (+hhmm.slice(0, 2) * 60 + +hhmm.slice(2) + dec + 1440) % 1440; return `${p2(Math.floor(m / 60))}:${p2(m % 60)}`; };
+  const fmt = (hhmm: string) => `${hhmm.slice(0, 2)}:${hhmm.slice(2)}`;
+  const creneaux = [...h.matchAll(/\b([0-2]\d[0-5]\d)-([0-2]\d[0-5]\d)\b/g)];
+  if (!creneaux.length) return esc(h);
+  const lt = creneaux.map(([, a, b]) => `${loc(a)} → ${loc(b)}`).join(', ');
+  const MOTS: Record<string, string> = { DAILY: 'chaque jour', MON: 'lun', TUE: 'mar', WED: 'mer', THU: 'jeu', FRI: 'ven', SAT: 'sam', SUN: 'dim', EXC: 'sauf', HOL: 'jours fériés', AND: 'et' };
+  const reste = h.replace(/\b[0-2]\d[0-5]\d-[0-2]\d[0-5]\d\b/g, '').replace(/[\s,]+/g, ' ').trim().replace(/\b[A-Z]{3,5}\b/g, (m) => MOTS[m] ?? m).replace(/^./, (c) => c.toUpperCase());
+  return `${esc(reste ? reste + ' · ' : 'Chaque jour · ')}${lt} LT <small>(${creneaux.map(([, a, b]) => `${fmt(a)} → ${fmt(b)}`).join(', ')} UTC · ${esc(h)})</small>`;
+}
 export function detailNotam(x: Notam) {
   const [, l, nom, coul] = x.snow ? [null, 'SNOW', 'SNOWTAM · état des pistes', 'neige'] : cat(x.sujet);
   const d = utc(x.debut), f = x.fin && /^\d{4}-/.test(x.fin) ? new Date(x.fin) : null;
   const on = actif(x.debut);
   return `<div class="nd-tete"><span class="ic ${coul}${l.length > 2 && !l.startsWith('<') ? ' l' + l.length : ''}">${l}</span><div><b>${esc(nom)}</b><span>NOTAM ${esc(x.numero || '')}</span></div><em class="${on ? 'on' : ''}">${on ? 'ACTIF' : 'À VENIR'}</em></div>
     <dl class="nd-dates"><div><dt>Début</dt><dd>${d ? deux(d) : '—'}</dd></div><div><dt>Fin</dt><dd>${x.fin === 'PERM' ? 'permanent' : f ? deux(f) : '—'}</dd></div></dl>
+    ${x.horaires ? `<div class="nd-horaires"><dt>Horaires</dt><dd>${horairesLT(x.horaires, d)}</dd></div>` : ''}
     <p class="nd-texte">${texteNotam(x.texte)}</p>`;
 }
