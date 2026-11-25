@@ -316,7 +316,7 @@ function cartesAero() {
   const indispo = 'Carte indisponible pour le moment';
   // Panneau de gauche : carte des fronts du DWD (isobares et fronts au sol), rechargée seulement à une nouvelle analyse
   if (c?.fronts) {
-    if (frontsAffiches !== c.fronts) { $('temsi').innerHTML = fronts('/dashboard/api/fronts', c.fronts) + LFOB_REPERE; frontsAffiches = c.fronts; }
+    if (frontsAffiches !== c.fronts) { $('temsi').innerHTML = fronts('/dashboard/api/fronts', c.fronts); /* pas de repère LFOB : la carte des fronts n'est pas toujours cadrée pareil */ frontsAffiches = c.fronts; }
     $('temsi-h').textContent = `analyse ${heureFronts(c.fronts)} · DWD`;
   } else { $('temsi').innerHTML = vide(indispo); $('temsi-h').textContent = ''; frontsAffiches = ''; }
   imageWintem();
@@ -439,7 +439,7 @@ function reservations() {
   // Vols effectués aujourd'hui (temps volé Aerogest, la bande verte) et leur durée totale, vol en cours compris
   const vols = avions.flatMap((a) => a.volsJour ?? []);
   const total = vols.reduce((t, v) => t + Math.max(0, (v.fin ? mins(v.fin, auj) : now) - mins(v.debut, auj)), 0);
-  $('tl-info').textContent = `${vols.length} vol${vols.length > 1 ? 's' : ''} effectué${vols.length > 1 ? 's' : ''} (${Math.floor(total / 60)}:${p2(total % 60)})${enCours ? ` · ${enCours} en cours` : ''} · heures locales`;
+  $('tl-info').textContent = `${vols.length} vol${vols.length > 1 ? 's' : ''} effectué${vols.length > 1 ? 's' : ''} (${Math.floor(total / 60)}:${p2(total % 60)})${enCours ? ` · ${enCours} en cours` : ''} · LT`;
 
 }
 
@@ -709,7 +709,21 @@ function vigilanceBloc() {
   panneau.hidden = !v;
   if (!v) return;
   // Une pastille par département (couleur de vigilance) ; le détail reste sur le site de Météo-France
-  boite.innerHTML = v.departements.map((d) => `<span class="vgp"><i class="c${d.couleur}"></i>${esc(d.nom)}</span>`).join('');
+  // Dessous, la place laissée par les MAA : chaque phénomène une seule fois, avec ses départements et ses heures
+  const ph = new Map<string, { phenomene: string; couleur: number; deps: string[]; debut: string; fin: string }>();
+  for (const d of v.departements) for (const p of d.phenomenes || []) {
+    if (p.couleur < 2) continue;
+    const k = `${p.phenomene}|${p.couleur}`;
+    const x = ph.get(k) || ph.set(k, { phenomene: p.phenomene, couleur: p.couleur, deps: [], debut: p.debut, fin: p.fin }).get(k)!;
+    if (!x.deps.includes(d.nom)) x.deps.push(d.nom);
+    if (p.debut && p.debut < x.debut) x.debut = p.debut;
+    if (p.fin && p.fin > x.fin) x.fin = p.fin;
+  }
+  const quand = (iso: string) => { const d = utc(iso); return d ? (jmLoc(d) === jmLoc(new Date()) ? hLoc(d) : `${jmLoc(d)} ${hLoc(d)}`) : '…'; };
+  const NIV = ['', '', 'jaune', 'orange', 'rouge'];
+  const det = [...ph.values()].sort((a, b) => b.couleur - a.couleur).map((x) =>
+    `<div class="vgd"><i class="c${x.couleur}"></i><div><b>${esc(x.phenomene.charAt(0).toUpperCase() + x.phenomene.slice(1))} <small>${NIV[x.couleur]}</small></b><span>${esc(x.deps.join(', '))} · ${quand(x.debut)} → ${quand(x.fin)} LT</span></div></div>`).join('');
+  boite.innerHTML = `<div class="vg-pills">${v.departements.map((d) => `<span class="vgp"><i class="c${d.couleur}"></i>${esc(d.nom)}</span>`).join('')}</div>${det ? `<div class="vg-det">${det}</div>` : ''}`;
 }
 
 // Nouvelle version du site publiée : la page se recharge toute seule (les fichiers /_astro/ changent de nom à chaque version)
@@ -922,13 +936,13 @@ function alerteAAL() {
   const l = fermetures().slice(0, 2);
   const sc = $('scene'), band = $('aal');
   // LVP : bandeau rouge toujours en premier, au-dessus des fermetures
-  const lvp = D?.lvp?.actif ? `<div class="fz on lvp"><i class="lvp-logo">LVP</i><div><b>Procédures par faible visibilité activées${D.lvp.depuis ? ` à ${hLoc(utc(D.lvp.depuis)!)} LT` : ''}</b></div></div>` : '';
+  const lvp = D?.lvp?.actif ? `<div class="fz on lvp"><i class="lvp-logo">LVP</i><div><b>Procédures par faible visibilité activées${D.lvp.depuis ? ` depuis ${hLoc(utc(D.lvp.depuis)!)} LT` : ''}</b></div></div>` : '';
   if (!l.length && !lvp) { band.hidden = true; band.innerHTML = ''; sc.classList.remove('avec-aal'); return; }
   band.innerHTML = lvp + l.map((f) => {
     const titre = f.aal ? (f.enCours ? 'Aire de trafic nord fermée' : 'Fermeture prévue de l’aire de trafic nord')
       : (f.enCours ? `Piste ${f.piste} fermée` : `Fermeture prévue de la piste ${f.piste}`);
     const quand = f.enCours ? `jusqu’au ${f.fin}` : `du ${f.debut} au ${f.fin}`;
-    return `<div class="fz ${f.enCours ? 'on' : 'prevu'}"><i>${PANNEAU}</i><div><b>${esc(titre)}</b><span>${quand} (heure locale)</span></div><em>NOTAM ${esc(f.ref)}</em></div>`;
+    return `<div class="fz ${f.enCours ? 'on' : 'prevu'}"><i>${PANNEAU}</i><div><b>${esc(titre)}</b><span>${quand} LT</span></div><em>NOTAM ${esc(f.ref)}</em></div>`;
   }).join('');
   band.hidden = false; sc.classList.add('avec-aal');
 }

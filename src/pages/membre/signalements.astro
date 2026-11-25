@@ -269,4 +269,12 @@ const avions = (await getCollection('avions', (a) => a.data.actif))
   #al-resultat { margin-top: 10px; }
   .note-ios { font-size: .84rem; color: var(--muted); margin: 10px 0 0; }
   [hidden] { display: none !important; }
+
+  /* PC : bandeau aligné sur le contenu, page plus large sur deux colonnes (demande du club, 25/11) */
+  @media (min-width: 1100px) {
+    .haut { padding-inline: max(16px, calc((100% - 1400px) / 2 + 8px)); min-height: 64px; }
+    .haut span { font-size: 1.2rem; }
+    .corps { max-width: 1400px; padding: 26px 28px 48px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+    .carte { padding: 26px 26px; }
+  }
 </style>
