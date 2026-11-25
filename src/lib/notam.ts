@@ -1,7 +1,7 @@
 // Liste des NOTAM : même rendu sur le tableau de bord TV et dans l'espace membre.
 // Données : API /dashboard/api/donnees (TV) ou /membre/api/notam (appli), toutes deux via lireNotam() (FAA NMS).
 
-export interface Notam { numero: string; snow?: boolean; sujet: string | null; debut: string | null; fin: string | null; texte: string; horaires?: string | null }
+export interface Notam { numero: string; snow?: boolean; sujet: string | null; debut: string | null; fin: string | null; texte: string; horaires?: string | null; brut?: string | null }
 
 const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
 const p2 = (n: number) => String(n).padStart(2, '0');
@@ -74,5 +74,6 @@ export function detailNotam(x: Notam) {
   return `<div class="nd-tete"><span class="ic ${coul}${l.length > 2 && !l.startsWith('<') ? ' l' + l.length : ''}">${l}</span><div><b>${esc(nom)}</b><span>NOTAM ${esc(x.numero || '')}</span></div><em class="${on ? 'on' : ''}">${on ? 'ACTIF' : 'À VENIR'}</em></div>
     <dl class="nd-dates"><div><dt>Début</dt><dd>${d ? deux(d) : '—'}</dd></div><div><dt>Fin</dt><dd>${x.fin === 'PERM' ? 'permanent' : f ? deux(f) : '—'}</dd></div></dl>
     ${x.horaires ? `<div class="nd-horaires"><dt>Horaires</dt><dd>${horairesLT(x.horaires, d)}</dd></div>` : ''}
-    <p class="nd-texte">${texteNotam(x.texte)}</p>`;
+    <p class="nd-texte">${texteNotam(x.texte)}</p>
+    ${x.brut ? `<h4 class="nd-brut-t">Message brut</h4><pre class="nd-brut">${esc(x.brut)}</pre>` : ''}`;
 }
