@@ -26,5 +26,5 @@ export const legendeVoisins = () => ['VFR', 'MVFR', 'IFR', 'LIFR'].map((c) => `<
 export const rendreVoisins = (l: Voisin[]) => l.map((m) => {
   const r = m.raw.replace(/^(METAR|SPECI)\s+/, '');
   const [id, ...reste] = r.split(' ');
-  return `<div class="mv ${categorie(r)}"><b>${esc(id)}</b><span class="nm">${esc(m.nom)}</span><br>${esc(reste.join(' '))}</div>`;
+  return `<div class="mv ${categorie(r)}"><b>${esc(id)}</b><span class="nm">${esc(m.nom)}</span><br><span class="mr">${esc(reste.join(' '))}</span></div>`;
 }).join('');
