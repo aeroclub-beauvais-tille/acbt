@@ -58,15 +58,17 @@ export function rendreVent(m: Vent | null | undefined, station: boolean, coneAng
   const gauche = !m ? '—' : f === 0 ? 'Calme' : m.ventDir === 'VRB' ? 'VRB' : dir != null ? `${String(dir).padStart(3, '0')}°` : '—';
   const sous = (g && f ? `<div class="vraf">rafales ${g} kt</div>` : '') + (station ? '' : m?.ventVar ? `<div class="vsous">variable ${String(m.ventVar[0]).padStart(3, '0')}° à ${String(m.ventVar[1]).padStart(3, '0')}°</div>` : m?.ventDir === 'VRB' && f ? '<div class="vsous">direction variable</div>' : '');
   const droite = f == null || f === 0 ? '' : `<i class="sep"></i><span>${f} kt</span>`;
-  // Composantes pour chaque sens de piste. Piste préférentielle sur CHAQUE piste = le sens qui a le vent de face
-  // (même par vent faible, dès qu'une direction est connue), sauf vent vraiment plein travers
-  // (à moins de 10° de la perpendiculaire) : aucun sens n'est alors mis en avant pour cette piste
+  // Composantes pour chaque sens de piste. Piste préférentielle sur CHAQUE piste = le sens qui a le vent de face ;
+  // par vent plein travers (à moins de 10° de la perpendiculaire) ou sans composante de face, les deux sens sont mis en avant
   const comp = (cap: number, v: number) => { const a = ((dir! - cap) * Math.PI) / 180; return { face: Math.round(v * Math.cos(a)), trav: Math.round(v * Math.sin(a)) }; };
   const conseilles = new Set<string>();
   if (dir != null && f) {
     for (const p of PISTES) {
       const cosA = Math.cos(((dir - p.a[1]) * Math.PI) / 180);
-      if (Math.abs(cosA) >= Math.sin((10 * Math.PI) / 180)) conseilles.add(cosA > 0 ? p.a[0] : p.b[0]);
+      // Vent dans l'axe à 10° près et au moins 1 kt de face : un seul QFU conseillé.
+      // Sinon (vent de travers pur, ou composante de face nulle) : les deux QFU de la piste se valent
+      if (Math.abs(cosA) >= Math.sin((10 * Math.PI) / 180) && Math.round(Math.abs(f * cosA)) >= 1) conseilles.add(cosA > 0 ? p.a[0] : p.b[0]);
+      else { conseilles.add(p.a[0]); conseilles.add(p.b[0]); }
     }
   }
   const qfus = PISTES.flatMap((p) => [p.a, p.b]).map(([n, cap]) => {
