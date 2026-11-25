@@ -320,7 +320,7 @@ const outilsAdmin = [
           </a>
         ))}
       </div>
-      <button type="button" class="adm-quitter" id="adm-quitter">Quitter le mode admin sur cet appareil</button>
+      <button type="button" class="adm-quitter" id="adm-sortir">Quitter le mode admin (déconnexion)</button>
     </section>
 
     <!-- PRÉPARER -->
@@ -422,10 +422,11 @@ const outilsAdmin = [
   setInterval(maa, 60_000); // le MAA peut commencer ou se terminer pendant la consultation
   signalement();
   import('../../scripts/membre-messages').then((m) => m.messagesClub());
-  document.getElementById('adm-quitter')?.addEventListener('click', () => {
-    if (!confirm('Quitter le mode admin sur cet appareil ? L\'onglet Admin disparaîtra.')) return;
+  // Quitter le mode admin = se déconnecter : un membre classique se reconnecte avec le mot de passe du club
+  document.getElementById('adm-sortir')?.addEventListener('click', () => {
+    if (!confirm('Quitter le mode admin ? Vous serez déconnecté ; reconnectez-vous ensuite avec le mot de passe du club.')) return;
     try { localStorage.removeItem('acbt-admin-alertes'); localStorage.removeItem('acbt-admin-jeton'); localStorage.removeItem('acbt-admin-stats'); } catch { /* privé */ }
-    location.replace(location.pathname);
+    seDeconnecter();
   });
   try { if (localStorage.getItem('acbt-admin-jeton')) import('../../scripts/membre-admin').then((m) => m.modeAdmin()); } catch { /* privé */ }
   boutonInstaller(document.getElementById('installer') as HTMLButtonElement, document.getElementById('aide-ios'));
