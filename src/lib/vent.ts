@@ -3,7 +3,26 @@
 // la petite piste au nord de la grande), cône bleu d'où vient le vent, puis les composantes pour chaque sens de piste.
 
 // Mesure de la station Météo-France de Beauvais-Tillé (60639001), une toutes les 6 min
-export interface Obs { dir: number | null; f: number; g: number | null; t: number }
+export interface Obs { dir: number | null; f: number; g: number | null; t: number; tc?: number | null; hr?: number | null; vkmh?: number | null }
+
+// Température ressentie (°C) : refroidissement éolien (formule JAG/TI, celle de Météo-France et d'Environnement Canada)
+// par temps froid et venté, indice de chaleur (Rothfusz, NOAA) par forte chaleur ; sinon la température mesurée
+export function ressentie(tc: number, vkmh: number, hr: number | null) {
+  if (tc <= 10 && vkmh >= 4.8) { const v = vkmh ** 0.16; return 13.12 + 0.6215 * tc - 11.37 * v + 0.3965 * tc * v; }
+  if (tc >= 27 && hr != null && hr >= 40) {
+    const T = tc * 9 / 5 + 32, R = hr;
+    const hi = -42.379 + 2.04901523 * T + 10.14333127 * R - 0.22475541 * T * R - 0.00683783 * T * T - 0.05481717 * R * R + 0.00122874 * T * T * R + 0.00085282 * T * R * R - 0.00000199 * T * T * R * R;
+    return Math.max(tc, (hi - 32) * 5 / 9);
+  }
+  return tc;
+}
+const fr1 = (x: number) => x.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+// Ligne « Température 6,4 °C · ressentie 4 °C » sous le vent (mesure de la station seulement)
+export function ligneTemperature(st: Obs | null | undefined) {
+  if (!st || st.tc == null) return '';
+  const r = Math.round(ressentie(st.tc, st.vkmh ?? 0, st.hr ?? null));
+  return `<div class="vtemp">Température <b>${fr1(st.tc)} °C</b><i></i>ressentie <b>${r} °C</b></div>`;
+}
 // Vent à afficher (station ou METAR)
 export interface Vent { ventDir: number | 'VRB' | string | null; ventForce: number | null; rafales: number | null; ventVar?: [number, number] | null }
 
@@ -92,5 +111,8 @@ export function lireMesure(l: unknown): Obs | null {
   if (!o) return null;
   const kt = (ms: number) => Math.round(ms * 1.94384);
   const f = kt(o.ff), g = typeof o.raf10 === 'number' ? kt(o.raf10) : null;
-  return { dir: f > 0 && typeof o.dd === 'number' ? Math.round(o.dd / 10) * 10 % 360 || 360 : null, f, g: g != null && g - f >= 5 && g >= 10 ? g : null, t: Date.parse(o.validity_time) };
+  // t : kelvins ; u : humidité relative (%) ; ff : m/s (vent moyen à 10 m, pour la température ressentie)
+  const tc = typeof o.t === 'number' && o.t > 150 ? Math.round((o.t - 273.15) * 10) / 10 : null;
+  return { dir: f > 0 && typeof o.dd === 'number' ? Math.round(o.dd / 10) * 10 % 360 || 360 : null, f, g: g != null && g - f >= 5 && g >= 10 ? g : null, t: Date.parse(o.validity_time),
+    tc, hr: typeof o.u === 'number' ? o.u : null, vkmh: o.ff * 3.6 };
 }

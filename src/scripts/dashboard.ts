@@ -1,7 +1,7 @@
 // Tableau de bord TV du club : quatre écrans en alternance (Accueil, Réservations, Météo, Radar et satellite).
 // La scène est dessinée en 1920 × 1080 puis mise à l'échelle de l'écran. Données : /dashboard/api/donnees (chaque minute).
 import { ephemeride, heureLocale, type Ephemeride } from '../lib/soleil';
-import { rendreVent, lireMesure, type Obs } from '../lib/vent';
+import { rendreVent, lireMesure, ligneTemperature, type Obs } from '../lib/vent';
 import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
 import { wintem, fronts, heureFronts, heureEch, NIVEAUX, CSS_CARTES, type Cartes } from '../lib/cartes';
 import { court, nomCourt, quiResa as quiResaNoms, typeVol } from '../lib/noms-resa';
@@ -612,7 +612,7 @@ function ventBloc() {
     : metar ? `<span class="dot ko"></span>&nbsp;Secours METAR (station muette) ${metar.heure ? hUtc(new Date(metar.heure)) + ' UTC' : ''}` : '';
   const { svg: s, gauche, droite, sous, qfus } = rendreVent(m, !!st, coneAng);
   const avant = $('vent').querySelector('.qfus')?.innerHTML;
-  $('vent').innerHTML = `<div class="vd"><div class="t"><span>${gauche}</span>${droite}</div>${sous}${s}</div><div class="qfus">${qfus}</div>`;
+  $('vent').innerHTML = `<div class="vd"><div class="t"><span>${gauche}</span>${droite}</div>${sous}${ligneTemperature(st)}${s}</div><div class="qfus">${qfus}</div>`;
   const g2 = $('vent').querySelector<SVGGElement>('.cone');
   if (g2) {
     const v = Number(g2.dataset.vers);

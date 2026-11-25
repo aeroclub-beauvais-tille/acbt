@@ -1,7 +1,7 @@
 // Fonctions de l'appli « Espace membre » côté téléphone : connexion, installation, documents hors ligne.
 import { url } from '../lib/utils';
 import { ephemeride, heureLocale } from '../lib/soleil';
-import { rendreVent, lireMesure, ventStation, type Vent } from '../lib/vent';
+import { rendreVent, lireMesure, ventStation, ligneTemperature, type Vent } from '../lib/vent';
 import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
 import { quiResa } from '../lib/noms-resa';
 
@@ -815,7 +815,7 @@ export function vent() {
     if (info) info.innerHTML = st ? `<span class="dot"></span>&nbsp;Station LFOB (seuil 30) · ${hU(st.t)} UTC`
       : `<span class="dot ko"></span>&nbsp;Secours METAR ${metar?.heure ? hU(Date.parse(metar.heure)) + ' UTC' : ''}`;
     const { svg, gauche, droite, sous, qfus } = rendreVent(m, !!st, coneAng);
-    boite.innerHTML = `<div class="vd"><div class="t"><span>${gauche}</span>${droite}</div>${sous}${svg}</div><div class="qfus">${qfus}</div>`;
+    boite.innerHTML = `<div class="vd"><div class="t"><span>${gauche}</span>${droite}</div>${sous}${ligneTemperature(st)}${svg}</div><div class="qfus">${qfus}</div>`;
     const g = boite.querySelector<SVGGElement>('.cone');
     if (g) {
       const v = Number(g.dataset.vers);
