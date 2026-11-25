@@ -43,7 +43,7 @@ import { url } from '../../lib/utils';
         <section class="tuiles" id="tuiles"></section>
         <p class="sous parties" id="parties"></p>
 
-        <section class="carte">
+        <section class="carte large">
           <div class="tete"><h2 id="g-titre">Visiteurs par jour</h2>
             <span class="legende" id="g-legende"><span><i class="sw"></i>Visiteurs</span><span><i class="sw ligne"></i>Tendance (moyenne sur 7 jours)</span></span></div>
           <div class="graphe" id="graphe" data-c="bleu"></div>
@@ -153,7 +153,8 @@ import { url } from '../../lib/utils';
         ${x.x ? `<span class="x">${esc(x.x)}</span>` : ''}</div>`).join('')}${ligne}</div>`;
   }
 
-  const moyenne7 = (v: number[]) => v.map((_, i) => (i < 6 ? null : v.slice(i - 6, i + 1).reduce((a, b) => a + b, 0) / 7));
+  // Moyenne sur les 7 derniers jours (moins au début, pour que la courbe démarre dès le premier jour)
+  const moyenne7 = (v: number[]) => v.map((_, i) => { const t = v.slice(Math.max(0, i - 6), i + 1); return t.reduce((a, b) => a + b, 0) / t.length; });
   function etiquettes(el: HTMLElement, s: Jour[], parMois: boolean) {
     const fmt = (k: string) => parMois
       ? new Date(k + '-15').toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
@@ -245,7 +246,7 @@ import { url } from '../../lib/utils';
 
     const lab = etiquettes($('graphe'), d.serie, d.parMois);
     graphe($('graphe'), d.serie.map((x, i) => ({ v: x.visiteurs, x: lab[i].x, bulle: `<b>${esc(lab[i].nom)}</b>${nb(x.visiteurs)} visiteurs<br>${nb(x.vues)} pages vues` })),
-      d.parMois ? undefined : moyenne7(d.serie.map((x) => x.visiteurs)));
+      d.parMois ? undefined : moyenne7(d.serie.map((x) => x.visiteurs)).map((y, i) => (d.depuis && d.serie[i].k < d.depuis ? null : y)));
     $('g-titre').textContent = d.parMois ? 'Visiteurs par mois' : 'Visiteurs par jour';
     $('g-legende').hidden = d.parMois;
 
@@ -438,6 +439,21 @@ import { url } from '../../lib/utils';
   @keyframes arc { from { stroke-dasharray: 0 100; } }
   @keyframes apparait { from { opacity: 0; transform: translateY(8px); } }
   [hidden] { display: none !important; }
+  /* Ordinateur : tableau de bord sur toute la largeur */
+  @media (min-width: 1200px) {
+    .corps { max-width: 1920px; padding: 22px 28px 40px; }
+    #contenu { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+    #contenu > :global(*) { grid-column: span 12; }
+    #contenu > .grille { display: contents; }
+    #contenu > .grille > .carte, #contenu > .grille > section { grid-column: span 4; }
+    #contenu > .large { grid-column: span 8; align-self: stretch; }
+    #contenu > .large .graphe { height: 300px; }
+    .tuiles { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); grid-auto-flow: column; }
+  }
+  @media (min-width: 1650px) {
+    #contenu > .grille > .carte, #contenu > .grille > section { grid-column: span 3; }
+    #contenu > .large { grid-column: span 6; }
+  }
   @media (max-width: 760px) {
     .tuiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .grille { grid-template-columns: 1fr; }
