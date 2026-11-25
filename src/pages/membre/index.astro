@@ -831,6 +831,37 @@ const outilsAdmin = [
     .nl :global(small) { font-size: 14px; margin-top: 3px; }
     .nl :global(.actif) { font-size: 11.5px; padding: 1px 7px; }
   }
+  /* PC (souris) : tous les blocs de la Météo à la même échelle que Vent et pistes et les NOTAM (demande du club, 25/11) */
+  @media (min-width: 1100px) and (hover: hover) and (pointer: fine) {
+    .bt { font-size: 15px; margin-bottom: 12px; }
+    .bt-nb { font-size: 13.5px; }
+    .maa-banniere, .lvp-banniere { padding: 16px 20px; gap: 16px; border-radius: 16px; }
+    .maa-banniere .maa-ic { width: 44px; height: 44px; } .maa-banniere .maa-ic svg { width: 24px; height: 24px; }
+    .maa-txt { gap: 3px; } .maa-txt strong { font-size: 19px; } .maa-num { font-size: 16.5px; }
+    .maa-pdf { font-size: 14px; padding: 7px 12px; border-radius: 10px; }
+    .lvp-logo { font-size: 15px; padding: 8px 10px; }
+    .maa-rien { font-size: 17px; padding: 14px 22px; } .maa-rien-pt { width: 12px; height: 12px; }
+    .soleil { padding: 38px 22px 14px; border-radius: 16px; }
+    .sol-frise { height: 30px; } .sol-frise .now em { font-size: 13.5px; padding: 2px 7px; }
+    .sol-graduations { font-size: 13px; margin: 6px 0 10px; }
+    .sol-cases { padding-top: 12px; }
+    .soleil small { font-size: 14px; } .soleil .sol-cases b { font-size: 26px; }
+    .carte-metar { padding: 18px 22px; border-radius: 16px; }
+    .carte-metar :global(.metar), .carte-metar :global(.taf) { font-size: 15px; }
+    .carte-metar :global(.station) { font-size: 14px; }
+    .carte-metar :global(.etat) { font-size: 12.5px; }
+    .carte-metar :global(.raw) { font-size: 17.5px; line-height: 1.55; }
+    .bloc-vent, .bloc-alt, .bloc-voisins { padding: 16px 20px 14px; border-radius: 16px; }
+    .carte-voisins { gap: 10px; }
+    .carte-voisins :global(.mv) { padding: 10px 14px 10px 16px; font-size: 15px; }
+    .carte-voisins :global(.mv b) { font-size: 17px; }
+    .carte-voisins :global(.mv .nm) { font-size: 14px; }
+    .carte-voisins :global(.mv .mr) { font-size: 16px; margin-top: 4px; }
+    #voisins-h :global(.lgc i) { width: 10px; height: 10px; }
+    .carte-alt :global(.alt th) { font-size: 13px; padding-bottom: 8px; }
+    .carte-alt :global(.alt td) { font-size: 19px; padding: 10px 4px; }
+    .carte-alt :global(.alt .fl) { width: 18px; height: 18px; }
+  }
   @media (min-width: 1400px) { .carte-voisins { grid-template-columns: 1fr 1fr; } }
   /* Grand écran : la barre d'onglets reste groupée au centre, alignée sur le contenu */
   @media (min-width: 820px) {
