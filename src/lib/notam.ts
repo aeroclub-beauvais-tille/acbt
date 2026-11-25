@@ -50,3 +50,27 @@ export function ligneNotam(x: Notam, sup = false) {
 export const NOTAM_INFO = 'hors obstacles et procédures IFR';
 export const NOTAM_VIDE = 'Aucun NOTAM en vigueur (hors obstacles et procédures IFR).';
 export const notamIndispo = (raison?: string) => raison === 'cle' ? 'En attente de la clé de l’API NOTAM (FAA) dans Cloudflare.' : 'NOTAM indisponibles pour le moment.';
+
+// Détail d'un NOTAM (appli, au toucher) : catégorie, validité en LT et UTC, texte complet et abréviations expliquées
+const ABREV: Record<string, string> = {
+  ACFT: 'aéronef', AD: 'aérodrome', AGL: 'au-dessus du sol', AMSL: 'au-dessus de la mer', APCH: 'approche', APN: 'aire de trafic', APRON: 'aire de trafic',
+  ARP: 'point de référence', ATC: 'contrôle', AVBL: 'disponible', BTN: 'entre', CLSD: 'fermé', COM: 'communications', CTN: 'attention', DLY: 'chaque jour',
+  DME: 'DME (mesure de distance)', DUE: 'en raison de', EXC: 'sauf', FLT: 'vol', FM: 'à partir de', FREQ: 'fréquence', FT: 'pieds', GND: 'sol', H24: '24 h sur 24',
+  HEL: 'hélicoptère', HR: 'heures', ILS: 'ILS', INFO: 'information', INOP: 'hors service', LDG: 'atterrissage', LGT: 'balisage lumineux', MAINT: 'maintenance',
+  MAX: 'maximum', MIN: 'minimum', MNT: 'surveillance', NML: 'normal', OBST: 'obstacle', OPR: 'en service', OPS: 'opérations', PAPI: 'PAPI (indicateur de pente)',
+  PPR: 'sur autorisation préalable', PSN: 'position', RWY: 'piste', SFC: 'surface', SKED: 'programmé', SR: 'lever du soleil', SS: 'coucher du soleil', STAND: 'poste de stationnement',
+  STANDS: 'postes de stationnement', TAX: 'roulage', TAXY: 'roulage', TFC: 'trafic', THR: 'seuil', TIL: 'jusqu’à', TKOF: 'décollage', TWR: 'tour de contrôle',
+  TWY: 'voie de circulation (taxiway)', 'U/S': 'hors service', UNL: 'illimité', VFR: 'vol à vue', VOR: 'VOR (radiophare)', WI: 'dans un rayon de', WIP: 'travaux en cours',
+};
+const hLoc = (d: Date) => d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).replace(' ', ' · ');
+const deux = (d: Date) => `${hLoc(d)} LT <small>(${jmUtc(d)} · ${hUtc(d)} UTC)</small>`;
+export function detailNotam(x: Notam) {
+  const [, l, nom, coul] = x.snow ? [null, 'SNOW', 'SNOWTAM · état des pistes', 'neige'] : cat(x.sujet);
+  const d = utc(x.debut), f = x.fin && /^\d{4}-/.test(x.fin) ? new Date(x.fin) : null;
+  const mots = [...new Set((x.texte.toUpperCase().match(/U\/S|[A-Z][A-Z0-9]+/g) || []).filter((m) => ABREV[m]))];
+  const on = actif(x.debut);
+  return `<div class="nd-tete"><span class="ic ${coul}${l.length > 2 && !l.startsWith('<') ? ' l' + l.length : ''}">${l}</span><div><b>${esc(nom)}</b><span>NOTAM ${esc(x.numero || '')}</span></div><em class="${on ? 'on' : ''}">${on ? 'ACTIF' : 'À VENIR'}</em></div>
+    <dl class="nd-dates"><div><dt>Début</dt><dd>${d ? deux(d) : '—'}</dd></div><div><dt>Fin</dt><dd>${x.fin === 'PERM' ? 'permanent' : f ? deux(f) : '—'}</dd></div></dl>
+    <p class="nd-texte">${texteNotam(x.texte)}</p>
+    ${mots.length ? `<div class="nd-abr"><h4>Abréviations</h4><ul>${mots.map((m) => `<li><b>${esc(m)}</b> ${esc(ABREV[m])}</li>`).join('')}</ul></div>` : ''}`;
+}

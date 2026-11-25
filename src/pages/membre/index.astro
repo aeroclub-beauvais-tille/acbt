@@ -357,6 +357,11 @@ const outilsAdmin = [
     ))}
   </nav>
 
+  <dialog class="feuille-msg feuille-notam" id="notam-detail" aria-label="Détail du NOTAM">
+    <div class="nd-corps nl"></div>
+    <button type="button" class="mc-lu nd-fermer">Fermer</button>
+  </dialog>
+
   <dialog class="feuille-msg" id="msg-club" aria-label="Message du club">
     <div class="mc-corps"></div>
     <button type="button" class="mc-lu" id="mc-lu">J'ai lu</button>
@@ -474,6 +479,26 @@ const outilsAdmin = [
   .cloche.on .barre { display: none; }
   .cloche.on { color: #f5c400; }
   .feuille-msg { margin: auto auto 0; width: min(560px, 100vw); max-width: 100vw; max-height: 85dvh; border: 0; border-radius: 22px 22px 0 0; padding: 22px 20px calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--surface); color: var(--ink); box-shadow: 0 -20px 60px rgba(14,26,43,.3); overflow: auto; }
+  /* Détail d'un NOTAM (toucher une ligne de l'onglet NOTAM) */
+  .nl :global(.n) { cursor: pointer; }
+  @media (hover: hover) { .nl :global(.n:hover) { background: var(--surface-2); border-radius: 10px; } }
+  @media (min-width: 700px) { .feuille-notam { margin: auto; border-radius: 22px; } }
+  .feuille-notam :global(.nd-tete) { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+  .feuille-notam :global(.nd-tete b) { display: block; font-size: 1.1rem; }
+  .feuille-notam :global(.nd-tete span:not(.ic)) { color: var(--muted); font-size: .85rem; font-weight: 700; font-family: var(--mono); }
+  .feuille-notam :global(.nd-tete em) { font-style: normal; font-size: .72rem; font-weight: 800; letter-spacing: .06em; padding: 4px 9px; border-radius: 99px; background: var(--surface-2); color: var(--muted); }
+  .feuille-notam :global(.nd-tete em.on) { background: var(--bad-bg); color: var(--bad); }
+  .feuille-notam :global(.nd-dates) { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 16px 0; }
+  .feuille-notam :global(.nd-dates div) { background: var(--surface-2); border-radius: 12px; padding: 10px 12px; }
+  .feuille-notam :global(dt) { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .feuille-notam :global(dd) { margin: 3px 0 0; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .feuille-notam :global(dd small) { display: block; font-weight: 600; color: var(--muted); font-size: .8rem; margin: 2px 0 0; }
+  .feuille-notam :global(.nd-texte) { font-family: var(--mono); font-size: .95rem; line-height: 1.55; background: var(--surface-2); border-left: 4px solid var(--accent); border-radius: 10px; padding: 12px 14px; margin: 0; overflow-wrap: anywhere; }
+  .feuille-notam :global(.nd-texte em) { font-style: normal; font-weight: 800; color: var(--bad); }
+  .feuille-notam :global(.nd-abr h4) { margin: 16px 0 6px; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .feuille-notam :global(.nd-abr ul) { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .feuille-notam :global(.nd-abr li) { font-size: .92rem; }
+  .feuille-notam :global(.nd-abr b) { display: inline-block; min-width: 58px; font-family: var(--mono); }
   .feuille-msg::backdrop { background: rgba(14,26,43,.55); backdrop-filter: blur(3px); }
   .feuille-msg :global(.mc-tag) { display: inline-block; background: #fff2b8; color: #7a5a00; font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 5px 10px; border-radius: 8px; }
   .feuille-msg :global(h3) { font-size: 1.35rem; line-height: 1.2; margin: 12px 0 8px; }

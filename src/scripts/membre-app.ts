@@ -2,7 +2,7 @@
 import { url } from '../lib/utils';
 import { ephemeride, heureLocale } from '../lib/soleil';
 import { rendreVent, lireMesure, ventStation, ligneTemperature, type Vent } from '../lib/vent';
-import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
+import { trierNotam, ligneNotam, detailNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
 import { quiResa } from '../lib/noms-resa';
 import { rendreAltitude, rendreVoisins, legendeVoisins, type Altitude, type Voisin } from '../lib/aero';
 
@@ -813,6 +813,17 @@ export function notam() {
   const api = liste.dataset.api!;
   const vide = (t: string) => `<p class="vide">${esc(t)}</p>`;
   let charge = false;
+  let affiches: Notam[] = [];
+  // Toucher un NOTAM : fiche détaillée (validité en LT et UTC, texte complet, abréviations)
+  const fiche = document.getElementById('notam-detail') as HTMLDialogElement | null;
+  liste.addEventListener('click', (e) => {
+    const n = (e.target as HTMLElement).closest('.n');
+    const x = n && affiches[[...liste.children].indexOf(n)];
+    if (!x || !fiche) return;
+    fiche.querySelector('.nd-corps')!.innerHTML = detailNotam(x);
+    fiche.showModal();
+  });
+  fiche?.addEventListener('click', (e) => { if (e.target === fiche || (e.target as HTMLElement).closest('.nd-fermer')) fiche.close(); });
   const charger = async () => {
     let d: { ok: boolean; raison?: string; notam?: Notam[] } | null = null;
     try { d = await fetch(api, { cache: 'no-store' }).then((r) => r.json()); } catch { /* hors ligne */ }
@@ -827,6 +838,7 @@ export function notam() {
     if (sa) sa.hidden = !snowActif;
     majRien();
     liste.innerHTML = l.length ? l.map((x) => ligneNotam(x)).join('') : vide(NOTAM_VIDE);
+    affiches = l;
     if (nb) nb.textContent = `${l.length} en vigueur`;
     if (info) info.textContent = `Source FAA · ${NOTAM_INFO} · heures UTC`;
     charge = true;
