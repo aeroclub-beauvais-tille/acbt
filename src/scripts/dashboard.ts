@@ -941,6 +941,8 @@ function tournerMaa() {
   maaRang++;
   piste.style.transition = 'transform .6s ease';
   piste.style.transform = `translateY(${-maaRang * 1.35}em)`;
+  const n = document.querySelector<HTMLElement>('#al-maa .al-n');
+  if (n) n.textContent = `${(maaRang % maaNb) + 1}/${maaNb}`;
   // Arrivé sur la copie du premier : on revient au début sans animation
   if (maaRang === maaNb) setTimeout(() => { piste.style.transition = 'none'; piste.style.transform = 'translateY(0)'; maaRang = 0; }, 700);
 }
@@ -974,7 +976,7 @@ function alertes() {
     if (maaRang >= maaNb) maaRang = 0;
     const lignes = (maaNb > 1 ? [...textes, textes[0]] : textes).map((x) => `<span>${x}</span>`).join('');
     const cls = enCours.length ? 'a-on' : 'a-av';
-    h.push(`<div class="al ${cls}" id="al-maa"><b>Alerte météo ${enCours.length ? 'en cours' : 'à venir'}</b><span class="al-defil"><span class="al-piste" style="transform:translateY(${-maaRang * 1.35}em)">${lignes}</span></span></div>`);
+    h.push(`<div class="al ${cls}" id="al-maa"><b>Alerte météo ${enCours.length ? 'en cours' : 'à venir'}</b><span class="al-defil"><span class="al-piste" style="transform:translateY(${-maaRang * 1.35}em)">${lignes}</span></span>${maaNb > 1 ? `<em class="al-n">${maaRang + 1}/${maaNb}</em>` : ''}</div>`);
   }
   if (!h.length) h.push(hiver ? `<div class="al a-ok"><b>Aucune alerte météo</b><span>ni MAA ni SNOWTAM, en cours ou à venir</span></div>` : `<div class="al a-ok"><b>Aucun MAA</b><span>en cours ou à venir</span></div>`);
   b.innerHTML = h.join('');
