@@ -37,6 +37,11 @@ export async function tableVisites(db) {
     db.prepare('CREATE INDEX IF NOT EXISTS evenements_jour ON evenements (jour, e)'),
     db.prepare('CREATE INDEX IF NOT EXISTS visites_jour ON visites (jour, section)'),
   ]);
+  // Colonne ajoutée après la première mise en ligne (table déjà créée sans elle)
+  const { results } = await db.prepare("SELECT name FROM pragma_table_info('visites')").all();
+  if (!(results || []).some((r) => r.name === 'heure')) {
+    try { await db.prepare('ALTER TABLE visites ADD COLUMN heure INTEGER').run(); } catch { /* ajoutée entre-temps */ }
+  }
   pret = true;
 }
 
