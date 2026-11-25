@@ -123,6 +123,8 @@ const modeles = { 'F-BTBJ': 'DR315', ...Object.fromEntries(avions.map((a) => [a.
   .al.a-on { color: var(--bad); border-color: var(--bad); background: var(--badbg); } .al.a-on span { color: var(--ink); }
   .al.a-on::before { animation: clignote 1.6s ease-in-out infinite; }
   .al.a-lvp { flex: none; }
+  .al { transition: opacity .3s; } .al.al-fondu { opacity: 0; }
+  .al .al-n { flex: none; font-style: normal; font-size: .8em; font-weight: 800; opacity: .65; }
   .al.a-lvp::before { display: none; }
   .lvp-logo { flex: none; font-style: normal; font-weight: 900; letter-spacing: .04em; color: #fff; background: var(--bad); border-radius: 8px; padding: 4px 10px; }
   @keyframes clignote { 50% { opacity: .25; } }

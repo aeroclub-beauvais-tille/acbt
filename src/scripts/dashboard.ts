@@ -932,6 +932,22 @@ function alerteAAL() {
 }
 
 // Bandeau du haut : alertes météo (MAA) et SNOWTAM, en cours ou à venir ; sinon « aucune alerte »
+// Défilement des MAA dans le bandeau du haut (toutes les 6 s)
+let maaRot: { cls: string; html: string }[] = [];
+let maaRang = 0;
+function tournerMaa() {
+  const el = document.getElementById('al-maa');
+  if (!el || maaRot.length < 2) return;
+  maaRang = (maaRang + 1) % maaRot.length;
+  const r = maaRot[maaRang];
+  el.classList.add('al-fondu');
+  setTimeout(() => {
+    el.className = `al ${r.cls}`;
+    el.innerHTML = `${r.html}<em class="al-n">${maaRang + 1}/${maaRot.length}</em>`;
+  }, 300);
+}
+setInterval(tournerMaa, 6000);
+
 function alertes() {
   const b = $('alertes');
   if (!D || D.maa == null) { b.innerHTML = ''; return; }
@@ -945,13 +961,21 @@ function alertes() {
   const snow = hiver ? (D.notam?.notam ?? []).filter((x) => x.snow) : [];
   // « jusqu’au 24/11 · 09:00 » devant une date, « jusqu’à 09:00 » devant une heure seule
   const jusqu = (x: string) => (x.includes('/') ? `jusqu’au ${x}` : `jusqu’à ${x}`);
-  const plus = (l: unknown[]) => (l.length > 1 ? ` (+${l.length - 1})` : '');
   const h: string[] = [];
   alerteAAL();
   if (D.lvp?.actif) h.push(`<div class="al a-on a-lvp"><i class="lvp-logo">LVP</i><b>en cours</b></div>`);
   if (snow.length) h.push(`<div class="al a-on"><b>SNOWTAM en vigueur</b><span>état des pistes publié · voir NOTAM</span></div>`);
-  if (enCours.length) h.push(`<div class="al a-on"><b>Alerte météo en cours</b><span>${esc(maaPhen(enCours[0].phen) || maaMotif(enCours[0].motif) || 'MAA')}${enCours[0].fin ? ` ${jusqu(t(enCours[0].fin))} LT` : ''}${plus(enCours)}</span></div>`);
-  else if (aVenir.length) h.push(`<div class="al a-av"><b>Alerte météo à venir</b><span>${esc(maaPhen(aVenir[0].phen) || maaMotif(aVenir[0].motif) || 'MAA')} dès ${t(aVenir[0].debut)} LT${plus(aVenir)}</span></div>`);
+  // Un MAA à la fois ; s'il y en a plusieurs, la pastille les fait défiler (en cours d'abord), chacun avec ses heures
+  const raison = (m: Maa) => esc(maaPhen(m.phen) || maaMotif(m.motif) || 'MAA');
+  maaRot = [
+    ...enCours.map((m) => ({ cls: 'a-on', html: `<b>Alerte météo en cours</b><span>${raison(m)}${m.fin ? ` ${jusqu(t(m.fin))} LT` : ''}</span>` })),
+    ...aVenir.map((m) => ({ cls: 'a-av', html: `<b>Alerte météo à venir</b><span>${raison(m)} dès ${t(m.debut)} LT</span>` })),
+  ];
+  if (maaRot.length) {
+    maaRang %= maaRot.length;
+    const r = maaRot[maaRang];
+    h.push(`<div class="al ${r.cls}" id="al-maa">${r.html}${maaRot.length > 1 ? `<em class="al-n">${maaRang + 1}/${maaRot.length}</em>` : ''}</div>`);
+  }
   if (!h.length) h.push(hiver ? `<div class="al a-ok"><b>Aucune alerte météo</b><span>ni MAA ni SNOWTAM, en cours ou à venir</span></div>` : `<div class="al a-ok"><b>Aucun MAA</b><span>en cours ou à venir</span></div>`);
   b.innerHTML = h.join('');
 }
