@@ -470,6 +470,7 @@ const onglets = [
   .maa-rien[hidden] { display: none; }
   .maa-rien b { color: var(--ok); font-weight: 800; margin-right: 4px; }
   .maa-rien-s { font-weight: 600; }
+  @media (max-width: 600px) { .maa-rien { border-radius: 16px; } .maa-rien-s { display: block; } } /* téléphone : le détail passe à la ligne */
   .maa-rien-pt { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--ok); }
   .snow-alerte { display: flex; gap: 10px; align-items: center; color: #fff; background: linear-gradient(135deg, #c4161c, #e4482b); border-radius: 14px; padding: 11px 13px; margin-bottom: 10px; }
   .snow-alerte[hidden] { display: none; }
