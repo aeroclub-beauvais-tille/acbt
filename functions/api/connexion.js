@@ -1,5 +1,6 @@
-// Vérifie le mot de passe du club saisi sur l'écran de connexion et ouvre la session (cookie valable un an).
+// Vérifie le mot de passe du club (ou le mot de passe admin) saisi sur l'écran de connexion et ouvre la session (cookie valable un an).
 import { jeton, poserCookie, egal } from '../_session.js';
+import { estAdmin } from '../_alertes.js';
 
 export async function onRequestPost({ request, env }) {
   const json = (corps, status, cookie) => new Response(JSON.stringify(corps), {
@@ -11,6 +12,8 @@ export async function onRequestPost({ request, env }) {
   try { ({ motDePasse = '' } = await request.json()); } catch { /* formulaire vide */ }
   const attendu = await jeton(env.MOT_DE_PASSE_MEMBRES);
   const recu = await jeton(motDePasse);
+  // Le mot de passe admin ouvre aussi l'espace membre, et fait apparaître l'onglet Admin sur l'appareil
+  if (estAdmin(env, motDePasse)) return json({ ok: true, admin: true }, 200, poserCookie(attendu));
   if (!egal(recu, attendu)) {
     await new Promise((r) => setTimeout(r, 800)); // freine les essais en série
     return json({ ok: false }, 401);
