@@ -767,6 +767,25 @@ const onglets = [
     #notam-liste > :global(*) { break-inside: avoid; }
   }
   @media (min-width: 1500px) { .fl-liste { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  /* PC : MAA côte à côte (jusqu'à 4 selon la largeur) ; Vent et pistes aux mêmes tailles que le tableau de bord TV */
+  @media (min-width: 1100px) {
+    #maa-zone { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+    .carte-vent :global(.vd .t) { font-size: 48px; gap: 22px; }
+    .carte-vent :global(.vd .t .sep) { width: 3px; height: 40px; }
+    .carte-vent :global(.vd .t small) { font-size: 18px; }
+    .carte-vent :global(.vd .vraf) { font-size: 20px; margin-top: 4px; }
+    .carte-vent :global(.vd .vtemp) { font-size: 22px; margin-top: 6px; gap: 8px; }
+    .carte-vent :global(.vd .vtemp i) { width: 2px; height: 18px; margin: 0 8px; }
+    .carte-vent :global(.vd .vsous) { font-size: 18px; margin-top: 6px; }
+    .carte-vent :global(.vd svg) { width: min(100%, 400px); margin-top: 8px; }
+    .carte-vent :global(.qfus) { gap: 10px; margin-top: 10px; }
+    .carte-vent :global(.qfu) { grid-template-columns: 50px minmax(0, 1fr); gap: 10px; padding: 9px 14px; border-radius: 12px; }
+    .carte-vent :global(.qfu .n) { font-size: 24px; }
+    .carte-vent :global(.qfu .n i) { font-size: 13px; }
+    .carte-vent :global(.qfu b) { font-size: 19px; }
+    .carte-vent :global(.qfu small) { font-size: 14.5px; }
+    .carte-vent :global(.qfu .att) { width: 17px; height: 17px; }
+  }
   @media (min-width: 1400px) { .carte-voisins { grid-template-columns: 1fr 1fr; } }
   /* Grand écran : la barre d'onglets reste groupée au centre, alignée sur le contenu */
   @media (min-width: 820px) {
