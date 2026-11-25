@@ -921,8 +921,10 @@ const PANNEAU = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stro
 function alerteAAL() {
   const l = fermetures().slice(0, 2);
   const sc = $('scene'), band = $('aal');
-  if (!l.length) { band.hidden = true; band.innerHTML = ''; sc.classList.remove('avec-aal'); return; }
-  band.innerHTML = l.map((f) => {
+  // LVP : bandeau rouge toujours en premier, au-dessus des fermetures
+  const lvp = D?.lvp?.actif ? `<div class="fz on lvp"><i class="lvp-logo">LVP</i><div><b>Procédures par faible visibilité activées${D.lvp.depuis ? ` à ${hLoc(utc(D.lvp.depuis)!)} LT` : ''}</b></div></div>` : '';
+  if (!l.length && !lvp) { band.hidden = true; band.innerHTML = ''; sc.classList.remove('avec-aal'); return; }
+  band.innerHTML = lvp + l.map((f) => {
     const titre = f.aal ? (f.enCours ? 'Aire de trafic nord fermée' : 'Fermeture prévue de l’aire de trafic nord')
       : (f.enCours ? `Piste ${f.piste} fermée` : `Fermeture prévue de la piste ${f.piste}`);
     const quand = f.enCours ? `jusqu’au ${f.fin}` : `du ${f.debut} au ${f.fin}`;
@@ -963,7 +965,6 @@ function alertes() {
   const jusqu = (x: string) => (x.includes('/') ? `jusqu’au ${x}` : `jusqu’à ${x}`);
   const h: string[] = [];
   alerteAAL();
-  if (D.lvp?.actif) h.push(`<div class="al a-on a-lvp"><i class="lvp-logo">LVP</i><b>en cours</b></div>`);
   if (snow.length) h.push(`<div class="al a-on"><b>SNOWTAM en vigueur</b><span>état des pistes publié · voir NOTAM</span></div>`);
   // Plusieurs MAA : la pastille (couleur et titre du plus urgent) reste fixe, seul le texte défile verticalement
   const raison = (m: Maa) => esc(maaPhen(m.phen) || maaMotif(m.motif) || 'MAA');
