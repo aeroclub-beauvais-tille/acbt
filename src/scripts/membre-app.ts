@@ -117,14 +117,14 @@ export function badges(racine: ParentNode = document) {
       else { code = 'valide'; chip = 'Valide'; ech = 'jusqu’au ' + court(fin); }
     }
     b.dataset.code = code;
-    if (b.dataset.format === 'date') {
-      // Ligne compacte : la date seule, la couleur de la ligne dit l'état
-      b.textContent = code === 'a-venir' ? court(debut!) : fin ? court(fin) : '';
+    b.textContent = chip;
+    if (b.dataset.format === 'ligne') {
+      // Ligne compacte (documents de vol) : la couleur de la ligne dit aussi l'état
       const l = b.closest<HTMLElement>('.doc');
       if (l) l.dataset.etat = code === 'sans-fin' ? 'valide' : code;
-    } else b.textContent = chip;
+    }
     const e = b.parentElement?.querySelector<HTMLElement>('.ech');
-    if (e) e.textContent = ech;
+    if (e) e.textContent = b.dataset.format === 'ligne' && code === 'sans-fin' ? 'sans échéance' : ech;
     // Un document remplacé (historique) n'est plus à renouveler : sa version en vigueur fait foi
     if ((code === 'expire' || code === 'bientot') && b.dataset.titre && !b.closest('.histo') && !alertes.some((a) => a.titre === b.dataset.titre))
       alertes.push({ titre: b.dataset.titre, code, date: fin ? 'jusqu’au ' + court(fin) : '', vers: b.dataset.vers, im: b.closest<HTMLElement>('[data-ims]')?.dataset.ims || '' });
@@ -302,6 +302,7 @@ export function avions() {
   const fiches = document.getElementById('fiches');
   if (!trig || !menu || !fiches) return;
   const opts = [...menu.querySelectorAll<HTMLElement>('.av-opt')];
+  const items = [...document.querySelectorAll<HTMLElement>('#av-liste .av-item')]; // liste de la flotte (toujours visible)
 
   // jours restants (même logique que badges)
   const jour = (iso: string) => new Date(iso).toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
@@ -327,7 +328,7 @@ export function avions() {
   };
 
   // remplit la pastille et le libellé d'état de chaque ligne
-  opts.forEach((o) => {
+  [...opts, ...items].forEach((o) => {
     const e = etat(o.dataset.avion!);
     const dot = o.querySelector<HTMLElement>('.av-dot');
     const st = o.querySelector<HTMLElement>('.av-st');
@@ -342,7 +343,8 @@ export function avions() {
 
   const choisir = (im: string) => {
     const ok = !!im && opts.some((o) => o.dataset.avion === im);
-    opts.forEach((o) => o.setAttribute('aria-selected', String(ok && o.dataset.avion === im)));
+    [...opts, ...items].forEach((o) => o.setAttribute('aria-selected', String(ok && o.dataset.avion === im)));
+    items.find((x) => x.dataset.avion === im)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
     fiches.querySelectorAll<HTMLElement>('[data-ims]').forEach((el) => el.classList.toggle('cache', el.dataset.ims !== im));
     trig.dataset.vide = ok ? 'non' : 'oui';
     if (ok) {
@@ -371,11 +373,14 @@ export function avions() {
   const ouvrir = (o: boolean) => { menu.hidden = !o; trig.setAttribute('aria-expanded', String(o)); };
   trig.addEventListener('click', (e) => { e.stopPropagation(); ouvrir(menu.hidden); });
   opts.forEach((o) => o.addEventListener('click', () => { choisir(o.dataset.avion!); ouvrir(false); }));
+  items.forEach((o) => o.addEventListener('click', () => choisir(o.dataset.avion!)));
   document.addEventListener('click', (e) => { if (!menu.hidden && !(e.target as HTMLElement).closest('#selecteur')) ouvrir(false); });
   addEventListener('keydown', (e) => { if (e.key === 'Escape') ouvrir(false); });
 
   let init = '';
   try { init = localStorage.getItem('acbt-avion') || ''; } catch { /* rien */ }
+  // La flotte est toujours visible : sans choix enregistré, on ouvre le premier avion plutôt qu'une fiche vide
+  if (items.length && !items.some((x) => x.dataset.avion === init)) init = items[0].dataset.avion!;
   choisir(init);
 }
 
