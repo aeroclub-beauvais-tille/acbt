@@ -29,14 +29,14 @@ const ech = !e ? '' : e.code === 'sans-fin' ? 'n’expire pas' : e.code === 'a-v
   : e.code === 'expire' ? `le ${court2(doc.fin)}` : `jusqu’au ${court2(doc.fin)}`;
 const iso = (d?: Date) => d ? d.toISOString() : undefined;
 const noFichier = !cible;
-// Ligne compacte : seule la date est écrite (fin, ou début si pas encore en vigueur) ; la couleur dit l'état
-const dateSeule = !e ? '' : e.code === 'a-venir' ? court2(doc.debut) : court2(doc.fin);
+// Ligne compacte : pastille d'état + échéance (« sans échéance » si le document n'expire pas)
+const echLigne = !e ? '' : e.code === 'sans-fin' ? 'sans échéance' : ech;
 const etat = manquant ? 'na' : e?.code === 'sans-fin' ? 'valide' : e?.code;
 ---
 {ligne ? (
 <a class:list={['doc', 'ligne', { vide: noFichier, manquant }]} href={cible || undefined} target={cible ? '_blank' : undefined} rel="noopener" data-q={recherche} data-doc={doc.id} data-etat={etat} role={noFichier ? 'group' : undefined}>
   <strong>{court ?? titre}</strong>
-  {avecBadge && <span class="badge" data-format="date" data-code={e?.code} data-fin={iso(doc.fin)} data-debut={iso(doc.debut)} data-titre={titre} data-vers={vers}>{dateSeule}</span>}
+  {avecBadge && <span class="lg-val"><span class="badge" data-format="ligne" data-code={e?.code} data-fin={iso(doc.fin)} data-debut={iso(doc.debut)} data-titre={titre} data-vers={vers}>{chip}</span><small class="ech">{echLigne}</small></span>}
 </a>
 ) : (
 <a class:list={['doc', { vide: noFichier, manquant }]} href={cible || undefined} target={cible ? '_blank' : undefined} rel="noopener" data-q={recherche} data-doc={doc.id} role={noFichier ? 'group' : undefined}>
@@ -87,14 +87,11 @@ const etat = manquant ? 'na' : e?.code === 'sans-fin' ? 'valide' : e?.code;
   .doc.ligne { border: 0; border-left: 5px solid var(--ok); border-radius: 0; padding: 12px 14px 12px 12px; gap: 10px; background: var(--surface); }
   a.doc.ligne[href]:hover { box-shadow: none; background: var(--surface-2); }
   .doc.ligne strong { flex: 1; min-width: 0; font-weight: 700; font-size: .9rem; }
-  .doc.ligne .badge { border: 0; background: none; padding: 0; color: var(--ink); font-size: .82rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .doc.ligne .badge::before { display: none; }
+  .doc.ligne .lg-val { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .doc.ligne .ech { font-size: .72rem; color: var(--muted); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .doc.ligne[data-etat='bientot'] { border-left-color: var(--warn); background: var(--warn-bg); }
-  .doc.ligne[data-etat='bientot'] .badge { color: var(--warn); }
   .doc.ligne[data-etat='expire'] { border-left-color: var(--bad); background: var(--bad-bg); }
-  .doc.ligne[data-etat='expire'] .badge { color: var(--bad); }
   .doc.ligne[data-etat='a-venir'] { border-left-color: var(--line); }
-  .doc.ligne[data-etat='a-venir'] .badge { color: var(--muted); }
   .doc.ligne.manquant { border-left-color: var(--line); background: var(--surface-2); border-style: solid; }
   .doc.ligne.manquant strong { color: var(--muted); font-weight: 600; }
   .ech { font-size: .78rem; color: var(--muted); white-space: nowrap; }
