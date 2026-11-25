@@ -1,10 +1,10 @@
 // Chiffres de fréquentation pour la page /statistiques/ (mot de passe admin).
-//   POST { motDePasse, jours: 7|30|90|365, section: 'vitrine'|'membre'|'perfs'|'tv' }
+//   POST { motDePasse, jours: 7|30|90|365, section: 'vitrine'|'membre'|'perfs' }
 import { estAdmin } from '../_alertes.js';
 import { json } from '../_maa.js';
 import { tableVisites, jourParis } from '../_visites.js';
 
-const SECTIONS = ['vitrine', 'membre', 'perfs', 'tv'];
+const SECTIONS = ['vitrine', 'membre', 'perfs'];
 
 export async function onRequestPost({ request, env }) {
   let d = null;
@@ -32,7 +32,7 @@ export async function onRequestPost({ request, env }) {
     db.prepare(`SELECT source, COUNT(DISTINCT jour || v) AS visiteurs FROM visites WHERE ${W} AND source IS NOT NULL AND source <> 'interne' GROUP BY source ORDER BY visiteurs DESC LIMIT 10`).bind(debut, sec),
     db.prepare(`SELECT appareil, COUNT(DISTINCT jour || v) AS visiteurs FROM visites WHERE ${W} GROUP BY appareil ORDER BY visiteurs DESC`).bind(debut, sec),
     db.prepare(`SELECT ville, pays, COUNT(DISTINCT jour || v) AS visiteurs FROM visites WHERE ${W} AND ville IS NOT NULL GROUP BY ville, pays ORDER BY visiteurs DESC LIMIT 10`).bind(debut, sec),
-    db.prepare(`SELECT COUNT(DISTINCT v) AS n FROM visites WHERE t >= ?1 AND section <> 'tv'`).bind(new Date(auj - 5 * 60e3).toISOString()),
+    db.prepare(`SELECT COUNT(DISTINCT v) AS n FROM visites WHERE t >= ?1`).bind(new Date(auj - 5 * 60e3).toISOString()),
     db.prepare('SELECT MIN(jour) AS j FROM visites'),
   ]);
 

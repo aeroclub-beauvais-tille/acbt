@@ -1,6 +1,6 @@
 // Compteur de visites du site, sans cookies et sans données personnelles.
 // Chaque page HTML servie à un vrai navigateur ajoute une ligne dans la table D1 « visites » :
-// jour, section (vitrine, membre, perfs, tv), page, provenance, appareil, ville.
+// jour, section (vitrine, membre, perfs ; la TV du club n'est pas comptée), page, provenance, appareil, ville.
 // Le visiteur n'est reconnu que le jour même, par une empreinte (adresse + navigateur + sel tiré au sort chaque jour) :
 // le sel du jour est oublié le lendemain, on ne peut donc ni retrouver l'adresse ni suivre quelqu'un d'un jour à l'autre.
 // Les chiffres sont lus par /statistiques/ (mot de passe admin).
@@ -39,7 +39,6 @@ async function selDuJour(db, jour) {
 }
 
 export function section(chemin) {
-  if (chemin === '/dashboard' || chemin.startsWith('/dashboard/')) return 'tv';
   if (chemin.startsWith('/membre/perfs')) return 'perfs';
   if (chemin === '/membre' || chemin.startsWith('/membre/')) return 'membre';
   return 'vitrine';
@@ -88,6 +87,7 @@ export function aCompter(request, rep, url) {
   const ua = request.headers.get('User-Agent') || '';
   if (!ua || ROBOTS.test(ua)) return false;
   const p = url.pathname;
+  if (p === '/dashboard' || p.startsWith('/dashboard/')) return false; // TV du club : une seule télé, pas utile
   if (p.startsWith('/api/') || p.startsWith('/admin') || p.startsWith('/statistiques') || p.includes('/api/')) return false;
   // Les adresses d'aperçu (branche.acbt60.pages.dev) ne comptent pas
   if (/\.acbt60\.pages\.dev$/.test(url.hostname) || url.hostname === 'localhost') return false;

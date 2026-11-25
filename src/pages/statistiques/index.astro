@@ -31,7 +31,6 @@ import { url } from '../../lib/utils';
             <button type="button" data-v="vitrine" aria-pressed="true">Site public</button>
             <button type="button" data-v="membre" aria-pressed="false">Espace membre</button>
             <button type="button" data-v="perfs" aria-pressed="false">Perfs</button>
-            <button type="button" data-v="tv" aria-pressed="false">TV</button>
           </div>
           <div class="seg" aria-label="Période" id="f-jours">
             <button type="button" data-v="7" aria-pressed="false">7 jours</button>
@@ -84,12 +83,12 @@ import { url } from '../../lib/utils';
     '/club/flotte/': 'La flotte', '/club/tarifs/': 'Tarifs', '/club/historique/': 'Histoire du club', '/actualites/': 'Actualités',
     '/contact/': 'Contact', '/mentions-legales/': 'Mentions légales', '/membre/': 'Accueil de l’appli', '/membre/connexion/': 'Connexion',
     '/membre/admin/': 'Administration', '/membre/messages/': 'Messages du club', '/membre/alertes-meteo/': 'Alertes météo',
-    '/membre/signalements/': 'Signalements', '/dashboard/': 'Écran TV', '/dashboard/connexion/': 'Connexion TV', '/membre/perfs/': 'Perfs ACBT',
+    '/membre/signalements/': 'Signalements', '/membre/perfs/': 'Perfs ACBT',
   };
   const nomPage = (p: string) => NOMS[p] || (p.startsWith('/actualites/') ? 'Actu : ' + p.slice(12, -1).replace(/-/g, ' ') : p);
   const APPAREILS: Record<string, string> = { telephone: 'Téléphone', ordinateur: 'Ordinateur', tablette: 'Tablette', tv: 'Télévision' };
   const PAYS = new Intl.DisplayNames(['fr'], { type: 'region' });
-  const SECTIONS: Record<string, string> = { vitrine: 'Site public', membre: 'Espace membre', perfs: 'Perfs', tv: 'TV' };
+  const SECTIONS: Record<string, string> = { vitrine: 'Site public', membre: 'Espace membre', perfs: 'Perfs' };
 
   function barres(el: HTMLElement, lignes: Ligne[], nom: (l: Ligne) => string, val: string, unite: string) {
     if (!lignes.length) { el.innerHTML = '<li class="vide">Pas encore de données.</li>'; return; }
@@ -135,7 +134,7 @@ import { url } from '../../lib/utils';
       <div class="tuile"><span class="l">Visiteurs</span><b>${nb(vis)}</b>${cmp(vis, Number(p.visiteurs))}</div>
       <div class="tuile"><span class="l">Pages vues</span><b>${nb(vues)}</b>${cmp(vues, Number(p.vues))}</div>
       <div class="tuile"><span class="l">Pages par visiteur</span><b>${vis ? (vues / vis).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : '—'}</b></div>
-      <div class="tuile autres"><span class="l">Toutes parties</span>${['vitrine', 'membre', 'perfs', 'tv'].map((s) => {
+      <div class="tuile autres"><span class="l">Toutes parties</span>${['vitrine', 'membre', 'perfs'].map((s) => {
         const x = d.totaux.find((y) => y.section === s);
         return `<span class="mini"><i>${SECTIONS[s]}</i>${nb(Number(x?.visiteurs || 0))}</span>`;
       }).join('')}</div>`;
