@@ -870,8 +870,9 @@ async function charger() {
 }
 
 // Fermetures par NOTAM affichées en bandeau sous l'en-tête, sur tous les écrans :
-// aire de trafic aviation légère (« LIGHT AVIATION APRON CLSD » : le club ne peut pas voler) et pistes (« RWY 04/22 CLSD »)
-const AAL = /LIGHT\s+AVIATION\s+APRON\b[^.]*\b(CLSD|CLOSED)\b/;
+// aire de trafic nord, celle de l'aéroclub (« NORTH APRON », « ACB APRON », « NORTH AVIATION APRON » CLSD) et pistes (« RWY 04/22 CLSD »).
+// « LIGHT AVIATION APRON » ne concerne pas l'aéroclub : pas d'alerte.
+const AAL = /\b(?:NORTH(?:\s+AVIATION)?|ACB)\s+APRON\b[^.]*\b(CLSD|CLOSED)\b/;
 const RWY = /\b(?:RWY|RUNWAY)\s+(\d{2}[LRC]?(?:\s*\/\s*\d{2}[LRC]?)?)\b[^.]{0,60}?\b(?:CLSD|CLOSED)\b/g;
 type Fermeture = { ref: string; enCours: boolean; debut: string; fin: string; aal: boolean; piste?: string; t: string };
 function fermetures(): Fermeture[] {
@@ -886,7 +887,7 @@ function fermetures(): Fermeture[] {
     for (const m of String(x.texte).matchAll(RWY)) pistes.add(m[1].replace(/\s+/g, ''));
     for (const piste of pistes) out.push({ ...base, aal: false, piste });
   }
-  // L'aire aviation légère d'abord, puis les fermetures en cours, puis par date de début
+  // L'aire de trafic nord d'abord, puis les fermetures en cours, puis par date de début
   return out.sort((a, b) => Number(b.aal) - Number(a.aal) || Number(b.enCours) - Number(a.enCours) || a.t.localeCompare(b.t));
 }
 const PANNEAU = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.5"/><path d="M5.3 5.3l13.4 13.4"/></svg>';
@@ -896,7 +897,7 @@ function alerteAAL() {
   const sc = $('scene'), band = $('aal');
   if (!l.length) { band.hidden = true; band.innerHTML = ''; sc.classList.remove('avec-aal'); return; }
   band.innerHTML = l.map((f) => {
-    const titre = f.aal ? (f.enCours ? 'Vols impossibles : aire aviation légère fermée' : 'Fermeture prévue de l’aire aviation légère')
+    const titre = f.aal ? (f.enCours ? 'Aire de trafic nord fermée' : 'Fermeture prévue de l’aire de trafic nord')
       : (f.enCours ? `Piste ${f.piste} fermée` : `Fermeture prévue de la piste ${f.piste}`);
     const quand = f.enCours ? `jusqu’au ${f.fin}` : `du ${f.debut} au ${f.fin}`;
     return `<div class="fz ${f.enCours ? 'on' : 'prevu'}"><i>${PANNEAU}</i><div><b>${esc(titre)}</b><span>${quand} (heure locale)</span></div><em>NOTAM ${esc(f.ref)}</em></div>`;

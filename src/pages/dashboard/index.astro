@@ -98,7 +98,7 @@ const modeles = { 'F-BTBJ': 'DR315', ...Object.fromEntries(avions.map((a) => [a.
   #scene { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 0 0; padding: 22px 28px 44px; display: grid; grid-template-rows: auto 1fr; gap: 18px; }
   .top { display: flex; align-items: center; gap: 44px; height: 62px; }
   .brand { display: flex; align-items: center; gap: 16px; }
-  /* Fermeture aire aviation légère (NOTAM) : bandeau rouge sous l'en-tête, orange si prévue */
+  /* Fermeture aire de trafic nord ou piste (NOTAM) : bandeau rouge sous l'en-tête, orange si prévue */
   #scene.avec-aal { grid-template-rows: auto auto minmax(0, 1fr); }
   #aal { display: flex; flex-direction: column; gap: 8px; }
   #aal[hidden] { display: none; }
