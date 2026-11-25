@@ -44,7 +44,7 @@ export function trierNotam(liste: Notam[] = []) {
 
 export function ligneNotam(x: Notam, sup = false) {
   const [, l, nom, coul] = sup ? [null, 'SUP', 'SUP AIP', 'gris'] : x.snow ? [null, 'SNOW', 'SNOWTAM · état des pistes', 'neige'] : cat(x.sujet);
-  return `<div class="n"><span class="ic ${coul}${l.length > 2 && !l.startsWith('<') ? ' l' + l.length : ''}" title="${nom}">${l}</span><div><b>${texteNotam(x.texte)} <span class="no">${esc(x.numero || '')}</span></b><small>${actif(x.debut) ? '<span class="actif">ACTIF</span>' : ''}${esc(validite(x.debut, x.fin))}</small></div></div>`;
+  return `<div class="n"><span class="ic ${coul}${l.length > 2 && !l.startsWith('<') ? ' l' + l.length : ''}" title="${nom}">${l}</span><div><b>${texteNotam(x.texte)} <span class="no">${esc(x.numero || '')}</span></b><small>${actif(x.debut) ? '<span class="actif">ACTIF</span>' : ''}${creneauLigne(x)}${esc(validite(x.debut, x.fin))}</small></div></div>`;
 }
 
 export const NOTAM_INFO = 'hors obstacles et procédures IFR';
@@ -54,18 +54,27 @@ export const notamIndispo = (raison?: string) => raison === 'cle' ? 'En attente 
 // Détail d'un NOTAM (appli, au toucher) : catégorie, validité en LT et UTC, texte complet
 const hLoc = (d: Date) => d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).replace(' ', ' · ');
 const deux = (d: Date) => `${hLoc(d)} LT <small>(${jmUtc(d)} · ${hUtc(d)} UTC)</small>`;
-// Créneaux du champ D) (UTC) traduits en LT : « 1500-1545 » → « 16:00 → 16:45 LT (15:00 → 15:45 UTC) »
-function horairesLT(h: string, ref: Date | null) {
+// Créneaux du champ D) (UTC) traduits en LT : « 1500-1545 » → « Chaque jour · 16:00 → 16:45 LT »
+const MOTS: Record<string, string> = { DAILY: 'chaque jour', MON: 'lun', TUE: 'mar', WED: 'mer', THU: 'jeu', FRI: 'ven', SAT: 'sam', SUN: 'dim', EXC: 'sauf', HOL: 'jours fériés', AND: 'et' };
+function creneaux(h: string, ref: Date | null) {
   const decalage = (jour: Date) => { const p = new Date(jour.toLocaleString('en-US', { timeZone: 'Europe/Paris' })); const u = new Date(jour.toLocaleString('en-US', { timeZone: 'UTC' })); return Math.round((p.getTime() - u.getTime()) / 60000); };
   const dec = decalage(new Date(Math.max(Date.now(), ref?.getTime() ?? 0)));
   const loc = (hhmm: string) => { const m = (+hhmm.slice(0, 2) * 60 + +hhmm.slice(2) + dec + 1440) % 1440; return `${p2(Math.floor(m / 60))}:${p2(m % 60)}`; };
   const fmt = (hhmm: string) => `${hhmm.slice(0, 2)}:${hhmm.slice(2)}`;
-  const creneaux = [...h.matchAll(/\b([0-2]\d[0-5]\d)-([0-2]\d[0-5]\d)\b/g)];
-  if (!creneaux.length) return esc(h);
-  const lt = creneaux.map(([, a, b]) => `${loc(a)} → ${loc(b)}`).join(', ');
-  const MOTS: Record<string, string> = { DAILY: 'chaque jour', MON: 'lun', TUE: 'mar', WED: 'mer', THU: 'jeu', FRI: 'ven', SAT: 'sam', SUN: 'dim', EXC: 'sauf', HOL: 'jours fériés', AND: 'et' };
-  const reste = h.replace(/\b[0-2]\d[0-5]\d-[0-2]\d[0-5]\d\b/g, '').replace(/[\s,]+/g, ' ').trim().replace(/\b[A-Z]{3,5}\b/g, (m) => MOTS[m] ?? m).replace(/^./, (c) => c.toUpperCase());
-  return `${esc(reste ? reste + ' · ' : 'Chaque jour · ')}${lt} LT <small>(${creneaux.map(([, a, b]) => `${fmt(a)} → ${fmt(b)}`).join(', ')} UTC · ${esc(h)})</small>`;
+  const c = [...h.matchAll(/\b([0-2]\d[0-5]\d)-([0-2]\d[0-5]\d)\b/g)];
+  if (!c.length) return null;
+  const reste = h.replace(/\b[0-2]\d[0-5]\d-[0-2]\d[0-5]\d\b/g, '').replace(/[\s,]+/g, ' ').trim().replace(/\b[A-Z]{3,5}\b/g, (m) => MOTS[m] ?? m).replace(/^./, (x) => x.toUpperCase());
+  return { jours: reste || 'Chaque jour', lt: c.map(([, a, b]) => `${loc(a)} → ${loc(b)}`).join(', '), utc: c.map(([, a, b]) => `${fmt(a)} → ${fmt(b)}`).join(', ') };
+}
+function horairesLT(h: string, ref: Date | null) {
+  const c = creneaux(h, ref);
+  return c ? `${esc(c.jours)} · ${c.lt} LT <small>(${c.utc} UTC · ${esc(h)})</small>` : esc(h);
+}
+/** Créneau horaire à afficher directement sur la ligne du NOTAM (sinon on croirait le NOTAM valable toute la journée). */
+function creneauLigne(x: Notam) {
+  if (!x.horaires) return '';
+  const c = creneaux(x.horaires, utc(x.debut));
+  return `<span class="cren">${c ? `${esc(c.jours)} ${c.lt} LT` : esc(x.horaires)}</span>`;
 }
 export function detailNotam(x: Notam) {
   const [, l, nom, coul] = x.snow ? [null, 'SNOW', 'SNOWTAM · état des pistes', 'neige'] : cat(x.sujet);
