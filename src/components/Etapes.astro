@@ -1,22 +1,37 @@
 ---
-// Étapes numérotées (déroulement d'un vol, parcours de formation).
+// Étapes numérotées (déroulement d'un vol, parcours de formation) : un parcours, pastilles reliées par une ligne fine.
 interface Props { etapes: { titre: string; texte: string }[] }
 const { etapes } = Astro.props;
 ---
 <ol class="etapes" style={`--n: ${etapes.length}`}>
   {etapes.map((e, i) => (
     <li>
-      <span class="num">{i + 1}</span>
+      <span class="num">{String(i + 1).padStart(2, '0')}</span>
       <h3>{e.titre}</h3>
       <p>{e.texte}</p>
     </li>
   ))}
 </ol>
 <style>
-  .etapes { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); counter-reset: e; }
-  /* Numéro et titre sur la même ligne, texte en dessous */
-  li { position: relative; display: grid; grid-template-columns: auto 1fr; column-gap: 14px; row-gap: 10px; align-items: center; align-content: start; background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
-  .num { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; background: var(--accent, var(--sun)); color: #fff; font-family: var(--font-title); font-weight: 700; }
-  h3 { font-size: 1.1rem; margin: 0; }
-  p { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: .95rem; }
+  .etapes { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; grid-template-columns: repeat(var(--n), 1fr); }
+  li { position: relative; padding-top: 68px; }
+  /* Ligne fine qui relie les pastilles */
+  li::before { content: ''; position: absolute; top: 25px; left: 60px; right: -22px; height: 2px; background: color-mix(in srgb, var(--marine) 22%, white); }
+  li:last-child::before { display: none; }
+  .num { position: absolute; top: 0; left: 0; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: var(--marine); color: #fff; font-family: var(--font-title); font-weight: 700; font-size: 1.05rem; box-shadow: 0 0 0 6px #fff; }
+  li:first-child .num { background: var(--rouge); color: #fff; }
+  h3 { font-size: 1.15rem; margin: 0 0 8px; }
+  p { margin: 0; color: var(--muted); font-size: .95rem; line-height: 1.5; }
+  /* Sur le bleu foncé */
+  :global(.dark) .num { background: #fff; color: var(--marine); box-shadow: 0 0 0 6px var(--marine); }
+  :global(.dark) li:first-child .num { background: var(--rouge); color: #fff; }
+  :global(.dark) li::before { background: rgba(255,255,255,.28); }
+  :global(.dark) h3 { color: #fff; }
+  :global(.dark) p { color: rgba(255,255,255,.8); }
+  /* Téléphone et tablette : parcours vertical, la ligne descend le long des pastilles */
+  @media (max-width: 899px) {
+    .etapes { grid-template-columns: 1fr; gap: 0; }
+    li { padding: 4px 0 26px 70px; min-height: 52px; }
+    li::before { top: 52px; bottom: 0; left: 25px; right: auto; width: 2px; height: auto; }
+  }
 </style>
