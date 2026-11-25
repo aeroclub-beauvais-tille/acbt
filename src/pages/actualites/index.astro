@@ -11,9 +11,9 @@ import pages from '../../data/pages.json';
   <PageHead eyebrow="Le club · Actualités" image={pages.actualites.image} title={pages.actualites.titre} lead={pages.actualites.texte} />
   <section class="section">
     <div class="container">
-      <div class="filters" data-filter="annee" data-reveal>
+      <div class="filters annees" data-filter="annee" data-reveal aria-label="Choisir une année">
         {annees.map((y, i) => <button aria-pressed={i === 0 ? 'true' : 'false'} data-v={String(y)}>{y}</button>)}
-        <button aria-pressed="false" data-v="">Toutes les années</button>
+        <button aria-pressed="false" data-v="">Toutes<span class="long"> les années</span></button>
       </div>
       <noscript><style>{'.annee-bloc { display: block !important; }'}</style></noscript>
       {annees.map((y, i) => (
@@ -47,7 +47,17 @@ import pages from '../../data/pages.json';
       group.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
       state[group.dataset.filter!] = btn.dataset.v ?? '';
       apply();
+      // Sur téléphone, la ligne défile : on garde l'année choisie visible.
+      btn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
     });
   });
 </script>
-<style>.annee-bloc { margin-bottom: 48px; } .grille-actus { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); }</style>
+<style>
+  /* Téléphone : une seule ligne d'années qui défile au doigt, au lieu d'une grille de 6 lignes. */
+  @media (max-width: 720px) {
+    .annees { flex-wrap: nowrap; overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-inline: clamp(16px, 4vw, 64px); scrollbar-width: none; margin: 0 calc(-1 * clamp(16px, 4vw, 64px)) 24px; padding: 2px clamp(16px, 4vw, 64px); -webkit-mask-image: linear-gradient(90deg, #000 85%, transparent); mask-image: linear-gradient(90deg, #000 85%, transparent); }
+    .annees::-webkit-scrollbar { display: none; }
+    .annees button { flex: none; scroll-snap-align: start; padding: 7px 14px; }
+    .annees .long { display: none; }
+  }
+  .annee-bloc { margin-bottom: 48px; } .grille-actus { grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); }</style>
