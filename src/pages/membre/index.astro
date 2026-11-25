@@ -193,10 +193,6 @@ const outilsAdmin = [
           <div class="carte-vent" id="vent" data-api={url('/membre/api/vent')}><p class="vide">Chargement du vent…</p></div>
         </div>
 
-        <div class="bloc-alt">
-          <h2 class="bt bt-suite">Vents en altitude LFOB <span class="bt-nb">kt · modèle AROME</span></h2>
-          <div class="carte-alt" id="altitude" data-api={url('/membre/api/aero')}><p class="vide">Chargement…</p></div>
-        </div>
         </div>
         <div class="col-d">
         <div class="carte-metar"><Metar /></div>
@@ -206,6 +202,10 @@ const outilsAdmin = [
         <div class="bloc-voisins">
           <h2 class="bt bt-suite">METAR voisins <span class="bt-nb" id="voisins-h"></span></h2>
           <div class="carte-voisins" id="voisins"><p class="vide">Chargement…</p></div>
+        </div>
+        <div class="bloc-alt">
+          <h2 class="bt bt-suite">Vents en altitude LFOB <span class="bt-nb">kt · modèle AROME</span></h2>
+          <div class="carte-alt" id="altitude" data-api={url('/membre/api/aero')}><p class="vide">Chargement…</p></div>
         </div>
         </div>
       </div>
@@ -547,6 +547,11 @@ const outilsAdmin = [
   .bloc-vent > .bt-suite, .bloc-alt > .bt-suite { margin: 0 2px 8px !important; }
   .bloc-vent > .bt { white-space: nowrap; } .bloc-vent > .bt .bt-nb { white-space: normal; text-align: right; }
   /* Tablette et PC : deux colonnes alignées en haut ; voisins sur deux colonnes */
+  /* Téléphone : une colonne, vents en altitude juste sous Vent et pistes (sur PC/tablette, ils passent sous les METAR voisins) */
+  @media (max-width: 759px) {
+    .vue-meteo .col-g, .vue-meteo .col-d { display: contents; }
+    .bloc-vent { order: 1; } .bloc-alt { order: 2; } .vue-meteo .col-d > :not(.bloc-alt) { order: 3; }
+  }
   @media (min-width: 760px) {
     .vue-terrain { flex-direction: row; align-items: flex-start; gap: 14px; }
     .vue-meteo .col-g { flex: .9; } .vue-meteo .col-d { flex: 1.15; }
