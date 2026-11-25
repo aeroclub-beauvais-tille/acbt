@@ -917,12 +917,14 @@ function alertes() {
   const mois = Number(new Date().toLocaleString('en-US', { month: 'numeric', timeZone: 'Europe/Paris' }));
   const hiver = mois >= 11 || mois <= 3;
   const snow = hiver ? (D.notam?.notam ?? []).filter((x) => x.snow) : [];
+  // « jusqu’au 24/11 · 09:00 » devant une date, « jusqu’à 09:00 » devant une heure seule
+  const jusqu = (x: string) => (x.includes('/') ? `jusqu’au ${x}` : `jusqu’à ${x}`);
   const plus = (l: unknown[]) => (l.length > 1 ? ` (+${l.length - 1})` : '');
   const h: string[] = [];
   alerteAAL();
   if (D.lvp?.actif) h.push(`<div class="al a-on a-lvp"><i class="lvp-logo">LVP</i><b>en cours</b></div>`);
   if (snow.length) h.push(`<div class="al a-on"><b>SNOWTAM en vigueur</b><span>état des pistes publié · voir NOTAM</span></div>`);
-  if (enCours.length) h.push(`<div class="al a-on"><b>Alerte météo en cours</b><span>${esc(maaPhen(enCours[0].phen) || enCours[0].motif || 'MAA')}${enCours[0].fin ? ` jusqu’à ${t(enCours[0].fin)} LT` : ''}${plus(enCours)}</span></div>`);
+  if (enCours.length) h.push(`<div class="al a-on"><b>Alerte météo en cours</b><span>${esc(maaPhen(enCours[0].phen) || enCours[0].motif || 'MAA')}${enCours[0].fin ? ` ${jusqu(t(enCours[0].fin))} LT` : ''}${plus(enCours)}</span></div>`);
   else if (aVenir.length) h.push(`<div class="al a-av"><b>Alerte météo à venir</b><span>${esc(maaPhen(aVenir[0].phen) || aVenir[0].motif || 'MAA')} dès ${t(aVenir[0].debut)} LT${plus(aVenir)}</span></div>`);
   if (!h.length) h.push(hiver ? `<div class="al a-ok"><b>Aucune alerte météo</b><span>ni MAA ni SNOWTAM, en cours ou à venir</span></div>` : `<div class="al a-ok"><b>Aucun MAA</b><span>en cours ou à venir</span></div>`);
   b.innerHTML = h.join('');
