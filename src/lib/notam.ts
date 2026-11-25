@@ -50,3 +50,15 @@ export function ligneNotam(x: Notam, sup = false) {
 export const NOTAM_INFO = 'hors obstacles et procédures IFR';
 export const NOTAM_VIDE = 'Aucun NOTAM en vigueur (hors obstacles et procédures IFR).';
 export const notamIndispo = (raison?: string) => raison === 'cle' ? 'En attente de la clé de l’API NOTAM (FAA) dans Cloudflare.' : 'NOTAM indisponibles pour le moment.';
+
+// Détail d'un NOTAM (appli, au toucher) : catégorie, validité en LT et UTC, texte complet
+const hLoc = (d: Date) => d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).replace(' ', ' · ');
+const deux = (d: Date) => `${hLoc(d)} LT <small>(${jmUtc(d)} · ${hUtc(d)} UTC)</small>`;
+export function detailNotam(x: Notam) {
+  const [, l, nom, coul] = x.snow ? [null, 'SNOW', 'SNOWTAM · état des pistes', 'neige'] : cat(x.sujet);
+  const d = utc(x.debut), f = x.fin && /^\d{4}-/.test(x.fin) ? new Date(x.fin) : null;
+  const on = actif(x.debut);
+  return `<div class="nd-tete"><span class="ic ${coul}${l.length > 2 && !l.startsWith('<') ? ' l' + l.length : ''}">${l}</span><div><b>${esc(nom)}</b><span>NOTAM ${esc(x.numero || '')}</span></div><em class="${on ? 'on' : ''}">${on ? 'ACTIF' : 'À VENIR'}</em></div>
+    <dl class="nd-dates"><div><dt>Début</dt><dd>${d ? deux(d) : '—'}</dd></div><div><dt>Fin</dt><dd>${x.fin === 'PERM' ? 'permanent' : f ? deux(f) : '—'}</dd></div></dl>
+    <p class="nd-texte">${texteNotam(x.texte)}</p>`;
+}
