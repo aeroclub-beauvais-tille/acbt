@@ -6,8 +6,9 @@
 // 2. Carte des fronts du service météo allemand (DWD, données ouvertes, sans inscription), analyse toutes les 6 h.
 // Grille gardée 1 h en cache, liste DWD 20 min, image des fronts 6 h.
 
-// Grille centrée sur LFOB (49,4544 N, 2,1128 E), décalée d'une demi-maille pour ne pas passer sous le repère LFOB
-export const GRILLE = { lat0: 47.0044, dlat: 0.7, nlat: 8, lon0: -1.0372, dlon: 0.9, nlon: 8 };
+// Grille sur toute la carte : 8 colonnes décalées d'une demi-maille autour de LFOB (aucun point sous le repère),
+// 9 rangées du bas de la carte jusque sous les repères FL/heure du haut
+export const GRILLE = { lat0: 46.65, dlat: 0.657, nlat: 9, lon0: -1.0372, dlon: 0.9, nlon: 8 };
 const ECHEANCES = [0, 1, 2, 3, 4, 5, 6, 7, 8]; // heures après l'heure ronde en cours (animation heure par heure)
 const NIVEAUX = [950, 850, 700];
 const CHAMPS = NIVEAUX.flatMap((p) => [`wind_direction_${p}hPa`, `wind_speed_${p}hPa`, `temperature_${p}hPa`]);
@@ -27,7 +28,7 @@ async function enCache(cache, waitUntil, cle, duree, lire) {
 
 export async function lireGrille(cache, waitUntil) {
   const heure = new Date().toISOString().slice(0, 13);
-  return enCache(cache, waitUntil, `grille7-${heure}`, 3600, async () => {
+  return enCache(cache, waitUntil, `grille8-${heure}`, 3600, async () => {
     const la = [], lo = [];
     for (let i = 0; i < GRILLE.nlat; i++) for (let j = 0; j < GRILLE.nlon; j++) {
       la.push((GRILLE.lat0 + i * GRILLE.dlat).toFixed(3));
