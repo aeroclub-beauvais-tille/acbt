@@ -159,8 +159,8 @@ const onglets = [
         </a>
       </template>
 
-      <!-- Ordre sur téléphone (choisi par le club) : soleil, METAR, vent et pistes, TAF, vents en altitude, METAR voisins.
-           Sur PC/tablette : colonne de gauche (soleil, METAR, TAF, altitude) et de droite (vent, voisins), alignées en haut. -->
+      <!-- Ordre sur téléphone (choisi par le club) : soleil, METAR, vent et pistes, TAF, METAR voisins, vents en altitude.
+           Sur PC/tablette : colonne de gauche (soleil, METAR, TAF, voisins) et de droite (vent, altitude), alignées en haut. -->
       <div class="col-g">
         <div class="soleil" id="soleil" aria-label="Soleil à LFOB, heures locales">
           <div class="sol-frise" aria-hidden="true">
@@ -180,9 +180,9 @@ const onglets = [
 
         <div class="carte-metar carte-taf"><Taf /></div>
 
-        <div class="bloc-alt">
-          <h2 class="bt bt-suite">Vents en altitude LFOB <span class="bt-nb">kt · modèle AROME</span></h2>
-          <div class="carte-alt" id="altitude" data-api={url('/membre/api/aero')}><p class="vide">Chargement…</p></div>
+        <div class="bloc-voisins">
+          <h2 class="bt bt-suite">METAR voisins <span class="bt-nb" id="voisins-h"></span></h2>
+          <div class="carte-voisins" id="voisins"><p class="vide">Chargement…</p></div>
         </div>
       </div>
 
@@ -192,9 +192,9 @@ const onglets = [
           <div class="carte-vent" id="vent" data-api={url('/membre/api/vent')}><p class="vide">Chargement du vent…</p></div>
         </div>
 
-        <div class="bloc-voisins">
-          <h2 class="bt bt-suite">METAR voisins <span class="bt-nb" id="voisins-h"></span></h2>
-          <div class="carte-voisins" id="voisins"><p class="vide">Chargement…</p></div>
+        <div class="bloc-alt">
+          <h2 class="bt bt-suite">Vents en altitude LFOB <span class="bt-nb">kt · modèle AROME</span></h2>
+          <div class="carte-alt" id="altitude" data-api={url('/membre/api/aero')}><p class="vide">Chargement…</p></div>
         </div>
       </div>
 
@@ -420,7 +420,9 @@ const onglets = [
   .sep:first-of-type, .fiche .sep:first-of-type { margin-top: 0; }
 
   /* Barre du haut */
-  .topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: calc(54px + env(safe-area-inset-top, 0px)); padding: 0 14px; padding-top: env(safe-area-inset-top, 0px); background: var(--bar); color: var(--bar-ink); }
+  /* Barre du haut FIXE (et non « sticky ») : iOS prolonge alors son bleu sous l'heure et la batterie au lieu d'y flouter la page */
+  :global(body) { padding-top: calc(54px + env(safe-area-inset-top, 0px)); }
+  .topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: calc(54px + env(safe-area-inset-top, 0px)); padding: 0 14px; padding-top: env(safe-area-inset-top, 0px); background: var(--bar); color: var(--bar-ink); }
   .marque { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--bar-ink); --logo-rouge: var(--bar-rouge); --logo-h: 40px; }
   .marque .logo { --logo-h: 30px; --logo-rouge: var(--bar-rouge); color: var(--bar-ink); }
   .marque span { font-weight: 800; font-size: 1.05rem; letter-spacing: -.01em; white-space: nowrap; }
@@ -493,11 +495,11 @@ const onglets = [
   .bt-suite { margin-top: 22px; }
   .bt-nb :global(.dot) { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); vertical-align: 0; }
   .bt-nb :global(.dot.ko) { background: var(--bad); }
-  /* Téléphone : les deux colonnes s'effacent, l'ordre du club est rétabli (soleil, METAR, vent, TAF, altitude, voisins) */
+  /* Téléphone : les deux colonnes s'effacent, l'ordre du club est rétabli (soleil, METAR, vent, TAF, voisins, altitude) */
   #accueil:not([hidden]) { display: flex; flex-direction: column; }
   .col-g, .col-d { display: contents; }
   #lvp, #snow-alerte, #maa-zone, #maa-rien { order: 0; }
-  .soleil { order: 1; } .carte-metar { order: 2; } .bloc-vent { order: 3; } .carte-taf { order: 4; } .bloc-alt { order: 5; } .bloc-voisins { order: 6; } .aide-ios { order: 9; }
+  .soleil { order: 1; } .carte-metar { order: 2; } .bloc-vent { order: 3; } .carte-taf { order: 4; } .bloc-voisins { order: 5; } .bloc-alt { order: 6; } .aide-ios { order: 9; }
   .carte-alt, .carte-voisins { padding: 12px 12px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
   .carte-alt { overflow-x: auto; }
   .carte-alt :global(.alt) { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
@@ -723,7 +725,7 @@ const onglets = [
   @media (min-width: 1100px) {
     .content { max-width: 1440px; padding-inline: 28px; }
     .topbar { padding-inline: max(14px, calc((100% - 1440px) / 2 + 28px)); }
-    /* Météo : alertes sur toute la largeur ; à gauche soleil, METAR, TAF et altitude ; à droite vent et voisins. Alignées en haut, chaque case à sa taille. */
+    /* Météo : alertes sur toute la largeur ; à gauche soleil, METAR, TAF et METAR voisins ; à droite vent et altitude. Alignées en haut, chaque case à sa taille. */
     #accueil:not([hidden]) { max-width: none; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px 22px; align-items: start; }
     #accueil > #lvp, #accueil > #snow-alerte, #accueil > #maa-zone, #accueil > #maa-rien, #accueil > .aide-ios { grid-column: 1 / -1; margin: 0; }
     .col-g, .col-d { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
@@ -740,7 +742,8 @@ const onglets = [
   /* Grand écran : la barre d'onglets reste groupée au centre, alignée sur le contenu */
   @media (min-width: 820px) {
     /* Tablette : moins de vide sous les onglets (la barre d'accueil d'iPadOS est plus fine que celle de l'iPhone) */
-    .tabbar { justify-content: center; padding-bottom: max(4px, calc(var(--safe-b) - 14px)); }
+    .tabbar { justify-content: center; padding-bottom: max(0px, calc(var(--safe-b) - 20px)); }
+    .tabbar button { padding-bottom: 4px; min-height: 56px; }
     .content { padding-bottom: calc(var(--tab-h) + var(--safe-b) + 6px); }
     .tabbar button { flex: 0 1 240px; }
   }
