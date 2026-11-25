@@ -1,0 +1,287 @@
+---
+// Tarifs (admin) : programmer un changement de prix (heure de vol par avion, vol découverte, initiation…)
+// avec une date d'effet ; voir les changements prévus, les modifier ou les annuler.
+// Les changements sont rangés sur Cloudflare (base D1, /api/tarifs) ; le site public se republie
+// dans le quart d'heure qui suit, puis chaque nuit : le nouveau prix s'affiche le jour prévu.
+import { getCollection } from 'astro:content';
+import MembreApp from '../../layouts/MembreApp.astro';
+import Logo from '../../components/Logo.astro';
+import base from '../../data/tarifs.json';
+import { url } from '../../lib/utils';
+
+const jour = (d: Date) => d.toISOString().slice(0, 10);
+const avions = (await getCollection('avions', (a) => a.data.actif && !!a.data.immatriculation && (a.data.tarifs?.length ?? 0) > 0))
+  .sort((a, b) => a.data.ordre - b.data.ordre)
+  .map((a) => ({
+    cible: `avion:${a.data.immatriculation}`,
+    groupe: 'Heures de vol',
+    nom: `${a.data.immatriculation} · ${a.data.type}`,
+    double: true,
+    base: (a.data.tarifs ?? []).map((t) => ({ a_partir_du: jour(t.a_partir_du), prix: t.prix_heure, prix2: t.prix_instruction ?? null, note: t.note ?? null })),
+  }));
+const formules = base.formules.flatMap((f) => f.prix.map((p) => ({
+  cible: `formule:${f.titre}|${p.libelle}`,
+  groupe: f.titre,
+  nom: `${f.titre} · ${p.libelle}`,
+  double: false,
+  base: [{ a_partir_du: '0000-01-01', prix: p.prix, prix2: null, note: null }],
+})));
+const elements = [...avions, ...formules];
+const groupes = [...new Set(elements.map((e) => e.groupe))];
+---
+<MembreApp title="Tarifs">
+  <div class="ecran" id="ecran" data-api={url('/api/tarifs')}>
+    <header class="haut">
+      <a href={url('/membre/#admin')} class="retour" aria-label="Retour à l'administration">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
+      </a>
+      <Logo class="logo" />
+      <span>Tarifs</span>
+    </header>
+
+    <main class="corps">
+      <form class="carte" id="form" novalidate>
+        <h1 id="f-titre">Programmer un changement de prix</h1>
+        <p class="sous">Le nouveau prix s'affiche sur le site public à la date choisie. Les prix d'avant restent affichés jusque-là.</p>
+
+        <label class="lbl" for="cible">Tarif</label>
+        <select id="cible" required>
+          <option value="">Choisir…</option>
+          {groupes.map((g) => (
+            <optgroup label={g}>{elements.filter((e) => e.groupe === g).map((e) => <option value={e.cible}>{e.nom}</option>)}</optgroup>
+          ))}
+        </select>
+        <p class="actuel" id="actuel" hidden></p>
+
+        <div class="deux">
+          <div>
+            <label class="lbl" for="prix" id="l-prix">Nouveau prix (€)</label>
+            <input id="prix" type="text" inputmode="decimal" placeholder="ex. 145" />
+          </div>
+          <div id="z-prix2" hidden>
+            <label class="lbl" for="prix2">Avec instructeur (€ / h)</label>
+            <input id="prix2" type="text" inputmode="decimal" placeholder="ex. 190" />
+          </div>
+        </div>
+
+        <label class="lbl" for="date">À partir du</label>
+        <input id="date" type="date" />
+
+        <label class="lbl" for="note">Note affichée <i>(facultatif)</i></label>
+        <input id="note" type="text" maxlength="200" placeholder="ex. hausse du carburant" />
+
+        <label class="lbl" for="mdp">Mot de passe admin</label>
+        <input id="mdp" type="password" autocomplete="current-password" />
+
+        <p class="erreur" id="erreur" role="alert" hidden></p>
+        <p class="ok" id="ok" role="status" hidden></p>
+        <button class="pri" type="submit" id="envoyer">Programmer</button>
+        <button class="sec" type="button" id="abandon" hidden>Ne pas modifier</button>
+      </form>
+
+      <section class="carte">
+        <h2>Changements programmés</h2>
+        <p class="sous" id="etat">Chargement…</p>
+        <ul class="chg" id="prevus"></ul>
+        <details class="passes" id="z-passes" hidden>
+          <summary>Changements déjà en vigueur</summary>
+          <ul class="chg" id="passes"></ul>
+        </details>
+      </section>
+
+      <section class="carte">
+        <h2>Prix en vigueur aujourd'hui</h2>
+        <ul class="prix" id="vigueur"></ul>
+      </section>
+    </main>
+  </div>
+</MembreApp>
+
+<script define:vars={{ elements }}>
+  window.__TARIFS = elements;
+</script>
+
+<script>
+  type Ligne = { a_partir_du: string; prix: number; prix2: number | null; note: string | null; id?: string };
+  type El = { cible: string; groupe: string; nom: string; double: boolean; base: Ligne[] };
+  const EL: El[] = (window as unknown as { __TARIFS: El[] }).__TARIFS;
+  const API = document.getElementById('ecran')!.dataset.api!;
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const cible = $<HTMLSelectElement>('cible'), prix = $<HTMLInputElement>('prix'), prix2 = $<HTMLInputElement>('prix2');
+  const date = $<HTMLInputElement>('date'), note = $<HTMLInputElement>('note'), mdp = $<HTMLInputElement>('mdp');
+  const erreur = $('erreur'), ok = $('ok'), envoyer = $<HTMLButtonElement>('envoyer'), abandon = $<HTMLButtonElement>('abandon');
+  const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const montrer = (el: HTMLElement, t: string) => { el.textContent = t; el.hidden = !t; };
+  const euros = (n: number | null | undefined) => n == null ? '' : `${String(n).replace('.', ',')} €`;
+  const jourFr = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+  const aujourdhui = new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
+  const demain = new Date(Date.now() + 864e5).toLocaleDateString('en-CA', { timeZone: 'Europe/Paris' });
+  try { mdp.value = localStorage.getItem('acbt-admin-alertes') || ''; } catch { /* privé */ }
+  date.min = aujourdhui;
+
+  let changements: (Ligne & { id: string; cible: string })[] = [];
+  let edition: string | null = null;
+  const el = (c: string) => EL.find((e) => e.cible === c);
+  const montant = (e: El | undefined, l: Ligne) => e?.double ? `${euros(l.prix)} / h solo · ${euros(l.prix2 ?? null) || '—'} / h avec instructeur` : euros(l.prix);
+  // Prix en vigueur à une date : dernier changement (fiche ou appli) dont la date est passée
+  const enVigueur = (c: string, jourVoulu = aujourdhui) => {
+    const e = el(c);
+    const toutes = [...(e?.base ?? []), ...changements.filter((x) => x.cible === c)].filter((l) => l.a_partir_du <= jourVoulu);
+    return toutes.sort((a, b) => a.a_partir_du.localeCompare(b.a_partir_du)).pop();
+  };
+
+  const majForm = () => {
+    const e = el(cible.value);
+    $('z-prix2').hidden = !e?.double;
+    $('l-prix').textContent = e?.double ? 'Heure en solo (€ / h)' : 'Nouveau prix (€)';
+    const v = e && enVigueur(e.cible);
+    montrer($('actuel'), v ? `Actuellement : ${montant(e, v)}` : '');
+  };
+  cible.addEventListener('input', majForm);
+
+  const viderForm = () => {
+    edition = null; cible.disabled = false; cible.value = ''; prix.value = ''; prix2.value = ''; date.value = ''; note.value = '';
+    $('f-titre').textContent = 'Programmer un changement de prix'; envoyer.textContent = 'Programmer'; abandon.hidden = true;
+    majForm();
+  };
+  abandon.addEventListener('click', () => { viderForm(); montrer(erreur, ''); });
+
+  async function poster(corps: Record<string, unknown>) {
+    const r = await fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...corps, motDePasse: mdp.value }) }).catch(() => null);
+    const d = r ? await r.json().catch(() => ({})) : {};
+    if (!r || !r.ok) throw new Error(d.erreur || 'Envoi impossible (pas de réseau ?).');
+    try { localStorage.setItem('acbt-admin-alertes', mdp.value); } catch { /* privé */ }
+    return d;
+  }
+
+  $('form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    montrer(ok, '');
+    const e = el(cible.value);
+    const n = (v: string) => v.trim().replace(',', '.');
+    const manque = !e ? 'Choisissez le tarif à changer.' : !n(prix.value) || isNaN(+n(prix.value)) ? 'Indiquez le nouveau prix.'
+      : e.double && n(prix2.value) && isNaN(+n(prix2.value)) ? 'Prix avec instructeur invalide.'
+      : !date.value ? 'Choisissez la date à partir de laquelle le prix s’applique.' : !mdp.value ? 'Indiquez le mot de passe admin.' : '';
+    if (manque) { montrer(erreur, manque); return; }
+    montrer(erreur, '');
+    envoyer.disabled = true;
+    try {
+      const champs = { prix: n(prix.value), prix2: e!.double ? n(prix2.value) : '', a_partir_du: date.value, note: note.value.trim() };
+      if (edition) await poster({ action: 'modifier', id: edition, ...champs });
+      else await poster({ action: 'ajouter', cible: e!.cible, ...champs });
+      montrer(ok, `${edition ? 'Modification enregistrée' : 'Changement programmé'} : ${e!.nom}, ${montant(e, { a_partir_du: date.value, prix: +champs.prix, prix2: champs.prix2 ? +champs.prix2 : null, note: null })} à partir du ${jourFr(date.value)}. Le site public sera à jour d’ici un quart d’heure.`);
+      viderForm();
+      charger();
+    } catch (err) { montrer(erreur, (err as Error).message); }
+    envoyer.disabled = false;
+  });
+
+  const ligne = (c: Ligne & { id: string; cible: string }, futur: boolean) => {
+    const e = el(c.cible);
+    return `<li${futur ? '' : ' class="passe"'}>
+      <div class="txt"><span class="quand">${futur ? 'À partir du' : 'Depuis le'} ${jourFr(c.a_partir_du)}</span>
+      <b>${esc(e?.nom ?? c.cible)}</b>
+      <span class="mt">${montant(e, c)}</span>${c.note ? `<small>${esc(c.note)}</small>` : ''}</div>
+      <span class="act">
+        <button type="button" data-action="modifier" data-id="${esc(c.id)}">Modifier</button>
+        <button type="button" class="b-suppr" data-action="annuler" data-id="${esc(c.id)}">Annuler</button>
+      </span></li>`;
+  };
+
+  async function charger() {
+    try {
+      const d = await (await fetch(API, { cache: 'no-store' })).json();
+      changements = d.changements || [];
+    } catch { montrer($('etat'), 'Impossible de charger les changements (pas de réseau ?).'); return; }
+    const prevus = changements.filter((c) => c.a_partir_du > aujourdhui);
+    const passes = changements.filter((c) => c.a_partir_du <= aujourdhui).reverse();
+    montrer($('etat'), prevus.length ? '' : 'Aucun changement de prix à venir.');
+    $('prevus').innerHTML = prevus.map((c) => ligne(c, true)).join('');
+    $('z-passes').hidden = !passes.length;
+    $('passes').innerHTML = passes.map((c) => ligne(c, false)).join('');
+    // Prix du jour, avec l'éventuel prochain changement (fiche avion ou appli)
+    $('vigueur').innerHTML = EL.map((e) => {
+      const v = enVigueur(e.cible);
+      const prochain = [...e.base, ...changements.filter((x) => x.cible === e.cible)].filter((l) => l.a_partir_du > aujourdhui).sort((a, b) => a.a_partir_du.localeCompare(b.a_partir_du))[0];
+      return `<li><b>${esc(e.nom)}</b><span>${v ? montant(e, v) : '—'}</span>${prochain ? `<small>puis ${montant(e, prochain)} à partir du ${jourFr(prochain.a_partir_du)}</small>` : ''}</li>`;
+    }).join('');
+    majForm();
+  }
+
+  document.querySelector('main')!.addEventListener('click', async (ev) => {
+    const b = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-id]');
+    if (!b) return;
+    const c = changements.find((x) => x.id === b.dataset.id);
+    if (!c) return;
+    if (b.dataset.action === 'modifier') {
+      edition = c.id; cible.value = c.cible; cible.disabled = true;
+      prix.value = String(c.prix).replace('.', ','); prix2.value = c.prix2 == null ? '' : String(c.prix2).replace('.', ',');
+      date.value = c.a_partir_du; note.value = c.note ?? '';
+      $('f-titre').textContent = 'Modifier le changement'; envoyer.textContent = 'Enregistrer la modification'; abandon.hidden = false;
+      majForm(); montrer(ok, ''); montrer(erreur, '');
+      $('form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if (!mdp.value) { montrer(erreur, 'Indiquez le mot de passe admin.'); mdp.focus(); return; }
+    const e = el(c.cible);
+    const futur = c.a_partir_du > aujourdhui;
+    if (!confirm(futur ? `Annuler ce changement ? ${e?.nom ?? ''} gardera son prix actuel après le ${jourFr(c.a_partir_du)}.`
+      : `Annuler ce changement déjà en vigueur ? ${e?.nom ?? ''} reviendra au prix précédent sur le site.`)) return;
+    b.disabled = true;
+    try {
+      await poster({ action: 'annuler', id: c.id });
+      if (edition === c.id) viderForm();
+      montrer(ok, 'Changement annulé. Le site public sera à jour d’ici un quart d’heure.'); montrer(erreur, '');
+      charger();
+    } catch (err) { b.disabled = false; montrer(erreur, (err as Error).message); }
+  });
+  date.placeholder = demain;
+  charger();
+</script>
+
+<style>
+  .ecran { min-height: 100svh; display: flex; flex-direction: column; background: var(--bg); }
+  .haut { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 10px; min-height: calc(54px + env(safe-area-inset-top, 0px)); padding: 0 16px 0 8px; padding-top: env(safe-area-inset-top, 0px); background: var(--bar); color: var(--bar-ink); }
+  .retour { display: grid; place-items: center; width: 34px; height: 34px; color: var(--bar-ic); }
+  .retour svg { width: 22px; height: 22px; }
+  .haut :global(.logo) { --logo-h: 40px; --logo-rouge: var(--bar-rouge); color: var(--bar-ink); }
+  .haut span { font-weight: 800; font-size: 1.05rem; }
+  .corps { flex: 1; width: 100%; max-width: 680px; margin: 0 auto; padding: 18px 16px 40px; display: grid; gap: 14px; align-content: start; }
+  .carte { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; }
+  h1 { font-size: 1.25rem; margin: 0 0 6px; }
+  h2 { font-size: 1.1rem; margin: 0 0 6px; }
+  .sous { color: var(--muted); font-size: .9rem; margin: 0; }
+  .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 520px) { .deux { grid-template-columns: 1fr; gap: 0; } }
+  .lbl { display: block; font-weight: 700; font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; }
+  .lbl i { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 600; }
+  input, select { width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; font: inherit; background: var(--surface-2, var(--surface)); color: var(--ink); box-sizing: border-box; }
+  select:disabled { opacity: .8; }
+  .actuel { margin: 8px 0 0; font-size: .88rem; color: var(--muted); background: var(--surface-2); border-left: 4px solid var(--accent); border-radius: 8px; padding: 8px 12px; }
+  .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; }
+  .ok { color: var(--ok); background: var(--ok-bg); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; font-weight: 650; }
+  .pri { width: 100%; height: 50px; margin-top: 16px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; }
+  .pri:disabled { opacity: .7; cursor: wait; }
+  .sec { width: 100%; height: 44px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); font: inherit; font-weight: 700; cursor: pointer; }
+  .chg, .prix { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+  .chg :global(li) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 10px; padding: 10px 12px; }
+  .chg :global(li.passe) { background: var(--surface-2); border-left-color: var(--muted); }
+  .chg :global(.txt) { flex: 1 1 220px; min-width: 0; }
+  .chg :global(.quand) { display: block; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); }
+  .chg :global(li.passe .quand) { color: var(--muted); }
+  .chg :global(b) { display: block; font-size: .95rem; margin-top: 2px; }
+  .chg :global(.mt) { display: block; font-weight: 700; font-size: .9rem; color: var(--ink); }
+  .chg :global(small) { display: block; color: var(--muted); font-size: .8rem; margin-top: 2px; }
+  .chg :global(.act) { display: flex; gap: 6px; }
+  .chg :global(.act button) { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: .82rem; border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+  .chg :global(.act .b-suppr) { border-color: var(--bad-line); background: var(--bad-bg); color: var(--bad); }
+  .passes { margin-top: 14px; }
+  .passes summary { cursor: pointer; font-weight: 700; font-size: .9rem; color: var(--muted); }
+  .prix :global(li) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 8px 0; border-top: 1px solid var(--line); }
+  .prix :global(li:first-child) { border-top: 0; }
+  .prix :global(b) { font-size: .9rem; font-weight: 650; }
+  .prix :global(span) { font-weight: 800; font-size: .9rem; text-align: right; }
+  .prix :global(small) { grid-column: 1 / -1; color: var(--accent); font-size: .8rem; font-weight: 650; }
+  @media (max-width: 520px) { .prix :global(li) { grid-template-columns: 1fr; } .prix :global(span) { text-align: left; } }
+  [hidden] { display: none !important; }
+</style>

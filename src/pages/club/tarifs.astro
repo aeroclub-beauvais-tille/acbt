@@ -4,7 +4,7 @@ import PageHead from '../../components/PageHead.astro';
 import HeuresVol from '../../components/HeuresVol.astro';
 import { getCollection } from 'astro:content';
 import club from '../../data/club.json';
-import t from '../../data/tarifs.json';
+import { tarifs as t } from '../../lib/tarifs';
 import { url } from '../../lib/utils';
 const avions = (await getCollection('avions', (a) => a.data.actif)).sort((a, b) => a.data.ordre - b.data.ordre);
 const ad = t.adhesion;
