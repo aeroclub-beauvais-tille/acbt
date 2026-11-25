@@ -169,8 +169,21 @@ export function maa(racine: ParentNode = document) {
   const zone = racine.querySelector<HTMLElement>('#maa-zone');
   if (zone) zone.hidden = visibles === 0;
   // Rien en cours ni à venir : on le dit clairement, au-dessus du METAR.
-  const rien = racine.querySelector<HTMLElement>('#maa-rien');
-  if (rien) rien.hidden = visibles > 0;
+  majRien();
+}
+
+/* SNOWTAM en vigueur (saison d'hiver seulement, comme la TV) : lu dans les NOTAM */
+let snowActif = false;
+const hiver = () => { const m = new Date().getMonth() + 1; return m >= 11 || m <= 3; };
+/* Bandeau vert quand il n'y a ni MAA (ni SNOWTAM l'hiver) en cours ou à venir : même texte que la TV */
+function majRien() {
+  const rien = document.querySelector<HTMLElement>('#maa-rien');
+  const zone = document.querySelector<HTMLElement>('#maa-zone');
+  if (!rien) return;
+  rien.hidden = (zone ? !zone.hidden : false) || snowActif;
+  const t = document.getElementById('maa-rien-t'), st = document.getElementById('maa-rien-s');
+  if (t) t.textContent = hiver() ? 'Aucune alerte météo' : 'Aucun MAA';
+  if (st) st.textContent = hiver() ? 'ni MAA ni SNOWTAM, en cours ou à venir' : 'en cours ou à venir';
 }
 
 /**
@@ -784,6 +797,10 @@ export function notam() {
       return;
     }
     const l = trierNotam(d.notam);
+    snowActif = hiver() && l.some((x) => x.snow);
+    const sa = document.getElementById('snow-alerte');
+    if (sa) sa.hidden = !snowActif;
+    majRien();
     liste.innerHTML = l.length ? l.map((x) => ligneNotam(x)).join('') : vide(NOTAM_VIDE);
     if (nb) nb.textContent = `${l.length} en vigueur`;
     if (info) info.textContent = `Source FAA · ${NOTAM_INFO} · heures UTC`;

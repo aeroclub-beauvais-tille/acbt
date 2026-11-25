@@ -141,9 +141,12 @@ const onglets = [
           </a>
         ))}
       </div>
+      <div class="snow-alerte" id="snow-alerte" hidden>
+        <span class="maa-txt"><strong>SNOWTAM en vigueur</strong><span class="maa-num">état des pistes publié · voir l'onglet NOTAM</span></span>
+      </div>
       <p class="maa-rien" id="maa-rien" hidden>
-        <span class="maa-rien-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5" /></svg></span>
-        <span>Pas de MAA en cours ni prévu</span>
+        <i class="maa-rien-pt" aria-hidden="true"></i>
+        <span><b id="maa-rien-t">Aucune alerte météo</b> <span class="maa-rien-s" id="maa-rien-s">ni MAA ni SNOWTAM, en cours ou à venir</span></span>
       </p>
       <template id="maa-modele">
         <a class="maa-banniere" data-maa target="_blank" rel="noopener" hidden>
@@ -462,10 +465,14 @@ const onglets = [
 
   /* MAA */
   #maa-zone { margin-bottom: 18px; display: grid; gap: 9px; }
-  .maa-rien { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; padding: 11px 13px; border-radius: 14px; background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok); font-weight: 700; font-size: .86rem; }
+  /* Rien en cours : même bandeau que la TV (« Aucune alerte météo » en vert, le détail en texte normal) */
+  .maa-rien { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; padding: 11px 16px; border-radius: 999px; background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ink); font-size: .9rem; line-height: 1.35; }
   .maa-rien[hidden] { display: none; }
-  .maa-rien-ic { flex: none; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; background: var(--ok); color: #fff; }
-  .maa-rien-ic svg { width: 16px; height: 16px; }
+  .maa-rien b { color: var(--ok); font-weight: 800; margin-right: 4px; }
+  .maa-rien-s { font-weight: 600; }
+  .maa-rien-pt { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--ok); }
+  .snow-alerte { display: flex; gap: 10px; align-items: center; color: #fff; background: linear-gradient(135deg, #c4161c, #e4482b); border-radius: 14px; padding: 11px 13px; margin-bottom: 10px; }
+  .snow-alerte[hidden] { display: none; }
   .maa-banniere { display: flex; gap: 10px; align-items: center; text-decoration: none; color: #fff; background: linear-gradient(135deg, #c4161c, #e4482b); border-radius: 14px; padding: 11px 13px; box-shadow: 0 5px 16px rgba(196,22,28,.26); }
   .maa-banniere[data-etat='a-venir'] { background: linear-gradient(135deg, #b5700a, #e0982a); box-shadow: 0 5px 16px rgba(181,112,10,.26); }
   .maa-banniere .maa-ic { flex: none; width: 30px; height: 30px; display: grid; place-items: center; background: rgba(255,255,255,.18); border-radius: 50%; }
@@ -488,7 +495,7 @@ const onglets = [
   /* Téléphone : les deux colonnes s'effacent, l'ordre du club est rétabli (soleil, METAR, vent, TAF, altitude, voisins) */
   #accueil:not([hidden]) { display: flex; flex-direction: column; }
   .col-g, .col-d { display: contents; }
-  #lvp, #maa-zone, #maa-rien { order: 0; }
+  #lvp, #snow-alerte, #maa-zone, #maa-rien { order: 0; }
   .soleil { order: 1; } .carte-metar { order: 2; } .bloc-vent { order: 3; } .carte-taf { order: 4; } .bloc-alt { order: 5; } .bloc-voisins { order: 6; } .aide-ios { order: 9; }
   .carte-alt, .carte-voisins { padding: 12px 12px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }
   .carte-alt { overflow-x: auto; }
@@ -717,7 +724,7 @@ const onglets = [
     .topbar { padding-inline: max(14px, calc((100% - 1440px) / 2 + 28px)); }
     /* Météo : alertes sur toute la largeur ; à gauche soleil, METAR, TAF et altitude ; à droite vent et voisins. Alignées en haut, chaque case à sa taille. */
     #accueil:not([hidden]) { max-width: none; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 14px 22px; align-items: start; }
-    #accueil > #lvp, #accueil > #maa-zone, #accueil > #maa-rien, #accueil > .aide-ios { grid-column: 1 / -1; margin: 0; }
+    #accueil > #lvp, #accueil > #snow-alerte, #accueil > #maa-zone, #accueil > #maa-rien, #accueil > .aide-ios { grid-column: 1 / -1; margin: 0; }
     .col-g, .col-d { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
     .col-g > *, .col-d > * { margin: 0 !important; }
     /* Vent, altitude et voisins : une seule carte, titre compris */
