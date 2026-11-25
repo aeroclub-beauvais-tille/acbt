@@ -1,10 +1,21 @@
 // Garde de l'espace membre sur Cloudflare Pages : /membre/ et /uploads/membre/ ne s'ouvrent qu'avec le cookie de session.
 // L'écran de connexion, l'icône et la fiche de l'appli restent accessibles à tous.
 import { jeton, lireCookie, egal, jetonDash, lireCookieDash, motDePasseDash } from './_session.js';
+import { aCompter, compter } from './_visites.js';
 
 const LIBRES = ['/membre/connexion', '/membre/manifest.webmanifest'];
 
-export async function onRequest({ request, env, next }) {
+// Chaque page vue par un vrai navigateur est comptée (voir _visites.js), sans ralentir la réponse.
+export async function onRequest(context) {
+  const rep = await garde(context);
+  try {
+    const url = new URL(context.request.url);
+    if (aCompter(context.request, rep, url)) context.waitUntil(compter(context.request, context.env, url));
+  } catch { /* jamais bloquant */ }
+  return rep;
+}
+
+async function garde({ request, env, next }) {
   const { pathname, search } = new URL(request.url);
   // Tableau de bord TV : son propre mot de passe et son propre cookie
   if ((pathname === '/dashboard' || pathname.startsWith('/dashboard/')) && !pathname.startsWith('/dashboard/connexion')) {

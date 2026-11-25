@@ -1,0 +1,258 @@
+---
+// Statistiques de fréquentation du site (acbt60.fr/statistiques/), réservées à l'admin.
+// Les chiffres viennent du compteur sans cookies (functions/_visites.js) via /api/statistiques.
+import MembreApp from '../../layouts/MembreApp.astro';
+import Logo from '../../components/Logo.astro';
+import { url } from '../../lib/utils';
+---
+<MembreApp title="Statistiques du site" description="Fréquentation du site de l'aéroclub (réservé à l'admin).">
+  <div class="ecran" id="ecran" data-api={url('/api/statistiques')}>
+    <header class="haut">
+      <a href={url('/')} class="retour" aria-label="Retour au site">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
+      </a>
+      <Logo class="logo" />
+      <span>Statistiques du site</span>
+      <b class="direct" id="direct" hidden></b>
+    </header>
+
+    <main class="corps">
+      <form class="carte connexion" id="connexion" hidden>
+        <h2>Accès admin</h2>
+        <label for="mdp">Mot de passe admin</label>
+        <input id="mdp" type="password" autocomplete="current-password" required />
+        <p class="erreur" id="erreur" role="alert" hidden></p>
+        <button class="pri" type="submit">Voir les statistiques</button>
+      </form>
+
+      <div id="contenu" hidden>
+        <div class="filtres">
+          <div class="seg" role="tablist" aria-label="Partie du site" id="f-section">
+            <button type="button" data-v="vitrine" aria-pressed="true">Site public</button>
+            <button type="button" data-v="membre" aria-pressed="false">Espace membre</button>
+            <button type="button" data-v="perfs" aria-pressed="false">Perfs</button>
+            <button type="button" data-v="tv" aria-pressed="false">TV</button>
+          </div>
+          <div class="seg" aria-label="Période" id="f-jours">
+            <button type="button" data-v="7" aria-pressed="false">7 jours</button>
+            <button type="button" data-v="30" aria-pressed="true">30 jours</button>
+            <button type="button" data-v="90" aria-pressed="false">3 mois</button>
+            <button type="button" data-v="365" aria-pressed="false">12 mois</button>
+          </div>
+        </div>
+
+        <section class="tuiles" id="tuiles"></section>
+
+        <section class="carte">
+          <h2 id="g-titre">Visiteurs par jour</h2>
+          <div class="graphe" id="graphe"></div>
+        </section>
+
+        <div class="grille">
+          <section class="carte"><h2>Pages les plus vues</h2><ol class="barres" id="l-pages"></ol></section>
+          <section class="carte"><h2>D’où viennent les visiteurs</h2><ol class="barres" id="l-sources"></ol>
+            <p class="sous note">« Direct » : adresse tapée, favori, lien dans un mail ou une appli qui ne dit pas d’où il vient.</p></section>
+          <section class="carte"><h2>Appareils</h2><ol class="barres" id="l-appareils"></ol></section>
+          <section class="carte"><h2>Villes</h2><ol class="barres" id="l-villes"></ol>
+            <p class="sous note">Ville approximative, déduite du fournisseur d’accès.</p></section>
+        </div>
+
+        <p class="sous pied-note" id="pied-note">Compté sans cookies et sans donnée personnelle. Un visiteur est reconnu le jour même seulement : s’il revient un autre jour, il compte de nouveau. Les robots et moteurs de recherche sont écartés.</p>
+        <button class="lien" type="button" id="oublier">Se déconnecter de cette page</button>
+      </div>
+    </main>
+  </div>
+</MembreApp>
+
+<script>
+  const API = document.getElementById('ecran')!.dataset.api!;
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const CLE = 'acbt-admin-stats';
+  type Ligne = Record<string, string | number | null>;
+  type Stats = {
+    jours: number; section: string; parMois: boolean; depuis: string | null; enDirect: number;
+    totaux: Ligne[]; precedent: Ligne[]; serie: { k: string; vues: number; visiteurs: number }[];
+    pages: Ligne[]; sources: Ligne[]; appareils: Ligne[]; villes: Ligne[];
+  };
+  const etat = { section: 'vitrine', jours: 30, mdp: '' };
+  try { etat.mdp = localStorage.getItem(CLE) || localStorage.getItem('acbt-admin-alertes') || ''; } catch { /* privé */ }
+
+  const esc = (t: unknown) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const nb = (n: number) => n.toLocaleString('fr-FR');
+  const NOMS: Record<string, string> = {
+    '/': 'Accueil', '/decouvrir-le-vol/': 'Baptême / découvrir le vol', '/formations/': 'Formations', '/club/': 'Le club',
+    '/club/flotte/': 'La flotte', '/club/tarifs/': 'Tarifs', '/club/historique/': 'Histoire du club', '/actualites/': 'Actualités',
+    '/contact/': 'Contact', '/mentions-legales/': 'Mentions légales', '/membre/': 'Accueil de l’appli', '/membre/connexion/': 'Connexion',
+    '/membre/admin/': 'Administration', '/membre/messages/': 'Messages du club', '/membre/alertes-meteo/': 'Alertes météo',
+    '/membre/signalements/': 'Signalements', '/dashboard/': 'Écran TV', '/dashboard/connexion/': 'Connexion TV', '/membre/perfs/': 'Perfs ACBT',
+  };
+  const nomPage = (p: string) => NOMS[p] || (p.startsWith('/actualites/') ? 'Actu : ' + p.slice(12, -1).replace(/-/g, ' ') : p);
+  const APPAREILS: Record<string, string> = { telephone: 'Téléphone', ordinateur: 'Ordinateur', tablette: 'Tablette', tv: 'Télévision' };
+  const PAYS = new Intl.DisplayNames(['fr'], { type: 'region' });
+  const SECTIONS: Record<string, string> = { vitrine: 'Site public', membre: 'Espace membre', perfs: 'Perfs', tv: 'TV' };
+
+  function barres(el: HTMLElement, lignes: Ligne[], nom: (l: Ligne) => string, val: string, unite: string) {
+    if (!lignes.length) { el.innerHTML = '<li class="vide">Pas encore de données.</li>'; return; }
+    const max = Math.max(...lignes.map((l) => Number(l[val]) || 0), 1);
+    el.innerHTML = lignes.map((l) => {
+      const n = Number(l[val]) || 0;
+      return `<li title="${esc(nom(l))} : ${nb(n)} ${unite}"><span class="b" style="width:${(n / max) * 100}%"></span><span class="t">${esc(nom(l))}</span><span class="n">${nb(n)}</span></li>`;
+    }).join('');
+  }
+
+  function ecart(a: number, b: number) {
+    if (!b) return a ? '<span class="ev">nouveau</span>' : '';
+    const p = Math.round(((a - b) / b) * 100);
+    return `<span class="ev ${p > 0 ? 'up' : p < 0 ? 'down' : ''}">${p > 0 ? '+' : ''}${p} %</span>`;
+  }
+
+  function graphe(d: Stats) {
+    const el = $('graphe');
+    const s = d.serie;
+    const max = Math.max(...s.map((x) => x.visiteurs), 1);
+    const pas = Math.pow(10, Math.floor(Math.log10(max)));
+    const haut = Math.ceil(max / pas) * pas;
+    const fmt = (k: string) => d.parMois
+      ? new Date(k + '-15').toLocaleDateString('fr-FR', { month: 'short', year: '2-digit' })
+      : new Date(k + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+    const pas2 = Math.ceil(s.length / (el.clientWidth < 500 ? (d.parMois ? 4 : 4) : (d.parMois ? 12 : 6)));
+    const etiq = (i: number) => s.length <= 7 || i % pas2 === 0 || (i === s.length - 1 && i % pas2 >= pas2 / 2);
+    el.innerHTML = `<div class="axe"><span>${nb(haut)}</span><span>${nb(haut / 2)}</span><span>0</span></div>
+      <div class="zone" style="--n:${s.length}">${s.map((x, i) => `<div class="col" tabindex="0" aria-label="${esc(fmt(x.k))} : ${x.visiteurs} visiteurs, ${x.vues} pages vues">
+        <span class="bar" style="height:${(x.visiteurs / haut) * 100}%"></span>
+        <span class="bulle"><b>${esc(fmt(x.k))}</b>${nb(x.visiteurs)} visiteurs<br>${nb(x.vues)} pages vues</span>
+        ${etiq(i) ? `<span class="x">${esc(fmt(x.k))}</span>` : ''}</div>`).join('')}</div>`;
+    $('g-titre').textContent = d.parMois ? 'Visiteurs par mois' : 'Visiteurs par jour';
+  }
+
+  function afficher(d: Stats) {
+    const t = d.totaux.find((x) => x.section === d.section) || { vues: 0, visiteurs: 0 };
+    const p = d.precedent.find((x) => x.section === d.section) || { vues: 0, visiteurs: 0 };
+    const vis = Number(t.visiteurs), vues = Number(t.vues);
+    const avantDebut = d.depuis && new Date(d.depuis) > new Date(Date.now() - 2 * d.jours * 864e5);
+    const cmp = (a: number, b: number) => (avantDebut ? '' : ecart(a, b));
+    $('tuiles').innerHTML = `
+      <div class="tuile"><span class="l">Visiteurs</span><b>${nb(vis)}</b>${cmp(vis, Number(p.visiteurs))}</div>
+      <div class="tuile"><span class="l">Pages vues</span><b>${nb(vues)}</b>${cmp(vues, Number(p.vues))}</div>
+      <div class="tuile"><span class="l">Pages par visiteur</span><b>${vis ? (vues / vis).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : '—'}</b></div>
+      <div class="tuile autres"><span class="l">Toutes parties</span>${['vitrine', 'membre', 'perfs', 'tv'].map((s) => {
+        const x = d.totaux.find((y) => y.section === s);
+        return `<span class="mini"><i>${SECTIONS[s]}</i>${nb(Number(x?.visiteurs || 0))}</span>`;
+      }).join('')}</div>`;
+    graphe(d);
+    barres($('l-pages'), d.pages, (l) => nomPage(String(l.page)), 'vues', 'pages vues');
+    barres($('l-sources'), d.sources, (l) => String(l.source), 'visiteurs', 'visiteurs');
+    barres($('l-appareils'), d.appareils, (l) => APPAREILS[String(l.appareil)] || String(l.appareil), 'visiteurs', 'visiteurs');
+    barres($('l-villes'), d.villes, (l) => `${l.ville}${l.pays && l.pays !== 'FR' ? ` (${(() => { try { return PAYS.of(String(l.pays)); } catch { return l.pays; } })()})` : ''}`, 'visiteurs', 'visiteurs');
+    const dir = $('direct');
+    dir.hidden = false;
+    dir.textContent = d.enDirect ? `${d.enDirect} en ce moment` : 'Personne en ce moment';
+    dir.classList.toggle('on', d.enDirect > 0);
+    if (d.depuis) $('pied-note').dataset.depuis = `Comptage depuis le ${new Date(d.depuis + 'T12:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}.`;
+  }
+
+  async function charger() {
+    const r = await fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motDePasse: etat.mdp, jours: etat.jours, section: etat.section }) }).catch(() => null);
+    const d = r ? await r.json().catch(() => ({})) : {};
+    if (!r || !r.ok) {
+      $('contenu').hidden = true; $('connexion').hidden = false;
+      const e = $('erreur');
+      e.hidden = !etat.mdp;
+      e.textContent = !r ? 'Pas de réseau ?' : d.erreur || 'Erreur.';
+      return;
+    }
+    try { localStorage.setItem(CLE, etat.mdp); } catch { /* privé */ }
+    $('connexion').hidden = true; $('contenu').hidden = false;
+    afficher(d as Stats);
+  }
+
+  $('connexion').addEventListener('submit', (e) => { e.preventDefault(); etat.mdp = $<HTMLInputElement>('mdp').value.trim(); charger(); });
+  for (const [id, cle] of [['f-section', 'section'], ['f-jours', 'jours']] as const) {
+    $(id).addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-v]');
+      if (!b) return;
+      $(id).querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      if (cle === 'jours') etat.jours = Number(b.dataset.v); else etat.section = b.dataset.v!;
+      charger();
+    });
+  }
+  $('oublier').addEventListener('click', () => {
+    try { localStorage.removeItem(CLE); } catch { /* privé */ }
+    etat.mdp = ''; $<HTMLInputElement>('mdp').value = ''; $('erreur').hidden = true;
+    $('contenu').hidden = true; $('connexion').hidden = false; $('direct').hidden = true;
+  });
+  if (etat.mdp) charger(); else $('connexion').hidden = false;
+  setInterval(() => { if (etat.mdp && !$('contenu').hidden) charger(); }, 60_000);
+</script>
+
+<style>
+  .ecran { --stat: #1d5fa8; }
+  :global(:root[data-theme=dark]) .ecran { --stat: #5b9be6; }
+  @media (prefers-color-scheme: dark) { :global(:root:not([data-theme=light])) .ecran { --stat: #5b9be6; } }
+  .ecran { min-height: 100svh; display: flex; flex-direction: column; background: var(--bg); }
+  .haut { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 10px; min-height: calc(54px + env(safe-area-inset-top, 0px)); padding: 0 16px 0 8px; padding-top: env(safe-area-inset-top, 0px); background: var(--bar); color: var(--bar-ink); }
+  .retour { display: grid; place-items: center; width: 34px; height: 34px; color: var(--bar-ic); }
+  .retour svg { width: 22px; height: 22px; }
+  .haut :global(.logo) { --logo-h: 40px; --logo-rouge: var(--bar-rouge); color: var(--bar-ink); }
+  .haut > span { font-weight: 800; font-size: 1.05rem; }
+  .direct { margin-left: auto; font-size: .78rem; font-weight: 700; opacity: .8; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .direct::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .5; }
+  .direct.on { opacity: 1; }
+  .direct.on::before { background: #3ecf7a; opacity: 1; }
+  .corps { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: 18px 16px 40px; display: grid; gap: 14px; align-content: start; box-sizing: border-box; }
+  #contenu { display: grid; gap: 14px; min-width: 0; }
+  .carte { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+  .connexion { max-width: 420px; width: 100%; margin: 6vh auto 0; box-sizing: border-box; }
+  h2 { font-size: 1rem; margin: 0 0 12px; }
+  .sous { color: var(--muted); font-size: .86rem; margin: 0; }
+  .note { margin-top: 12px; font-size: .8rem; }
+  label { display: block; font-weight: 700; font-size: .76rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 8px 0 6px; }
+  input[type=password] { width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; font: inherit; background: var(--surface-2, var(--surface)); color: var(--ink); box-sizing: border-box; }
+  .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; }
+  .pri { width: 100%; min-height: 48px; margin-top: 16px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+  .filtres { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; }
+  .seg { display: flex; background: var(--surface); border: 1px solid var(--line); border-radius: 11px; padding: 3px; gap: 2px; overflow-x: auto; max-width: 100%; }
+  .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 700; font-size: .86rem; padding: 8px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+  .seg button[aria-pressed=true] { background: var(--stat); color: #fff; }
+  .tuiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  .tuiles :global(.tuile) { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .tuiles :global(.tuile .l) { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .tuiles :global(.tuile b) { font-size: 1.9rem; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .tuiles :global(.ev) { font-size: .8rem; font-weight: 700; color: var(--muted); }
+  .tuiles :global(.ev.up) { color: var(--ok, #1f8a4c); }
+  .tuiles :global(.ev.down) { color: var(--bad); }
+  .tuiles :global(.tuile.autres) { gap: 4px; }
+  .tuiles :global(.mini) { display: flex; justify-content: space-between; font-size: .86rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .tuiles :global(.mini i) { font-style: normal; font-weight: 500; color: var(--muted); }
+  .graphe { display: grid; grid-template-columns: auto 1fr; gap: 8px; height: 220px; padding-bottom: 22px; }
+  .graphe :global(.axe) { display: flex; flex-direction: column; justify-content: space-between; font-size: .72rem; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; transform: translateY(-.5em); height: calc(100% + 1em); }
+  .graphe :global(.zone) { display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); align-items: end; gap: 2px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(var(--line), var(--line)) 0 0 / 100% 1px no-repeat, linear-gradient(var(--line), var(--line)) 0 50% / 100% 1px no-repeat; }
+  .graphe :global(.col) { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: center; outline: none; }
+  .graphe :global(.bar) { display: block; width: 100%; max-width: 28px; min-height: 0; background: var(--stat); border-radius: 4px 4px 0 0; }
+  .graphe :global(.col:hover .bar), .graphe :global(.col:focus .bar) { background: var(--accent); }
+  .graphe :global(.x) { position: absolute; top: 100%; margin-top: 5px; font-size: .7rem; color: var(--muted); white-space: nowrap; }
+  .graphe :global(.bulle) { display: none; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 5; background: var(--ink); color: var(--bg); font-size: .78rem; line-height: 1.35; padding: 7px 10px; border-radius: 8px; white-space: nowrap; pointer-events: none; }
+  .graphe :global(.bulle b) { display: block; }
+  .graphe :global(.col:hover .bulle), .graphe :global(.col:focus .bulle) { display: block; }
+  .graphe :global(.col:first-child .bulle), .graphe :global(.col:nth-child(2) .bulle) { left: 0; transform: none; }
+  .graphe :global(.col:last-child .bulle), .graphe :global(.col:nth-last-child(2) .bulle) { left: auto; right: 0; transform: none; }
+  .grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .barres { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .barres :global(li) { position: relative; display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; font-size: .9rem; border-radius: 6px; overflow: hidden; }
+  .barres :global(.b) { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--stat) 18%, transparent); border-radius: 6px; }
+  .barres :global(.t) { position: relative; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+  .barres :global(.n) { position: relative; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .barres :global(.vide) { color: var(--muted); }
+  .pied-note::after { content: ' ' attr(data-depuis); }
+  .lien { justify-self: start; background: none; border: 0; padding: 0; color: var(--muted); font: inherit; font-size: .84rem; text-decoration: underline; cursor: pointer; }
+  [hidden] { display: none !important; }
+  @media (max-width: 760px) {
+    .tuiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grille { grid-template-columns: 1fr; }
+    .tuiles :global(.tuile b) { font-size: 1.5rem; }
+    .haut > span { font-size: .95rem; }
+    .direct { font-size: 0; gap: 0; }
+    .graphe { height: 180px; }
+  }
+</style>
