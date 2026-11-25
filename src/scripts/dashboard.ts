@@ -114,13 +114,25 @@ function soleil() {
   $('soleil').innerHTML = `<h2>Soleil · jour civil et aéronautique ${lg}</h2>${barre}${ax}${sv}`;
 }
 
-// Thème clair pendant le jour civil, sombre la nuit (?theme=clair ou ?theme=sombre pour forcer)
-const themeForce = new URLSearchParams(location.search).get('theme');
+// Thème clair pendant le jour civil, sombre la nuit. Forçage : ?theme=clair|sombre dans l'adresse,
+// ou le petit bouton en bas (auto → jour → nuit), mémorisé sur cet écran
+const themeUrl = new URLSearchParams(location.search).get('theme');
+const MODES = ['auto', 'clair', 'sombre'] as const;
+const NOMS_MODE = { auto: 'automatique (jour / nuit selon le soleil)', clair: 'jour forcé', sombre: 'nuit forcée' };
+let modeTheme: (typeof MODES)[number] = (() => { try { const m = localStorage.getItem('tv-theme'); return MODES.includes(m as never) ? (m as never) : 'auto'; } catch { return 'auto'; } })();
 function theme() {
   const n = new Date();
   const e = ephemeride(n);
-  const clair = themeForce ? themeForce === 'clair' : !!(e?.aubeCivile && e?.crepuscule && n >= e.aubeCivile && n < e.crepuscule);
+  const force = themeUrl || (modeTheme !== 'auto' ? modeTheme : null);
+  const clair = force ? force === 'clair' : !!(e?.aubeCivile && e?.crepuscule && n >= e.aubeCivile && n < e.crepuscule);
   document.documentElement.dataset.theme = clair ? 'clair' : 'sombre';
+  const b = document.getElementById('mode-theme');
+  if (b) { b.dataset.mode = modeTheme; b.title = `Thème : ${NOMS_MODE[modeTheme]}`; b.setAttribute("aria-label", b.title); }
+}
+function changerTheme() {
+  modeTheme = MODES[(MODES.indexOf(modeTheme) + 1) % MODES.length];
+  try { localStorage.setItem('tv-theme', modeTheme); } catch { /* stockage indisponible : le choix vaut jusqu'au rechargement */ }
+  theme();
 }
 
 /* ------------------------------------------------------------------ */
@@ -1012,6 +1024,7 @@ export function demarrer() {
   window.visualViewport?.addEventListener('resize', echelle);
   document.addEventListener('fullscreenchange', () => setTimeout(echelle, 200));
   // Bouton discret plein écran / sortie (en bas à gauche)
+  document.getElementById('mode-theme')?.addEventListener('click', changerTheme);
   const pe = document.getElementById('plein-ecran');
   pe?.addEventListener('click', () => {
     if (document.fullscreenElement) document.exitFullscreen?.();

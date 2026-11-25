@@ -90,6 +90,11 @@ const modeles = { 'F-BTBJ': 'DR315', ...Object.fromEntries(avions.map((a) => [a.
       <svg class="ouvrir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
       <svg class="fermer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
+    <button type="button" class="pe-ecran pe-theme" id="mode-theme" aria-label="Thème : automatique" title="Thème : automatique (jour / nuit selon le soleil)">
+      <svg class="t-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+      <svg class="t-clair" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
+      <svg class="t-sombre" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>
+    </button>
     <footer class="foot"><span class="dot" id="etat"></span><span id="maj">Chargement…</span></footer>
   </div>
 </Dashboard>
@@ -145,6 +150,10 @@ const modeles = { 'F-BTBJ': 'DR315', ...Object.fromEntries(avions.map((a) => [a.
   .pe-ecran { position: absolute; left: 22px; bottom: 4px; width: 30px; height: 30px; padding: 5px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); opacity: .3; cursor: pointer; transition: opacity .2s, background .2s; }
   .pe-ecran:hover, .pe-ecran:focus-visible { opacity: 1; background: var(--panel); }
   .pe-ecran svg { width: 100%; height: 100%; display: block; } .pe-ecran .fermer { display: none; }
+  /* Bouton thème (auto / jour / nuit), à droite du bouton plein écran */
+  .pe-theme { left: 58px; } .pe-theme svg { display: none; }
+  .pe-theme[data-mode="auto"] .t-auto, .pe-theme[data-mode="clair"] .t-clair, .pe-theme[data-mode="sombre"] .t-sombre { display: block; }
+  .pe-theme:not([data-mode="auto"]) { opacity: .6; }
   :fullscreen .pe-ecran .ouvrir { display: none; } :fullscreen .pe-ecran .fermer { display: block; }
   .foot { position: absolute; right: 30px; bottom: 6px; font-size: 13px; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 8px; }
   .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ok); display: inline-block; }
