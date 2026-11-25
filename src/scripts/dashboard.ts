@@ -664,13 +664,16 @@ function tafBloc() {
 // MAA (guide Météo-France) : phénomène codé en clair, si le PDF n'a pas de texte, et son évolution
 const MAA_PHEN: [RegExp, string][] = [
   [/\bTC\s+(\w+)/, 'Cyclone tropical $1'], [/\bHVY TS\b/, 'Orages forts'], [/\bTS\b/, 'Orage'], [/\bGR\b/, 'Grêle'],
-  [/\bSN\s*(\d+)?\s*CM\b/, 'Neige ($1 cm)'], [/\bSN\b/, 'Neige'], [/\bFROST WITH ICE DEPOSIT\b/, 'Gelée, glace au sol'],
-  [/\bFROST WITHOUT ICE DEPOSIT\b/, 'Température sous abri négative'], [/\bFZ(RA|DZ)\b/, 'Précipitations se congelant'], [/\bRIME\b/, 'Gelée blanche ou givre'],
+  [/\bSN\s*(\d+)?\s*CM\b/, 'Neige ($1 cm)'], [/\bSN\b/, 'Neige'], [/\bFROST\s+WITHOUT\b/, 'Gel sans dépôt de glace'],
+  [/\bFROST\s+WITH\b(?:\s+\w+)*?\s+ICE\b/, 'Gel avec dépôt de glace au sol'], [/\bFROST\b/, 'Gel'], [/\bFZ(RA|DZ)\b/, 'Précipitations se congelant'], [/\bRIME\b/, 'Gelée blanche ou givre'],
   [/\bFZFG\b/, 'Brouillard givrant'], [/\b(SS|DS)\b/, 'Tempête de sable ou de poussière'], [/\b(SA|DU)\b/, 'Vent de sable ou de poussière'],
   [/\bSFC WSPD MAX (\d+) ?KT\b/, 'Rafales jusqu’à $1 kt'], [/\bSFC WSPD (\d+) ?KT\b/, 'Vent moyen fort, $1 kt'], [/\bSQ\b/, 'Grains'],
   [/\bVA\b/, 'Cendres volcaniques'], [/\bTSUNAMI\b/, 'Tsunami'], [/\bTOX CHEM\b/, 'Produits chimiques toxiques'],
 ];
-const maaPhen = (p?: string | null) => { if (!p) return ''; for (const [re, t] of MAA_PHEN) { const m = p.match(re); if (m) return t.replace(/\$(\d)/g, (_, i) => m[+i] ?? ''); } return p; };
+// Code non reconnu : rien ici, on reprend alors le motif en français du PDF (jamais l'anglais brut)
+const maaPhen = (p?: string | null) => { if (!p) return ''; const u = p.toUpperCase().replace(/\s+/g, ' '); for (const [re, t] of MAA_PHEN) { const m = u.match(re); if (m) return t.replace(/\$(\d)/g, (_, i) => m[+i] ?? ''); } return ''; };
+// Motif du PDF sans la fin rituelle « durant la période de validité »
+const maaMotif = (m?: string | null) => (m || '').replace(/\s*(?:durant|pendant) la p[ée]riode de validit[ée]\.?\s*$/i, '').replace(/\.\s*$/, '').trim();
 const maaEvolution = (p?: string | null) => [/\bOBS\b/.test(p || '') ? 'observé' : /\bFCST\b/.test(p || '') ? 'prévu' : '',
   /\bINTSF\b/.test(p || '') ? 's’intensifiant' : /\bWKN\b/.test(p || '') ? 'faiblissant' : /\bNC\b/.test(p || '') ? 'sans changement' : ''].filter(Boolean).join(', ');
 function maaBloc() {
@@ -691,7 +694,7 @@ function maaBloc() {
     const d = utc(m.debut), f = utc(m.fin);
     const fin = f && d && jmLoc(f) === jmLoc(d) ? hLoc(f) : t(m.fin);
     const ev = maaEvolution(m.phen);
-    return `<div class="m${on ? ' on' : ''}"><span class="no">${esc((m.numero || '').split('/')[0])}</span><b>${esc(maaPhen(m.phen) || m.motif || 'Avertissement d’aérodrome')}${ev ? `<small class="ev">${esc(ev)}</small>` : ''}</b><span class="v"><small>${on ? 'EN COURS' : 'À VENIR'}</small>${t(m.debut)} → ${fin}</span></div>`;
+    return `<div class="m${on ? ' on' : ''}"><span class="no">${esc((m.numero || '').split('/')[0])}</span><b>${esc(maaPhen(m.phen) || maaMotif(m.motif) || 'Avertissement d’aérodrome')}${ev ? `<small class="ev">${esc(ev)}</small>` : ''}</b><span class="v"><small>${on ? 'EN COURS' : 'À VENIR'}</small>${t(m.debut)} → ${fin}</span></div>`;
   }).join('');
   if (boite.dataset.html === html && boite.dataset.ok) return;
   boite.dataset.html = html;
@@ -947,8 +950,8 @@ function alertes() {
   alerteAAL();
   if (D.lvp?.actif) h.push(`<div class="al a-on a-lvp"><i class="lvp-logo">LVP</i><b>en cours</b></div>`);
   if (snow.length) h.push(`<div class="al a-on"><b>SNOWTAM en vigueur</b><span>état des pistes publié · voir NOTAM</span></div>`);
-  if (enCours.length) h.push(`<div class="al a-on"><b>Alerte météo en cours</b><span>${esc(maaPhen(enCours[0].phen) || enCours[0].motif || 'MAA')}${enCours[0].fin ? ` ${jusqu(t(enCours[0].fin))} LT` : ''}${plus(enCours)}</span></div>`);
-  else if (aVenir.length) h.push(`<div class="al a-av"><b>Alerte météo à venir</b><span>${esc(maaPhen(aVenir[0].phen) || aVenir[0].motif || 'MAA')} dès ${t(aVenir[0].debut)} LT${plus(aVenir)}</span></div>`);
+  if (enCours.length) h.push(`<div class="al a-on"><b>Alerte météo en cours</b><span>${esc(maaPhen(enCours[0].phen) || maaMotif(enCours[0].motif) || 'MAA')}${enCours[0].fin ? ` ${jusqu(t(enCours[0].fin))} LT` : ''}${plus(enCours)}</span></div>`);
+  else if (aVenir.length) h.push(`<div class="al a-av"><b>Alerte météo à venir</b><span>${esc(maaPhen(aVenir[0].phen) || maaMotif(aVenir[0].motif) || 'MAA')} dès ${t(aVenir[0].debut)} LT${plus(aVenir)}</span></div>`);
   if (!h.length) h.push(hiver ? `<div class="al a-ok"><b>Aucune alerte météo</b><span>ni MAA ni SNOWTAM, en cours ou à venir</span></div>` : `<div class="al a-ok"><b>Aucun MAA</b><span>en cours ou à venir</span></div>`);
   b.innerHTML = h.join('');
 }
