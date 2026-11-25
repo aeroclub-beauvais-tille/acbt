@@ -173,8 +173,10 @@ const onglets = [
 
       <div class="carte-metar"><Metar /></div>
 
-      <h2 class="bt bt-suite">Vent et pistes <span class="bt-nb" id="vent-info"></span></h2>
-      <div class="carte-vent" id="vent" data-api={url('/membre/api/vent')}><p class="vide">Chargement du vent…</p></div>
+      <div class="bloc-vent">
+        <h2 class="bt bt-suite">Vent et pistes <span class="bt-nb" id="vent-info"></span></h2>
+        <div class="carte-vent" id="vent" data-api={url('/membre/api/vent')}><p class="vide">Chargement du vent…</p></div>
+      </div>
 
       <div class="carte-metar carte-taf"><Taf /></div>
 
@@ -665,6 +667,25 @@ const onglets = [
     .fiche-cols > div + div > .sep:first-child { margin-top: 0; }
     .outils { grid-template-columns: 1fr 1fr 1fr; }
   }
+  /* PC et tablette en paysage : mise en page en colonnes, façon tableau de bord TV (le téléphone ne change pas) */
+  @media (min-width: 1100px) {
+    .content { max-width: 1440px; padding-inline: 28px; }
+    .topbar { padding-inline: max(14px, calc((100% - 1440px) / 2 + 28px)); }
+    /* Météo : alertes sur toute la largeur ; à gauche soleil, METAR et TAF ; à droite vent et pistes */
+    #accueil:not([hidden]) { max-width: none; display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); column-gap: 22px; align-items: start; }
+    #accueil > #lvp, #accueil > #maa-zone, #accueil > #maa-rien { grid-column: 1 / -1; }
+    #accueil > #lvp { grid-row: 1; } #accueil > #maa-zone, #accueil > #maa-rien { grid-row: 2; }
+    #accueil > .soleil { grid-column: 1; grid-row: 3; }
+    #accueil > .carte-metar:not(.carte-taf) { grid-column: 1; grid-row: 4; }
+    #accueil > .carte-taf { grid-column: 1; grid-row: 5; }
+    #accueil > .bloc-vent { grid-column: 2; grid-row: 3 / span 4; }
+    #accueil > .aide-ios { grid-column: 1 / -1; grid-row: 7; }
+    #accueil > .bloc-vent > .bt-suite { margin-top: 0; }
+    /* NOTAM sur deux colonnes ; flotte sur quatre colonnes sur un très grand écran (comme la TV) */
+    #notam-liste { columns: 2; column-gap: 22px; }
+    #notam-liste > :global(*) { break-inside: avoid; }
+  }
+  @media (min-width: 1500px) { .fl-liste { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   /* Grand écran : la barre d'onglets reste groupée au centre, alignée sur le contenu */
   @media (min-width: 820px) {
     .tabbar { justify-content: center; }
