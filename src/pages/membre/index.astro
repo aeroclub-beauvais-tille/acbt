@@ -516,10 +516,13 @@ const onglets = [
     .carte-alt :global(.alt .fl) { width: 11px; height: 11px; margin-right: 2px; vertical-align: -1px; }
     .carte-alt :global(.alt .t) { display: block; font-size: .72rem; }
   }
-  .carte-voisins { display: grid; gap: 8px; }
-  .carte-voisins :global(.mv) { font-family: var(--mono); font-size: .84rem; line-height: 1.4; color: var(--text); padding: 7px 10px 7px 12px; border-radius: 8px; background: var(--bg); border-left: 4px solid var(--k, var(--muted)); overflow-wrap: anywhere; }
-  .carte-voisins :global(.mv b) { color: var(--ink); }
-  .carte-voisins :global(.mv .nm) { font-family: var(--font); font-weight: 700; color: var(--muted); font-size: .74rem; margin-left: 6px; }
+  /* METAR voisins : chaque terrain dans une carte identique à celle du METAR LFOB (même bord, même retrait, même police) */
+  .carte-voisins { display: grid; gap: 14px; padding: 0 !important; background: none !important; border: 0 !important; }
+  .carte-voisins :global(.mv) { line-height: 1.4; padding: 15px 16px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--k, var(--accent)); border-radius: 14px; color: var(--muted); font-size: .85rem; }
+  .carte-voisins :global(.mv b) { font-weight: 700; letter-spacing: .06em; font-size: .75rem; color: var(--ink); }
+  .carte-voisins :global(.mv .nm) { font-weight: 600; color: var(--muted); font-size: .75rem; margin-left: 10px; }
+  .carte-voisins :global(.mv br) { display: none; }
+  .carte-voisins :global(.mv .mr) { display: block; margin-top: 4px; font-family: var(--mono); font-size: .83rem; color: var(--ink); overflow-wrap: anywhere; }
   #voisins-h { display: flex; gap: 10px; }
   #voisins-h :global(.lgc) { display: inline-flex; align-items: center; gap: 4px; }
   #voisins-h :global(.lgc i) { width: 8px; height: 8px; border-radius: 50%; background: var(--k); }
@@ -731,9 +734,10 @@ const onglets = [
     .col-g, .col-d { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
     .col-g > *, .col-d > * { margin: 0 !important; }
     /* Vent, altitude et voisins : une seule carte, titre compris */
-    .bloc-vent, .bloc-alt, .bloc-voisins { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 14px 10px; }
-    .bloc-vent > .bt-suite, .bloc-alt > .bt-suite, .bloc-voisins > .bt-suite { margin: 0 2px 8px; }
-    .carte-vent, .carte-alt, .carte-voisins { border: 0; padding: 0; background: none; }
+    .bloc-voisins > .bt-suite { margin: 4px 2px 10px !important; }
+    .bloc-vent, .bloc-alt { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 14px 10px; }
+    .bloc-vent > .bt-suite, .bloc-alt > .bt-suite { margin: 0 2px 8px; }
+    .carte-vent, .carte-alt { border: 0; padding: 0; background: none; }
     /* NOTAM sur deux colonnes ; flotte sur quatre colonnes sur un très grand écran (comme la TV) */
     #notam-liste { columns: 2; column-gap: 22px; }
     #notam-liste > :global(*) { break-inside: avoid; }
