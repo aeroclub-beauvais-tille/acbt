@@ -51,9 +51,6 @@ export const NOTAM_INFO = 'hors obstacles et procédures IFR';
 export const NOTAM_VIDE = 'Aucun NOTAM en vigueur (hors obstacles et procédures IFR).';
 export const notamIndispo = (raison?: string) => raison === 'cle' ? 'En attente de la clé de l’API NOTAM (FAA) dans Cloudflare.' : 'NOTAM indisponibles pour le moment.';
 
-// Détail d'un NOTAM (appli, au toucher) : catégorie, validité en LT et UTC, texte complet
-const hLoc = (d: Date) => d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).replace(' ', ' · ');
-const deux = (d: Date) => `${hLoc(d)} LT <small>(${jmUtc(d)} · ${hUtc(d)} UTC)</small>`;
 // Créneaux du champ D) (UTC) traduits en LT : « 1500-1545 » → « Chaque jour · 16:00 → 16:45 LT »
 const MOTS: Record<string, string> = { DAILY: 'chaque jour', MON: 'lun', TUE: 'mar', WED: 'mer', THU: 'jeu', FRI: 'ven', SAT: 'sam', SUN: 'dim', EXC: 'sauf', HOL: 'jours fériés', AND: 'et' };
 function creneaux(h: string, ref: Date | null) {
@@ -66,10 +63,6 @@ function creneaux(h: string, ref: Date | null) {
   const reste = h.replace(/\b[0-2]\d[0-5]\d-[0-2]\d[0-5]\d\b/g, '').replace(/[\s,]+/g, ' ').trim().replace(/\b[A-Z]{3,5}\b/g, (m) => MOTS[m] ?? m).replace(/^./, (x) => x.toUpperCase());
   return { jours: reste || 'Chaque jour', lt: c.map(([, a, b]) => `${loc(a)} → ${loc(b)}`).join(', '), utc: c.map(([, a, b]) => `${fmt(a)} → ${fmt(b)}`).join(', ') };
 }
-function horairesLT(h: string, ref: Date | null) {
-  const c = creneaux(h, ref);
-  return c ? `${esc(c.jours)} · ${c.lt} LT <small>(${c.utc} UTC · ${esc(h)})</small>` : esc(h);
-}
 /** Créneau horaire à afficher directement sur la ligne du NOTAM (sinon on croirait le NOTAM valable toute la journée). */
 function creneauLigne(x: Notam) {
   if (!x.horaires) return '';
@@ -77,12 +70,6 @@ function creneauLigne(x: Notam) {
   return `<span class="cren">${c ? `${esc(c.jours)} ${c.lt} LT` : esc(x.horaires)}</span>`;
 }
 export function detailNotam(x: Notam) {
-  const [, l, nom, coul] = x.snow ? [null, 'SNOW', 'SNOWTAM · état des pistes', 'neige'] : cat(x.sujet);
-  const d = utc(x.debut), f = x.fin && /^\d{4}-/.test(x.fin) ? new Date(x.fin) : null;
-  const on = actif(x.debut);
-  return `<div class="nd-tete"><span class="ic ${coul}${l.length > 2 && !l.startsWith('<') ? ' l' + l.length : ''}">${l}</span><div><b>${esc(nom)}</b><span>NOTAM ${esc(x.numero || '')}</span></div><em class="${on ? 'on' : ''}">${on ? 'ACTIF' : 'À VENIR'}</em></div>
-    <dl class="nd-dates"><div><dt>Début</dt><dd>${d ? deux(d) : '—'}</dd></div><div><dt>Fin</dt><dd>${x.fin === 'PERM' ? 'permanent' : f ? deux(f) : '—'}</dd></div></dl>
-    ${x.horaires ? `<div class="nd-horaires"><dt>Horaires</dt><dd>${horairesLT(x.horaires, d)}</dd></div>` : ''}
-    <p class="nd-texte">${texteNotam(x.texte)}</p>
-    ${x.brut ? `<h4 class="nd-brut-t">Message brut</h4><pre class="nd-brut">${esc(x.brut)}</pre>` : ''}`;
+  // Uniquement le NOTAM brut (les autres infos sont déjà sur la ligne : choix du club, 25/11)
+  return `<pre class="nd-brut">${esc(x.brut || `${x.numero || ''}\n${x.texte}`)}</pre>`;
 }
