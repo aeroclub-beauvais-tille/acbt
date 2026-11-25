@@ -202,6 +202,8 @@ async function lireNotamFaa(env, cache, waitUntil, debug, lieu = 'LFOB') {
     const q = (icao.match(/Q\)\s*[A-Z]{4}\/Q([A-Z]{2})([A-Z]{2})/) || String(n.selectionCode || '').match(/^Q([A-Z]{2})([A-Z]{2})/) || []);
     const e = (icao.match(/E\)\s*([\s\S]*?)(?:\n[FG]\)|$)/) || [])[1] || n.text || '';
     const texteNet = e.replace(/\s+/g, ' ').trim();
+    // Champ D) : créneaux horaires dans la période de validité (ex. « 1500-1545 », heures UTC)
+    const horaires = String(n.schedule || (icao.match(/(?:^|\n)\s*D\)\s*([\s\S]*?)(?:\n\s*[EFG]\)|$)/) || [])[1] || '').replace(/\s+/g, ' ').trim() || null;
     // SNOWTAM (état de surface des pistes, format OACI propre) : affiché en tête, avec un badge dédié
     const snow = /^SW/i.test(n.series || '') || /SNOWTAM/i.test(`${n.text || ''} ${icao} ${n.type || ''} ${n.number || ''}`);
     return {
@@ -211,6 +213,7 @@ async function lireNotamFaa(env, cache, waitUntil, debug, lieu = 'LFOB') {
       debut: n.effectiveStart || null,
       fin: n.effectiveEnd || null,
       texte: texteNet,
+      horaires,
       snow,
       sup: /\bSUP\s*(?:AIP\s*)?\d+\/\d+/i.test(texteNet),
       obstacle: !snow && q[1] === 'OB' || q[1] === 'OL' || /\b(OBST|CRANE|GRUE)/i.test(texteNet),
