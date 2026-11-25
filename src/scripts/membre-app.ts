@@ -4,6 +4,7 @@ import { ephemeride, heureLocale } from '../lib/soleil';
 import { rendreVent, lireMesure, ventStation, ligneTemperature, type Vent } from '../lib/vent';
 import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
 import { quiResa } from '../lib/noms-resa';
+import { rendreAltitude, rendreVoisins, legendeVoisins, type Altitude, type Voisin } from '../lib/aero';
 
 const CLE = 'acbt-membre';
 const DOCS = 'acbt-membre-docs';
@@ -827,4 +828,26 @@ export function vent() {
   charger();
   setInterval(() => { if (!document.hidden) charger(); }, 2 * 60_000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) charger(); });
+}
+
+/* Vents en altitude (AROME) et METAR voisins (onglet Météo) : même rendu que le tableau de bord TV, sans défilement. */
+export function aero() {
+  const alt = document.getElementById('altitude');
+  const vois = document.getElementById('voisins');
+  const leg = document.getElementById('voisins-h');
+  if (!alt || !vois) return;
+  const api = alt.dataset.api!;
+  let charge = false;
+  const charger = async () => {
+    let d: { ok: boolean; altitude?: Altitude | null; voisins?: Voisin[] | null } | null = null;
+    try { d = await fetch(api, { cache: 'no-store' }).then((r) => r.json()); } catch { /* hors ligne */ }
+    if (!d?.ok && charge) return;
+    alt.innerHTML = d?.altitude?.niveaux?.length ? rendreAltitude(d.altitude) : '<p class="vide">Prévision indisponible pour le moment.</p>';
+    const l = d?.voisins ?? [];
+    vois.innerHTML = l.length ? rendreVoisins(l) : '<p class="vide">METAR indisponibles pour le moment.</p>';
+    if (leg) leg.innerHTML = l.length ? legendeVoisins() : '';
+    charge = true;
+  };
+  charger();
+  setInterval(() => { if (!document.hidden) charger(); }, 10 * 60_000);
 }

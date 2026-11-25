@@ -3,6 +3,7 @@
 import { ephemeride, heureLocale, type Ephemeride } from '../lib/soleil';
 import { rendreVent, lireMesure, ligneTemperature, type Obs } from '../lib/vent';
 import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
+import { rendreAltitude, rendreVoisins, legendeVoisins } from '../lib/aero';
 import { wintem, fronts, heureFronts, heureEch, NIVEAUX, CSS_CARTES, type Cartes } from '../lib/cartes';
 import { court, nomCourt, quiResa as quiResaNoms, typeVol } from '../lib/noms-resa';
 
@@ -346,29 +347,15 @@ function animerWintem(depart: boolean) {
 
 function altitude() {
   const a = D?.altitude;
-  if (!a?.niveaux?.length) { $('altitude').innerHTML = '<p class="vide">Prévision indisponible pour le moment.</p>'; return; }
-  const fleche = (d: number) => `<svg class="fl" viewBox="0 0 24 24" style="transform:rotate(${d}deg)"><path d="M12 3v16M6 13l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-  const h = a.heures.map((t) => `${t.slice(11, 13)} h UTC`);
-  let o = `<table class="alt"><tr><th>Niveau</th>${h.map((x) => `<th>${x}</th>`).join('')}</tr>`;
-  for (const n of a.niveaux) o += `<tr><td>${esc(n.nom)}</td>${n.dir.map((d, i) => `<td>${fleche(d)}${p2(Math.round(d / 10) * 10).padStart(3, '0')}/${Math.round(n.ff[i])} <span class="t">${n.t[i] > 0 ? '+' : ''}${Math.round(n.t[i])}°</span></td>`).join('')}</tr>`;
-  $('altitude').innerHTML = o + '</table>';
-}
-
-// Catégorie de vol à partir du METAR brut : visibilité et plafond (BKN/OVC/VV)
-function categorie(raw: string) {
-  const cavok = /\bCAVOK\b/.test(raw);
-  const v = cavok ? 9999 : Number(raw.match(/\s(\d{4})(?:NDV)?\s/)?.[1] ?? 9999);
-  const pl = [...raw.matchAll(/\b(?:BKN|OVC|VV)(\d{3})/g)].map((m) => Number(m[1]) * 100);
-  const c = pl.length ? Math.min(...pl) : 99999;
-  return c < 500 || v < 1500 ? 'LIFR' : c < 1000 || v < 5000 ? 'IFR' : c <= 3000 || v <= 8000 ? 'MVFR' : 'VFR';
+  $('altitude').innerHTML = a?.niveaux?.length ? rendreAltitude(a) : '<p class="vide">Prévision indisponible pour le moment.</p>';
 }
 
 function voisins() {
   const l = D?.voisins ?? [];
   if (!l.length) { $('voisins').innerHTML = '<p class="vide">METAR indisponibles pour le moment.</p>'; $('voisins-h').textContent = ''; return; }
-  $('voisins-h').innerHTML = ['VFR', 'MVFR', 'IFR', 'LIFR'].map((c) => `<span class="lgc ${c}"><i></i>${c}</span>`).join('');
+  $('voisins-h').innerHTML = legendeVoisins();
   // Si la liste dépasse le cadre, elle défile en boucle comme les NOTAM
-  const html = l.map((m) => { const r = m.raw.replace(/^(METAR|SPECI)\s+/, ''); const [id, ...reste] = r.split(' '); return `<div class="mv ${categorie(r)}"><b>${esc(id)}</b><span class="nm">${esc(m.nom)}</span><br>${esc(reste.join(' '))}</div>`; }).join('');
+  const html = rendreVoisins(l);
   const boite = $('voisins');
   if (boite.dataset.html === html && boite.dataset.ok) return;
   boite.dataset.html = html;
