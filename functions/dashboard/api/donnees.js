@@ -9,7 +9,7 @@ import { lireCartes } from '../../_cartes.js';
 
 const AVWX_CLE = 'v1k-d7EgXdAiRybNQZ6gij20qSs0n9DEPki8lQD0jjo'; // clé publique déjà utilisée par le site
 const CACHE = 'https://cache.acbt60.local/dashboard/api/donnees';
-const CACHE_NOTAM = 'https://cache.acbt60.local/dashboard/api/notam-v2'; // v2 : avec les créneaux horaires (champ D);
+const CACHE_NOTAM = 'https://cache.acbt60.local/dashboard/api/notam-v3'; // v3 : créneaux horaires (champ D) et message brut;
 
 export async function onRequestGet({ env, request, waitUntil }) {
   const debug = new URL(request.url).searchParams.get('debug');
@@ -214,6 +214,7 @@ async function lireNotamFaa(env, cache, waitUntil, debug, lieu = 'LFOB') {
       fin: n.effectiveEnd || null,
       texte: texteNet,
       horaires,
+      brut: String(icao || n.text || '').trim().slice(0, 4000) || null,
       snow,
       sup: /\bSUP\s*(?:AIP\s*)?\d+\/\d+/i.test(texteNet),
       obstacle: !snow && q[1] === 'OB' || q[1] === 'OL' || /\b(OBST|CRANE|GRUE)/i.test(texteNet),
