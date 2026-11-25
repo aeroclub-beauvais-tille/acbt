@@ -281,13 +281,20 @@ export function onglets() {
       b.classList.toggle('actif', on);
     });
     sections.forEach((s, k) => { if (s) s.hidden = k !== id; });
-    try { history.replaceState(null, '', '#' + id); } catch { /* navigation privée */ }
-    if (defiler) scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    // À l'ouverture, on ne touche pas l'adresse : un « #accueil » posé avant la fin du chargement
+    // faisait descendre la page jusqu'à la section (l'appli s'ouvrait au milieu, sous le 1er MAA).
+    if (defiler) {
+      try { history.replaceState(null, '', '#' + id); } catch { /* navigation privée */ }
+      scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+    }
   };
   boutons.forEach((b) => b.addEventListener('click', () => montrer(b.dataset.onglet!)));
   document.querySelectorAll<HTMLElement>('[data-vers]').forEach((a) =>
     a.addEventListener('click', (e) => { e.preventDefault(); montrer(a.dataset.vers!); }));
   montrer(location.hash.replace('#', '') || boutons[0].dataset.onglet!, false);
+  // Rouverte sur un onglet (#flotte…) : toujours en haut de page
+  if (location.hash) addEventListener('load', () => scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }), { once: true });
+  try { history.scrollRestoration = 'manual'; } catch { /* */ }
   return montrer;
 }
 
@@ -344,7 +351,12 @@ export function avions() {
   const choisir = (im: string) => {
     const ok = !!im && opts.some((o) => o.dataset.avion === im);
     [...opts, ...items].forEach((o) => o.setAttribute('aria-selected', String(ok && o.dataset.avion === im)));
-    items.find((x) => x.dataset.avion === im)?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    // Ne fait défiler que la liste des avions (jamais la page : sinon l'appli s'ouvrait au milieu de la Météo)
+    const it = items.find((x) => x.dataset.avion === im), l = it?.parentElement;
+    if (it && l) {
+      const r = it.getBoundingClientRect(), lr = l.getBoundingClientRect();
+      if (r.width && (r.left < lr.left || r.right > lr.right)) l.scrollLeft += r.left - lr.left - 8;
+    }
     fiches.querySelectorAll<HTMLElement>('[data-ims]').forEach((el) => el.classList.toggle('cache', el.dataset.ims !== im));
     trig.dataset.vide = ok ? 'non' : 'oui';
     if (ok) {
