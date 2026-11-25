@@ -1,4 +1,4 @@
-// Cartes météo du club, partagées par la TV (/dashboard) et l'appli membres (onglet Météo) :
+// Cartes météo du tableau de bord TV (/dashboard, écran 5), à la place de la WINTEM d'Aéroweb :
 // - WINTEM du club : vent (barbules) et température à FL020, FL050, FL100 sur le nord de la France ;
 // - carte des fronts du DWD, recadrée sur la France.
 // Données préparées par functions/_cartes.js (Open-Meteo, modèles Météo-France ; DWD).
@@ -22,16 +22,15 @@ const f1 = (x: number) => x.toFixed(1);
 
 const VILLES: [string, number, number][] = [
   ['Paris', 2.35, 48.86], ['Lille', 3.06, 50.63], ['Rouen', 1.1, 49.44], ['Caen', -0.37, 49.18], ['Reims', 4.03, 49.26],
-  ['Amiens', 2.3, 49.89], ['Orléans', 1.9, 47.9], ['Rennes', -1.68, 48.11], ['Le Mans', 0.2, 48.0], ['Metz', 6.18, 49.12],
-  ['Troyes', 4.08, 48.3], ['Tours', 0.69, 47.39], ['Dijon', 5.04, 47.32], ['Le Havre', 0.11, 49.49], ['Cherbourg', -1.62, 49.64],
+  ['Orléans', 1.9, 47.9], ['Rennes', -1.68, 48.11], ['Tours', 0.69, 47.39], ['Cherbourg', -1.62, 49.64],
 ];
 
 const STYLE = `<style>
 .cm-mer{fill:var(--cm-mer,#cfdcec)}.cm-fr{fill:var(--cm-terre,#f6f8fb);stroke:var(--cm-trait,#8f9bb0);stroke-width:1.3}
 .cm-vo{fill:var(--cm-voisin,#e4e8ef);stroke:var(--cm-trait,#8f9bb0);stroke-width:.8}
-.cm-v{fill:var(--cm-encre,#55607a);font-size:11px}.cm-vp{fill:var(--cm-encre,#55607a)}
-.cm-b{stroke:var(--cm-barbule,#0b2a5b);fill:var(--cm-barbule,#0b2a5b);stroke-width:1.8;stroke-linecap:round}
-.cm-tc{fill:var(--cm-chaud,#c0141f);font-weight:800;font-size:12.5px}.cm-tf{fill:var(--cm-froid,#1f4fd1);font-weight:800;font-size:12.5px}
+.cm-v{fill:var(--cm-encre,#55607a);font-size:12px;opacity:.85}.cm-vp{fill:var(--cm-encre,#55607a)}
+.cm-b{stroke:var(--cm-barbule,#0b2a5b);fill:var(--cm-barbule,#0b2a5b);stroke-width:2;stroke-linecap:round}
+.cm-tc,.cm-tf{font-weight:800;font-size:15px;paint-order:stroke;stroke:var(--cm-terre,#f6f8fb);stroke-width:4px;stroke-linejoin:round}.cm-tc{fill:var(--cm-chaud,#c0141f)}.cm-tf{fill:var(--cm-froid,#1f4fd1)}
 .cm-lfob{fill:#ec091d;stroke:#fff;stroke-width:2}.cm-lfobt{fill:var(--cm-titre,#0b2a5b);font-weight:800;font-size:13px;paint-order:stroke;stroke:var(--cm-terre,#f6f8fb);stroke-width:3px}
 </style>`;
 
@@ -54,7 +53,7 @@ function villes() {
 }
 
 const svg = (contenu: string, titre: string) =>
-  `<svg class="cm" viewBox="0 0 ${W} ${H}" role="img" aria-label="${titre}" xmlns="http://www.w3.org/2000/svg" font-family="inherit">${STYLE}${DEFS}<g clip-path="url(#cm-cadre)">${contenu}</g></svg>`;
+  `<svg class="cm" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${titre}" xmlns="http://www.w3.org/2000/svg" font-family="inherit">${STYLE}${DEFS}<g clip-path="url(#cm-cadre)">${contenu}</g></svg>`;
 
 // Points de la grille : [lon, lat, valeurs]
 function points(g: Grille, ech: number) {
@@ -68,7 +67,7 @@ function points(g: Grille, ech: number) {
 function barbule(x: number, y: number, dir: number, kt: number) {
   const k0 = Math.round(kt / 5) * 5;
   if (k0 < 5) return `<circle class="cm-b" cx="${f1(x)}" cy="${f1(y)}" r="4.5" fill="none"/>`;
-  const a = (dir * Math.PI) / 180, L = 30;
+  const a = (dir * Math.PI) / 180, L = 28;
   const ux = Math.sin(a), uy = -Math.cos(a), px = -uy, py = ux;
   const ex = x + ux * L, ey = y + uy * L;
   const pt = (t: number) => [ex - ux * t, ey - uy * t];
@@ -100,19 +99,21 @@ export function wintem(g: Grille, ech: number, niveau: number) {
     if (d == null || ff == null || t == null) continue;
     const [x, y] = P(p.lon, p.lat);
     s += barbule(x, y, d, ff);
-    const tt = Math.round(t);
-    s += `<text class="${tt < 0 ? 'cm-tf' : 'cm-tc'}" x="${f1(x + 6)}" y="${f1(y + 16)}">${tt > 0 ? '+' : ''}${tt}°</text>`;
+    // Température du côté opposé à la hampe (sous le vent), pour ne jamais chevaucher la barbule
+    const tt = Math.round(t), a = (d * Math.PI) / 180, k = ff < 2.5 ? 0 : 1;
+    const tx = x - Math.sin(a) * 18 * k, ty = y + Math.cos(a) * 18 * k + (k ? 0 : 20);
+    s += `<text class="${tt < 0 ? 'cm-tf' : 'cm-tc'}" x="${f1(tx)}" y="${f1(ty)}" text-anchor="middle" dominant-baseline="central">${tt > 0 ? '+' : ''}${tt}°</text>`;
   }
   return svg(s, `Vent et température ${NIVEAUX[niveau]}`);
 }
 
-// Carte des fronts du DWD, recadrée sur la France, des îles Britanniques à la Méditerranée
+// Carte des fronts du DWD, recadrée sur la France aux proportions de la case de la TV (608 × 830)
 // (fractions de l'image d'origine, qui fait environ 4389 × 3114 px)
-const CADRE = { x0: 0.4215, x1: 0.7177, y0: 0.3693, y1: 0.8349 };
+const CADRE = { x0: 0.4443, x1: 0.6865, y0: 0.3693, y1: 0.8349 };
 export function fronts(adresse: string, t: string | null) {
   const lx = CADRE.x1 - CADRE.x0;
   // translate(%) se rapporte à l'image elle-même : le recadrage ne dépend pas de la taille du cadre
-  const style = `width:${f1(100 / lx)}%;transform:translate(${f1(-CADRE.x0 * 100)}%,${f1(-CADRE.y0 * 100)}%)`;
+  const style = `width:${f1(100 / lx)}%;transform:translate(${(-CADRE.x0 * 100).toFixed(2)}%,${(-CADRE.y0 * 100).toFixed(2)}%)`;
   return `<div class="cm-fronts"><img src="${adresse}?t=${t ?? ''}" alt="Carte des fronts" style="${style}" decoding="async"></div>`;
 }
 
@@ -123,6 +124,6 @@ export const heureEch = (g: Grille, ech: number) => (g.heures[ech] ? `${g.heures
 
 /** Styles communs (à mettre une fois dans la page) */
 export const CSS_CARTES = `.cm{display:block;width:100%;height:auto}
-.cm-fronts{position:relative;overflow:hidden;aspect-ratio:1300/1450;width:100%;background:#8a97ab}
+.cm-fronts{position:relative;overflow:hidden;width:100%;height:100%;background:#8a97ab}
 .cm-fronts img{position:absolute;left:0;top:0;max-width:none;height:auto}
 `;

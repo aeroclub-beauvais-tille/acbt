@@ -4,7 +4,6 @@ import { ephemeride, heureLocale } from '../lib/soleil';
 import { rendreVent, lireMesure, ventStation, type Vent } from '../lib/vent';
 import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
 import { quiResa } from '../lib/noms-resa';
-import { wintem, fronts, heureFronts, heureEch, NIVEAUX, CSS_CARTES, type Cartes } from '../lib/cartes';
 
 const CLE = 'acbt-membre';
 const DOCS = 'acbt-membre-docs';
@@ -828,55 +827,4 @@ export function vent() {
   charger();
   setInterval(() => { if (!document.hidden) charger(); }, 2 * 60_000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) charger(); });
-}
-
-/* Cartes météo du club (onglet Météo), à la place de la TEMSI et de la WINTEM d'Aéroweb : même rendu que la TV.
-   Carte des fronts du DWD (isobares) et vent/température sur le nord de la France (modèles Météo-France).
-   La carte des fronts (~5 Mo) ne se télécharge que si le pilote l'ouvre. */
-export function cartes() {
-  const boite = document.getElementById('cartes');
-  const info = document.getElementById('cartes-info');
-  if (!boite) return;
-  { const st = document.createElement('style'); st.textContent = CSS_CARTES; document.head.append(st); }
-  let d: Cartes | null = null;
-  let vue = 'wintem', niv = 1, ech = -1; // vent par défaut : la carte des fronts (~5 Mo) ne se charge que si on la demande
-  const bouton = (v: string, t: string, on: boolean) => `<button type="button" data-v="${v}" class="${on ? 'on' : ''}">${t}</button>`;
-  const dessiner = () => {
-    const g = d?.grille ?? null;
-    if (!g && !d?.fronts) { boite.innerHTML = '<p class="vide">Cartes indisponibles pour le moment.</p>'; return; }
-    if (g && (ech < 0 || ech >= g.heures.length)) {
-      ech = 0;
-      g.heures.forEach((t, i) => { if (Math.abs(Date.parse(t) - Date.now()) < Math.abs(Date.parse(g.heures[ech]) - Date.now())) ech = i; });
-    }
-    let o = `<div class="cm-ch" data-r="vue">${bouton('wintem', 'Vent et température', vue === 'wintem')}${bouton('fronts', 'Carte des fronts', vue === 'fronts')}</div>`;
-    if (vue !== 'fronts' && g) {
-      o += `<div class="cm-ch pt" data-r="niv">${NIVEAUX.map((n, i) => bouton(String(i), n, i === niv)).join('')}</div>`;
-      o += `<div class="cm-ch pt" data-r="ech">${g.heures.map((_, i) => bouton(String(i), heureEch(g, i).replace(' UTC', ''), i === ech)).join('')}</div>`;
-      o += wintem(g, ech, niv);
-      o += `<div class="cm-pied"><span>Prévision ${heureEch(g, ech)} · vent en kt (barbe = 10 kt, demi = 5 kt) · température en °C</span></div>`;
-      o += '<p class="cm-note">Données Météo-France (AROME, ARPEGE) via Open-Meteo, licence CC BY 4.0.</p>';
-    } else if (vue === 'fronts' && d?.fronts) {
-      o += fronts(boite.dataset.fronts!, d.fronts) + `<p class="cm-note">Analyse du ${heureFronts(d.fronts)} · © Deutscher Wetterdienst (données ouvertes).</p>`;
-    } else o += '<p class="vide">Carte indisponible pour le moment.</p>';
-    boite.innerHTML = o;
-    if (info) info.textContent = vue === 'fronts' ? (d?.fronts ? heureFronts(d.fronts) : '') : g ? heureEch(g, ech) : '';
-  };
-  boite.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-v]');
-    const r = b?.parentElement?.dataset.r;
-    if (!b || !r) return;
-    if (r === 'vue') vue = b.dataset.v!;
-    else if (r === 'niv') niv = Number(b.dataset.v);
-    else ech = Number(b.dataset.v);
-    dessiner();
-  });
-  const charger = async () => {
-    try {
-      const r = await fetch(boite.dataset.api!, { cache: 'no-store' }).then((x) => x.json());
-      if (r?.ok) { d = { grille: r.grille ?? null, fronts: r.fronts ?? null }; ech = -1; }
-    } catch { /* hors ligne : on garde la dernière carte */ }
-    dessiner();
-  };
-  charger();
-  setInterval(() => { if (!document.hidden) charger(); }, 30 * 60_000);
 }

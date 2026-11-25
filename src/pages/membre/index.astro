@@ -178,9 +178,6 @@ const onglets = [
 
       <div class="carte-metar carte-taf"><Taf /></div>
 
-      <h2 class="bt bt-suite">Cartes météo <span class="bt-nb" id="cartes-info"></span></h2>
-      <div class="carte-vent cartes-m" id="cartes" data-api={url('/membre/api/cartes')} data-fronts={url('/membre/api/fronts')}><p class="vide">Chargement des cartes…</p></div>
-
 
       <p class="aide-ios" id="aide-ios" hidden>Sur iPhone : touchez <b>Partager</b> en bas de Safari, puis <b>Sur l'écran d'accueil</b>.</p>
     </section>
@@ -353,7 +350,7 @@ const onglets = [
 </MembreApp>
 
 <script>
-  import { enregistrer, boutonInstaller, seDeconnecter, badges, maa, maaEnLigne, onglets, signalement, theme, avions, soleil, flotte, notam, vent, cartes } from '../../scripts/membre-app';
+  import { enregistrer, boutonInstaller, seDeconnecter, badges, maa, maaEnLigne, onglets, signalement, theme, avions, soleil, flotte, notam, vent } from '../../scripts/membre-app';
   enregistrer();
   theme(document.getElementById('btn-theme'));
   const montrer = onglets();
@@ -366,7 +363,6 @@ const onglets = [
   flotte();
   notam();
   vent();
-  cartes();
   setInterval(maaEnLigne, 5 * 60_000); // nouveaux MAA reçus par mail
   setInterval(maa, 60_000); // le MAA peut commencer ou se terminer pendant la consultation
   signalement();
@@ -470,14 +466,6 @@ const onglets = [
 
   /* Vent et pistes : même rose des vents et mêmes composantes que le tableau de bord TV */
   .bt-suite { margin-top: 22px; }
-  /* Cartes météo du club (src/lib/cartes.ts) */
-  .cartes-m :global(.cm-ch) { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-  .cartes-m :global(.cm-ch button) { font: inherit; font-size: .8rem; font-weight: 700; padding: 6px 11px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface-2); color: var(--muted); cursor: pointer; }
-  .cartes-m :global(.cm-ch button.on) { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-  .cartes-m :global(.cm-ch.pt button) { font-family: var(--mono); font-size: .74rem; padding: 4px 9px; }
-  .cartes-m :global(.cm), .cartes-m :global(.cm-fronts) { border-radius: 10px; }
-  .cartes-m :global(.cm-pied) { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; font-size: .74rem; font-weight: 600; color: var(--muted); }
-  .cartes-m :global(.cm-note) { margin-top: 6px; font-size: .72rem; color: var(--muted); }
   .bt-nb :global(.dot) { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); vertical-align: 0; }
   .bt-nb :global(.dot.ko) { background: var(--bad); }
   .carte-vent { padding: 12px 10px 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; }

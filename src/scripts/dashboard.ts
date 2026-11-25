@@ -304,30 +304,42 @@ function flotteEcran() {
 /* 5. Cartes aéro : fronts (DWD), WINTEM du club, vents en altitude, METAR voisins */
 /* ------------------------------------------------------------------ */
 const CARTE_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>';
-let flWintem = 0;
-// Échéance de la grille la plus proche de maintenant (prévisions toutes les 3 h)
-function echeance(h: string[]) {
-  let k = 0;
-  h.forEach((t, i) => { if (Math.abs(Date.parse(t) - Date.now()) < Math.abs(Date.parse(h[k]) - Date.now())) k = i; });
-  return k;
-}
+// WINTEM animée : heure par heure (de maintenant à +8 h), puis niveau suivant (FL020, FL050, FL100).
+// Une image toutes les 1,1 s, la dernière heure tenue une image de plus ; l'écran dure le temps des trois niveaux.
+const PAS_ANIM = 1100;
+let animFl = 0, animH = 0, animMinuterie = 0, frontsAffiches = '';
 function cartesAero() {
   const c = D?.cartes;
   const vide = (t: string) => `<div class="ca-vide">${CARTE_IC}${t}</div>`;
   const indispo = 'Carte indisponible pour le moment';
-  const g = c?.grille;
-  // Panneau de gauche : carte des fronts du DWD (isobares et fronts au sol)
+  // Panneau de gauche : carte des fronts du DWD (isobares et fronts au sol), rechargée seulement à une nouvelle analyse
   if (c?.fronts) {
-    $('temsi').innerHTML = fronts('/dashboard/api/fronts', c.fronts);
+    if (frontsAffiches !== c.fronts) { $('temsi').innerHTML = fronts('/dashboard/api/fronts', c.fronts); frontsAffiches = c.fronts; }
     $('temsi-h').textContent = `analyse ${heureFronts(c.fronts)} · DWD`;
-  } else { $('temsi').innerHTML = vide(indispo); $('temsi-h').textContent = ''; }
-  if (g) {
-    const e = echeance(g.heures), n = flWintem % NIVEAUX.length;
-    $('wintem').innerHTML = `<div class="ca-fl">${NIVEAUX.map((y, i) => `<span class="${i === n ? 'on' : ''}">${y}</span>`).join('')}</div><div class="ca-svg">${wintem(g, e, n)}</div>`;
-    $('wintem-h').textContent = `prévision ${heureEch(g, e)} · kt`;
-  } else { $('wintem').innerHTML = vide(indispo); $('wintem-h').textContent = 'vent et température · FL020 à FL100'; }
+  } else { $('temsi').innerHTML = vide(indispo); $('temsi-h').textContent = ''; frontsAffiches = ''; }
+  imageWintem();
   altitude();
   voisins();
+}
+function imageWintem() {
+  const g = D?.cartes?.grille;
+  if (!g?.heures?.length) { $('wintem').innerHTML = `<div class="ca-vide">${CARTE_IC}Carte indisponible pour le moment</div>`; $('wintem-h').textContent = 'vent et température · FL020 à FL100'; return; }
+  const h = Math.min(animH, g.heures.length - 1), n = animFl % NIVEAUX.length;
+  const repere = `<div class="ca-rep"><div class="ca-fl">${NIVEAUX.map((y, i) => `<span class="${i === n ? 'on' : ''}">${y}</span>`).join('')}</div>`
+    + `<div class="ca-h">${g.heures.map((t, i) => `<i class="${i === h ? 'on' : i < h ? 'fait' : ''}">${i === h ? `${t.slice(11, 13)} h` : ''}</i>`).join('')}</div></div>`;
+  $('wintem').innerHTML = repere + wintem(g, h, n);
+  $('wintem-h').textContent = `${NIVEAUX[n]} · prévision ${heureEch(g, h)} · kt`;
+}
+function animerWintem(depart: boolean) {
+  clearInterval(animMinuterie);
+  if (!depart) return;
+  animFl = 0; animH = 0;
+  imageWintem();
+  animMinuterie = window.setInterval(() => {
+    const nb = D?.cartes?.grille?.heures?.length ?? 1;
+    if (++animH > nb) { animH = 0; animFl = (animFl + 1) % NIVEAUX.length; } // la dernière heure reste une image de plus
+    imageWintem();
+  }, PAS_ANIM);
 }
 { const st = document.createElement('style'); st.textContent = CSS_CARTES; document.head.append(st); }
 
@@ -969,7 +981,7 @@ function majPied() {
   $('maj').textContent = (s > 180 ? `Hors ligne · dernières données de ${t}` : `Actualisé il y a ${s < 60 ? `${s} s` : `${Math.floor(s / 60)} min`} · Aerogest, AVWX, Météo-France, FAA (NOTAM), Open-Meteo`) + alerte;
 }
 
-const DUREES = [40, 25, 20, 25, 25, 20]; // secondes par écran (accueil plus long pour lire les NOTAM)
+const DUREES = [40, 25, 20, 25, 33, 20]; // secondes par écran (accueil plus long pour lire les NOTAM ; cartes : 3 niveaux × 10 images de WINTEM)
 const NB = DUREES.length;
 let ecran = 0, debutEcran = Date.now(), pauseJusqua = 0;
 const fige = (() => { const e = Number(new URLSearchParams(location.search).get('ecran')); return e >= 1 && e <= NB ? e - 1 : null; })();
@@ -987,7 +999,8 @@ function montrer(i: number) {
   if (i === 3 && !$('maa').dataset.ok) defiler($('maa'));
   // TAF : mesuré à chaque affichage de l'écran, pour ne défiler que s'il ne tient pas
   if (i === 3 && document.getElementById('taf-per')) defiler($('taf-per'));
-  if (i === 4) { flWintem++; cartesAero(); defiler($('voisins'), false); } // METAR voisins : repart du début (pause 3 s) à chaque affichage
+  animerWintem(i === 4);
+  if (i === 4) { cartesAero(); defiler($('voisins'), false); } // METAR voisins : repart du début (pause 3 s) à chaque affichage
 }
 
 // Accueil : si les NOTAM défilent, l'écran reste le temps d'un tour complet (3 s de pause au début + défilement) puis des actifs une 2e fois ; sinon durée standard
