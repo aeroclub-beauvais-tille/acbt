@@ -1,7 +1,7 @@
 // Cartes météo du club, à la place de la WINTEM d'Aéroweb (la TEMSI n'a pas d'équivalent libre) (Météo-France n'ouvre plus son API).
-// 1. Grille de prévision sur le nord de la France (Open-Meteo, modèle Météo-France ARPEGE, licence CC BY 4.0) :
+// 1. Grille de prévision sur le nord de la France (Open-Meteo, modèle Météo-France AROME, licence CC BY 4.0) :
 //    vent et température à 950, 850 et 700 hPa, les niveaux de la WINTEM officielle pour FL020, FL050 et FL100.
-//    Modèle ARPEGE, celui de la WINTEM de Météo-France (comparée par Hugo le 25/11 : AROME donnait 1 à 2 °C de moins).
+//    Modèle AROME (maille fine 1,3 km), choix d'Hugo le 25/11 ; la WINTEM officielle, elle, vient d'ARPEGE.
 //    Le dessin (WINTEM du club) est fait dans le navigateur : src/lib/cartes.ts.
 // 2. Carte des fronts du service météo allemand (DWD, données ouvertes, sans inscription), analyse toutes les 6 h.
 // Grille gardée 1 h en cache, liste DWD 20 min, image des fronts 6 h.
@@ -27,13 +27,13 @@ async function enCache(cache, waitUntil, cle, duree, lire) {
 
 export async function lireGrille(cache, waitUntil) {
   const heure = new Date().toISOString().slice(0, 13);
-  return enCache(cache, waitUntil, `grille6-${heure}`, 3600, async () => {
+  return enCache(cache, waitUntil, `grille7-${heure}`, 3600, async () => {
     const la = [], lo = [];
     for (let i = 0; i < GRILLE.nlat; i++) for (let j = 0; j < GRILLE.nlon; j++) {
       la.push((GRILLE.lat0 + i * GRILLE.dlat).toFixed(3));
       lo.push((GRILLE.lon0 + j * GRILLE.dlon).toFixed(3));
     }
-    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la.join(',')}&longitude=${lo.join(',')}&hourly=${CHAMPS.join(',')}&wind_speed_unit=kn&forecast_hours=${ECHEANCES.at(-1) + 1}&models=meteofrance_arpege_europe&timezone=GMT`, { headers: { 'User-Agent': 'ACBT-tableau-de-bord/1.0' } });
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la.join(',')}&longitude=${lo.join(',')}&hourly=${CHAMPS.join(',')}&wind_speed_unit=kn&forecast_hours=${ECHEANCES.at(-1) + 1}&models=meteofrance_arome_france&timezone=GMT`, { headers: { 'User-Agent': 'ACBT-tableau-de-bord/1.0' } });
     if (!r.ok) return null;
     const l = await r.json();
     if (!Array.isArray(l) || l.length !== la.length || !l[0]?.hourly?.time?.length) return null;
