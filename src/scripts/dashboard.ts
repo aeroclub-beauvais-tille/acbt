@@ -932,21 +932,19 @@ function alerteAAL() {
 }
 
 // Bandeau du haut : alertes météo (MAA) et SNOWTAM, en cours ou à venir ; sinon « aucune alerte »
-// Défilement des MAA dans le bandeau du haut (toutes les 6 s)
-let maaRot: { cls: string; html: string }[] = [];
+// Défilement vertical du texte des MAA dans la pastille du haut (toutes les 5 s) ; la pastille et son titre restent fixes
+let maaNb = 0;
 let maaRang = 0;
 function tournerMaa() {
-  const el = document.getElementById('al-maa');
-  if (!el || maaRot.length < 2) return;
-  maaRang = (maaRang + 1) % maaRot.length;
-  const r = maaRot[maaRang];
-  el.classList.add('al-fondu');
-  setTimeout(() => {
-    el.className = `al ${r.cls}`;
-    el.innerHTML = `${r.html}<em class="al-n">${maaRang + 1}/${maaRot.length}</em>`;
-  }, 300);
+  const piste = document.querySelector<HTMLElement>('#al-maa .al-piste');
+  if (!piste || maaNb < 2) return;
+  maaRang++;
+  piste.style.transition = 'transform .6s ease';
+  piste.style.transform = `translateY(${-maaRang * 1.35}em)`;
+  // Arrivé sur la copie du premier : on revient au début sans animation
+  if (maaRang === maaNb) setTimeout(() => { piste.style.transition = 'none'; piste.style.transform = 'translateY(0)'; maaRang = 0; }, 700);
 }
-setInterval(tournerMaa, 6000);
+setInterval(tournerMaa, 5000);
 
 function alertes() {
   const b = $('alertes');
@@ -965,16 +963,18 @@ function alertes() {
   alerteAAL();
   if (D.lvp?.actif) h.push(`<div class="al a-on a-lvp"><i class="lvp-logo">LVP</i><b>en cours</b></div>`);
   if (snow.length) h.push(`<div class="al a-on"><b>SNOWTAM en vigueur</b><span>état des pistes publié · voir NOTAM</span></div>`);
-  // Un MAA à la fois ; s'il y en a plusieurs, la pastille les fait défiler (en cours d'abord), chacun avec ses heures
+  // Plusieurs MAA : la pastille (couleur et titre du plus urgent) reste fixe, seul le texte défile verticalement
   const raison = (m: Maa) => esc(maaPhen(m.phen) || maaMotif(m.motif) || 'MAA');
-  maaRot = [
-    ...enCours.map((m) => ({ cls: 'a-on', html: `<b>Alerte météo en cours</b><span>${raison(m)}${m.fin ? ` ${jusqu(t(m.fin))} LT` : ''}</span>` })),
-    ...aVenir.map((m) => ({ cls: 'a-av', html: `<b>Alerte météo à venir</b><span>${raison(m)} dès ${t(m.debut)} LT</span>` })),
+  const textes = [
+    ...enCours.map((m) => `${raison(m)}${m.fin ? ` ${jusqu(t(m.fin))} LT` : ''}`),
+    ...aVenir.map((m) => `${raison(m)} dès ${t(m.debut)} LT`),
   ];
-  if (maaRot.length) {
-    maaRang %= maaRot.length;
-    const r = maaRot[maaRang];
-    h.push(`<div class="al ${r.cls}" id="al-maa">${r.html}${maaRot.length > 1 ? `<em class="al-n">${maaRang + 1}/${maaRot.length}</em>` : ''}</div>`);
+  maaNb = textes.length;
+  if (maaNb) {
+    if (maaRang >= maaNb) maaRang = 0;
+    const lignes = (maaNb > 1 ? [...textes, textes[0]] : textes).map((x) => `<span>${x}</span>`).join('');
+    const cls = enCours.length ? 'a-on' : 'a-av';
+    h.push(`<div class="al ${cls}" id="al-maa"><b>Alerte météo ${enCours.length ? 'en cours' : 'à venir'}</b><span class="al-defil"><span class="al-piste" style="transform:translateY(${-maaRang * 1.35}em)">${lignes}</span></span></div>`);
   }
   if (!h.length) h.push(hiver ? `<div class="al a-ok"><b>Aucune alerte météo</b><span>ni MAA ni SNOWTAM, en cours ou à venir</span></div>` : `<div class="al a-ok"><b>Aucun MAA</b><span>en cours ou à venir</span></div>`);
   b.innerHTML = h.join('');
