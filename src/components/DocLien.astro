@@ -9,8 +9,9 @@ interface Props {
   vers?: string;        // onglet cible de l'alerte d'expiration
   manquant?: boolean;   // document exigé mais pas encore mis en ligne
   ligne?: boolean;      // ligne compacte : bord coloré + date seule (documents nécessaires au vol)
+  place?: string;       // place dans la liste des documents de vol (un document déposé depuis l'appli la reprend)
 }
-const { doc, court, badge, sansBadge, vers, manquant, ligne } = Astro.props;
+const { doc, court, badge, sansBadge, vers, manquant, ligne, place } = Astro.props;
 const titre = titreDoc(doc);
 const cible = doc.fichier ? asset(doc.fichier) : doc.lien || '';
 const ext = (doc.fichier || '').split('?')[0].split('.').pop()?.toLowerCase() || '';
@@ -34,7 +35,7 @@ const echLigne = !e ? '' : e.code === 'sans-fin' ? 'sans échéance' : ech;
 const etat = manquant ? 'na' : e?.code === 'sans-fin' ? 'valide' : e?.code;
 ---
 {ligne ? (
-<a class:list={['doc', 'ligne', { vide: noFichier, manquant }]} href={cible || undefined} target={cible ? '_blank' : undefined} rel="noopener" data-q={recherche} data-doc={doc.id} data-etat={etat} role={noFichier ? 'group' : undefined}>
+<a class:list={['doc', 'ligne', { vide: noFichier, manquant }]} href={cible || undefined} target={cible ? '_blank' : undefined} rel="noopener" data-q={recherche} data-doc={doc.id} data-etat={etat} data-place={place} role={noFichier ? 'group' : undefined}>
   <strong>{court ?? titre}</strong>
   {avecBadge && <span class="lg-val"><span class="badge" data-format="ligne" data-code={e?.code} data-fin={iso(doc.fin)} data-debut={iso(doc.debut)} data-titre={titre} data-vers={vers}>{chip}</span><small class="ech">{echLigne}</small></span>}
 </a>

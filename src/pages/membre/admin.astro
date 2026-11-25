@@ -1,65 +1,201 @@
 ---
-// Accès administrateur de l'espace membre : permet d'ajouter, remplacer, modifier et supprimer les documents.
-// Phase GitHub : la clé est un jeton GitHub avec le droit d'écrire dans le dépôt du site (gardé sur l'appareil).
-// Avec Cloudflare, ce sera un mot de passe admin vérifié par le serveur.
+// Documents des avions (admin) : dépôt par glisser-déposer, rangé sur Cloudflare (base D1, privée derrière le mot de passe membres).
+// Plus de clé GitHub : seul le mot de passe admin du club (MOT_DE_PASSE_ADMIN) est demandé.
+// Documents de vol : remplacent le document du même type (l'ancien passe dans l'historique de la fiche).
+// Manuel, Guide, Mémo, Checklist : s'ajoutent à la colonne « Manuels du matériel ».
+import { getCollection } from 'astro:content';
 import MembreApp from '../../layouts/MembreApp.astro';
 import Logo from '../../components/Logo.astro';
 import { url } from '../../lib/utils';
+const avions = (await getCollection('avions', (a) => a.data.actif)).sort((a, b) => a.data.ordre - b.data.ordre)
+  .map((a) => ({ im: a.data.immatriculation ?? a.data.nom, modele: a.data.type.replace(/^Robin |^Jodel /, '').replace(/-\d+.*$| Petit Prince| Paris-Nice/g, '').trim() }));
+// Mêmes listes que functions/_docs.js
+const VOL = ["Certificat d'immatriculation", 'Certificat de navigabilité (CDN)', "Certificat d'examen de navigabilité (CEN)", 'Licence station radio', 'Certificat acoustique', 'Assurance', 'Fiche de pesée et centrage', 'Manuel de vol', 'Autre document de vol'];
+const MANUELS = ['Manuel', 'Guide', 'Mémo', 'Checklist'];
 ---
-<MembreApp title="Administration">
-  <div class="ecran">
+<MembreApp title="Documents des avions">
+  <div class="ecran" id="ecran" data-api={url('/membre/api/documents')}>
     <header class="haut">
-      <a href={url('/membre/#avions')} class="retour" aria-label="Retour à l'espace membres">
+      <a href={url('/membre/#admin')} class="retour" aria-label="Retour à l'administration">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
       </a>
       <Logo class="logo" />
-      <span>Administration</span>
+      <span>Documents des avions</span>
     </header>
 
     <main class="corps">
       <form class="carte" id="form" novalidate>
-        <h1>Mode admin</h1>
-        <p class="sous">Pour ajouter, remplacer, modifier ou supprimer les documents des avions, directement dans l'appli.</p>
-        <p class="note">Tant que le site n'est pas sur Cloudflare, les fichiers déposés sont publics : n'y mettez que des documents d'exemple.</p>
-        <label for="cle">Clé d'administration</label>
-        <input id="cle" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" />
+        <h1>Déposer un document</h1>
+
+        <label class="depot" id="depot" for="fichier">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg>
+          <b id="depot-t">Glissez le fichier ici</b>
+          <small id="depot-s">ou touchez pour le choisir (PDF, photo, vidéo)</small>
+          <input type="file" id="fichier" accept=".pdf,image/*,video/*,.doc,.docx,.xls,.xlsx" />
+        </label>
+
+        <div class="deux">
+          <div>
+            <label class="lbl" for="avion">Avion</label>
+            <select id="avion" required>
+              <option value="">Choisir…</option>
+              {avions.map((a) => <option value={a.im}>{a.im} · {a.modele}</option>)}
+            </select>
+          </div>
+          <div>
+            <label class="lbl" for="type">Type de document</label>
+            <select id="type" required>
+              <option value="">Choisir…</option>
+              <optgroup label="Documents nécessaires au vol">{VOL.map((t) => <option value={t}>{t}</option>)}</optgroup>
+              <optgroup label="Manuels du matériel">{MANUELS.map((t) => <option value={t}>{t}</option>)}</optgroup>
+            </select>
+          </div>
+        </div>
+
+        <div id="z-titre" hidden>
+          <label class="lbl" for="titre">Nom du document</label>
+          <input id="titre" type="text" maxlength="120" placeholder="ex. Radio Garmin GNC 255" />
+        </div>
+
+        <div class="deux" id="z-dates" hidden>
+          <div>
+            <label class="lbl" for="debut">Valable à partir du <i>(facultatif)</i></label>
+            <input id="debut" type="date" />
+          </div>
+          <div>
+            <label class="lbl" for="fin">Date d'expiration <i>(si applicable)</i></label>
+            <input id="fin" type="date" />
+          </div>
+        </div>
+
+        <p class="apercu" id="apercu" hidden></p>
+
+        <label class="lbl" for="mdp">Mot de passe admin</label>
+        <input id="mdp" type="password" autocomplete="current-password" />
+
         <p class="erreur" id="erreur" role="alert" hidden></p>
-        <button class="pri" type="submit" id="envoyer">Activer le mode admin</button>
-        <details class="aide">
-          <summary>Obtenir une clé</summary>
-          <ol>
-            <li>Sur GitHub, ouvrez <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Nouveau jeton</a>.</li>
-            <li>Dépôt : <b>aeroclub-beauvais-tille/acbt</b> uniquement.</li>
-            <li>Permission <b>Contents</b> : <b>Read and write</b>.</li>
-            <li>Copiez le jeton et collez-le ci-dessus.</li>
-          </ol>
-          <p>La clé reste sur cet appareil. Le mode admin se quitte depuis l'onglet Avions.</p>
-        </details>
+        <p class="ok" id="ok" role="status" hidden></p>
+        <button class="pri" type="submit" id="envoyer">Mettre en ligne</button>
       </form>
+
+      <section class="carte">
+        <h2>Documents déposés et historique</h2>
+        <p class="sous" id="etat">Chargement…</p>
+        <ul class="docs" id="liste"></ul>
+      </section>
     </main>
   </div>
 </MembreApp>
 
 <script>
-  import { verifierJeton } from '../../scripts/membre-admin';
-  import { url } from '../../lib/utils';
-  const $ = (id: string) => document.getElementById(id)!;
-  try { if (!localStorage.getItem('acbt-membre')) location.replace(url('/membre/connexion/')); } catch { /* privé */ }
-  const cle = $('cle') as HTMLInputElement, erreur = $('erreur'), envoyer = $('envoyer') as HTMLButtonElement;
+  const API = document.getElementById('ecran')!.dataset.api!;
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const fichier = $<HTMLInputElement>('fichier'), avion = $<HTMLSelectElement>('avion'), type = $<HTMLSelectElement>('type');
+  const titre = $<HTMLInputElement>('titre'), debut = $<HTMLInputElement>('debut'), fin = $<HTMLInputElement>('fin'), mdp = $<HTMLInputElement>('mdp');
+  const erreur = $('erreur'), ok = $('ok'), envoyer = $<HTMLButtonElement>('envoyer'), depot = $('depot'), apercu = $('apercu');
+  const MANUELS = ['Manuel', 'Guide', 'Mémo', 'Checklist'];
+  const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const montrer = (el: HTMLElement, t: string) => { el.textContent = t; el.hidden = !t; };
+  try { mdp.value = localStorage.getItem('acbt-admin-alertes') || ''; } catch { /* privé */ }
+  let choisi: File | null = null;
+
+  const nom = () => {
+    const t = type.value, a = avion.value, n = titre.value.trim();
+    if (!t || !a) return '';
+    if (MANUELS.includes(t)) return `${t} - ${n || '…'}`;
+    if (t === 'Autre document de vol') return `${a} - ${n || '…'}`;
+    return `${a} - ${t}`;
+  };
+  const maj = () => {
+    const t = type.value;
+    const manuel = MANUELS.includes(t);
+    $('z-titre').hidden = !(manuel || t === 'Autre document de vol');
+    $('z-dates').hidden = !t || manuel;
+    const n = nom();
+    apercu.hidden = !n;
+    apercu.innerHTML = n ? `Sera affiché : <b>${esc(n)}</b>${manuel ? ' · colonne « Manuels du matériel »' : t === 'Autre document de vol' ? ' · ajouté aux documents de vol' : ' · remplace le document actuel, qui passe dans l’historique'}` : '';
+  };
+  [avion, type, titre].forEach((el) => el.addEventListener('input', maj));
+
+  const prendre = (f: File | undefined | null) => {
+    if (!f) return;
+    choisi = f;
+    $('depot-t').textContent = f.name;
+    $('depot-s').textContent = `${(f.size / 1_048_576).toFixed(1).replace('.', ',')} Mo · touchez pour changer`;
+    depot.classList.add('plein');
+  };
+  fichier.addEventListener('change', () => prendre(fichier.files?.[0]));
+  ['dragenter', 'dragover'].forEach((e) => depot.addEventListener(e, (ev) => { ev.preventDefault(); depot.classList.add('survol'); }));
+  ['dragleave', 'drop'].forEach((e) => depot.addEventListener(e, () => depot.classList.remove('survol')));
+  depot.addEventListener('drop', (ev) => { ev.preventDefault(); prendre((ev as DragEvent).dataTransfer?.files?.[0]); });
+
   $('form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    erreur.hidden = true;
-    const v = cle.value.trim();
-    if (!v) { erreur.textContent = 'Collez la clé d\'administration.'; erreur.hidden = false; return; }
-    envoyer.disabled = true; envoyer.textContent = 'Vérification…';
-    const r = await verifierJeton(v);
-    if (r === 'ok') { location.replace(url('/membre/#avions')); return; }
-    erreur.textContent = r === 'refuse' ? 'Clé refusée : vérifiez-la ou créez-en une nouvelle.'
-      : r === 'lecture' ? 'Cette clé ne permet pas de modifier le site : donnez-lui la permission Contents en écriture.'
-      : 'Vérification impossible pour le moment. Réessayez dans un instant.';
-    erreur.hidden = false;
-    envoyer.disabled = false; envoyer.textContent = 'Activer le mode admin';
+    montrer(ok, '');
+    const manque = !choisi ? 'Choisissez un fichier.' : !avion.value ? 'Choisissez l’avion.' : !type.value ? 'Choisissez le type de document.'
+      : !$('z-titre').hidden && !titre.value.trim() ? 'Indiquez le nom du document.' : !mdp.value ? 'Indiquez le mot de passe admin.' : '';
+    if (manque) { montrer(erreur, manque); return; }
+    montrer(erreur, '');
+    envoyer.disabled = true; envoyer.textContent = 'Envoi…';
+    const f = new FormData();
+    f.append('fichier', choisi!); f.append('avion', avion.value); f.append('type', type.value);
+    f.append('titre', titre.value.trim()); f.append('motDePasse', mdp.value);
+    if (!$('z-dates').hidden) { f.append('debut', debut.value); f.append('fin', fin.value); }
+    const r = await fetch(API, { method: 'POST', credentials: 'same-origin', body: f }).catch(() => null);
+    const d = r ? await r.json().catch(() => ({})) : {};
+    envoyer.disabled = false; envoyer.textContent = 'Mettre en ligne';
+    if (!r || !r.ok) { montrer(erreur, d.erreur || 'Envoi impossible (pas de réseau ?).'); return; }
+    try { localStorage.setItem('acbt-admin-alertes', mdp.value); } catch { /* privé */ }
+    montrer(ok, `« ${d.titre} » est en ligne dans la fiche de ${avion.value}.`);
+    choisi = null; fichier.value = ''; titre.value = ''; debut.value = ''; fin.value = '';
+    $('depot-t').textContent = 'Glissez le fichier ici'; $('depot-s').textContent = 'ou touchez pour le choisir (PDF, photo, vidéo)';
+    depot.classList.remove('plein');
+    maj(); charger();
   });
+
+  type D = { id: string; avion: string; type: string; titre: string; fin: string | null; taille: number; cree: string; archive: string | null };
+  const jour = (d: string) => new Date(d.length === 10 ? d + 'T12:00:00Z' : d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Paris' });
+  const ligneDoc = (d: D) => `<li${d.archive ? ' class="ancien"' : ''}>
+    <a href="${API}/${esc(d.id)}" target="_blank" rel="noopener"><b>${esc(d.titre)}</b>
+    <small>${d.fin ? 'expire le ' + jour(d.fin) + ' · ' : ''}${d.archive ? 'remplacé le ' + jour(d.archive) : 'en ligne depuis le ' + jour(d.cree)}</small></a>
+    <span class="act">
+      <a class="b-ouvrir" href="${API}/${esc(d.id)}" target="_blank" rel="noopener">Ouvrir</a>
+      ${d.archive ? `<button type="button" class="b-remettre" data-action="restaurer" data-id="${esc(d.id)}">Remettre en ligne</button>` : `<button type="button" class="b-histo" data-action="archiver" data-id="${esc(d.id)}">Retirer</button>`}
+      <button type="button" class="b-suppr" data-action="supprimer" data-id="${esc(d.id)}">Supprimer</button>
+    </span></li>`;
+  async function charger() {
+    try {
+      const l: D[] = (await (await fetch(API, { credentials: 'same-origin', cache: 'no-store' })).json()).docs || [];
+      montrer($('etat'), l.length ? '' : 'Aucun document déposé depuis l’appli pour l’instant.');
+      const avions = [...new Set(l.map((d) => d.avion))].sort();
+      $('liste').innerHTML = avions.map((a) => {
+        const ici = l.filter((d) => d.avion === a);
+        const actifs = ici.filter((d) => !d.archive), anciens = ici.filter((d) => d.archive);
+        return `<li class="avion"><h3>${esc(a)}</h3>
+          ${actifs.length ? `<p class="grp">En ligne</p><ul>${actifs.map(ligneDoc).join('')}</ul>` : ''}
+          ${anciens.length ? `<p class="grp">Historique</p><ul>${anciens.map(ligneDoc).join('')}</ul>` : ''}</li>`;
+      }).join('');
+    } catch { montrer($('etat'), 'Impossible de charger la liste (pas de réseau ?).'); }
+  }
+  const QUESTION: Record<string, string> = {
+    supprimer: 'Supprimer définitivement ce document ? Il ne pourra pas être récupéré.',
+    archiver: 'Retirer ce document de la fiche ? Il restera dans l’historique.',
+    restaurer: 'Remettre ce document en ligne ? Le document actuel du même type passera dans l’historique.',
+  };
+  $('liste').addEventListener('click', async (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-id]');
+    if (!b) return;
+    if (!mdp.value) { montrer(erreur, 'Indiquez le mot de passe admin.'); mdp.focus(); return; }
+    if (!confirm(QUESTION[b.dataset.action!])) return;
+    b.disabled = true;
+    const r = await fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: b.dataset.action, id: b.dataset.id, motDePasse: mdp.value }) }).catch(() => null);
+    if (!r || !r.ok) { b.disabled = false; montrer(erreur, (r && (await r.json().catch(() => ({}))).erreur) || 'Action impossible (pas de réseau ?).'); return; }
+    try { localStorage.setItem('acbt-admin-alertes', mdp.value); } catch { /* privé */ }
+    montrer(erreur, '');
+    charger();
+  });
+  maj();
+  charger();
 </script>
 
 <style>
@@ -69,21 +205,42 @@ import { url } from '../../lib/utils';
   .retour svg { width: 22px; height: 22px; }
   .haut :global(.logo) { --logo-h: 40px; --logo-rouge: var(--bar-rouge); color: var(--bar-ink); }
   .haut span { font-weight: 800; font-size: 1.05rem; }
-  .corps { flex: 1; display: flex; justify-content: center; align-items: flex-start; padding: 32px 16px 40px; }
-  .carte { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px 20px; }
-  h1 { font-size: 1.35rem; margin: 0 0 6px; }
-  .sous { color: var(--muted); font-size: .92rem; margin: 0 0 18px; }
-  .note { font-size: .84rem; background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--ink); border-radius: 10px; padding: 9px 12px; margin: 0 0 18px; }
-  label { display: block; font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 7px; }
-  input { width: 100%; height: 48px; border: 1px solid var(--line); border-radius: 10px; padding: 0 14px; font: inherit; font-family: var(--mono); font-size: .95rem; background: var(--surface-2, var(--surface)); color: var(--ink); }
-  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .corps { flex: 1; width: 100%; max-width: 680px; margin: 0 auto; padding: 18px 16px 40px; display: grid; gap: 14px; align-content: start; }
+  .carte { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; }
+  h1 { font-size: 1.25rem; margin: 0 0 14px; }
+  h2 { font-size: 1.1rem; margin: 0 0 6px; }
+  .sous { color: var(--muted); font-size: .9rem; margin: 0; }
+  .depot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; border: 2px dashed var(--line); border-radius: 14px; padding: 22px 14px; cursor: pointer; background: var(--surface-2); color: var(--ink); }
+  .depot svg { width: 30px; height: 30px; color: var(--accent); margin-bottom: 4px; }
+  .depot b { font-size: 1rem; overflow-wrap: anywhere; }
+  .depot small { color: var(--muted); font-size: .84rem; }
+  .depot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .depot.survol { border-color: var(--accent); background: var(--accent-soft); }
+  .depot.plein { border-style: solid; border-color: var(--ok-line); background: var(--ok-bg); }
+  .depot.plein svg { color: var(--ok); }
+  .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 520px) { .deux { grid-template-columns: 1fr; gap: 0; } }
+  .lbl { display: block; font-weight: 700; font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; }
+  .lbl i { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 600; }
+  input[type=password], input[type=text], input[type=date], select { width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; font: inherit; background: var(--surface-2, var(--surface)); color: var(--ink); box-sizing: border-box; }
+  .apercu { margin: 14px 0 0; font-size: .88rem; color: var(--muted); background: var(--surface-2); border-left: 4px solid var(--accent); border-radius: 8px; padding: 9px 12px; }
+  .apercu :global(b) { color: var(--ink); }
   .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; }
+  .ok { color: var(--ok); background: var(--ok-bg); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; font-weight: 650; }
   .pri { width: 100%; height: 50px; margin-top: 16px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; }
   .pri:disabled { opacity: .7; cursor: wait; }
-  .aide { margin-top: 16px; font-size: .88rem; color: var(--muted); }
-  .aide summary { cursor: pointer; font-weight: 700; color: var(--accent); }
-  .aide ol { padding-left: 20px; margin: 10px 0; display: grid; gap: 5px; }
-  .aide a { color: var(--accent); }
-  .aide p { margin: 0; }
+  .docs, .docs :global(ul) { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+  .docs :global(li.avion) { border: 0; padding: 6px 0 0; display: block; }
+  .docs :global(h3) { margin: 6px 0 0; font-family: var(--mono); font-size: 1rem; }
+  .docs :global(.grp) { margin: 10px 0 0; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .docs :global(ul li) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .docs :global(li.ancien) { background: var(--surface-2); }
+  .docs :global(li > a) { flex: 1 1 200px; min-width: 0; color: inherit; text-decoration: none; }
+  .docs :global(b) { display: block; font-size: .92rem; overflow-wrap: anywhere; }
+  .docs :global(small) { display: block; color: var(--muted); font-size: .78rem; margin-top: 2px; }
+  .docs :global(.act) { display: flex; gap: 6px; flex-wrap: wrap; }
+  .docs :global(.act > *) { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: .8rem; border-radius: 8px; padding: 6px 10px; cursor: pointer; text-decoration: none; }
+  .docs :global(.b-remettre) { border-color: var(--ok-line) !important; background: var(--ok-bg) !important; color: var(--ok) !important; }
+  .docs :global(.b-suppr) { border-color: var(--bad-line) !important; background: var(--bad-bg) !important; color: var(--bad) !important; }
   [hidden] { display: none !important; }
 </style>
