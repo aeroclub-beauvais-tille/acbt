@@ -9,7 +9,7 @@ import { lireCartes } from '../../_cartes.js';
 
 const AVWX_CLE = 'v1k-d7EgXdAiRybNQZ6gij20qSs0n9DEPki8lQD0jjo'; // clé publique déjà utilisée par le site
 const CACHE = 'https://cache.acbt60.local/dashboard/api/donnees';
-const CACHE_NOTAM = 'https://cache.acbt60.local/dashboard/api/notam';
+const CACHE_NOTAM = 'https://cache.acbt60.local/dashboard/api/notam-v2'; // v2 : avec les créneaux horaires (champ D);
 
 export async function onRequestGet({ env, request, waitUntil }) {
   const debug = new URL(request.url).searchParams.get('debug');
@@ -203,7 +203,7 @@ async function lireNotamFaa(env, cache, waitUntil, debug, lieu = 'LFOB') {
     const e = (icao.match(/E\)\s*([\s\S]*?)(?:\n[FG]\)|$)/) || [])[1] || n.text || '';
     const texteNet = e.replace(/\s+/g, ' ').trim();
     // Champ D) : créneaux horaires dans la période de validité (ex. « 1500-1545 », heures UTC)
-    const horaires = String(n.schedule || (icao.match(/(?:^|\n)\s*D\)\s*([\s\S]*?)(?:\n\s*[EFG]\)|$)/) || [])[1] || '').replace(/\s+/g, ' ').trim() || null;
+    const horaires = String(n.schedule || (icao.match(/(?:^|\s)D\)\s*([\s\S]*?)(?=\s+[EFG]\)|$)/) || [])[1] || '').replace(/\s+/g, ' ').trim() || null;
     // SNOWTAM (état de surface des pistes, format OACI propre) : affiché en tête, avec un badge dédié
     const snow = /^SW/i.test(n.series || '') || /SNOWTAM/i.test(`${n.text || ''} ${icao} ${n.type || ''} ${n.number || ''}`);
     return {
