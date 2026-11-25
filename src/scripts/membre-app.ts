@@ -20,6 +20,7 @@ export const estConnecte = () => !!lire();
  * - Tant qu'elle n'existe pas (maquette sur GitHub Pages), tout mot de passe est accepté.
  */
 export async function seConnecter(motDePasse: string): Promise<'ok' | 'refuse' | 'maquette' | 'erreur'> {
+  // Le mot de passe admin ouvre aussi l'appli : l'onglet Admin apparaît alors sur cet appareil
   try {
     const rep = await fetch(url('/api/connexion'), {
       method: 'POST',
@@ -28,7 +29,11 @@ export async function seConnecter(motDePasse: string): Promise<'ok' | 'refuse' |
       credentials: 'same-origin',
     });
     if (rep.status === 401) return 'refuse';
-    if (rep.ok && (rep.headers.get('content-type') || '').includes('json')) { ecrire('serveur'); return 'ok'; }
+    if (rep.ok && (rep.headers.get('content-type') || '').includes('json')) {
+      ecrire('serveur');
+      try { if ((await rep.json()).admin) localStorage.setItem('acbt-admin-alertes', motDePasse.trim()); } catch { /* réponse sans détail */ }
+      return 'ok';
+    }
     if (rep.status >= 500) return 'erreur';
   } catch { /* pas de réseau ou pas de serveur */ }
   ecrire('maquette');
@@ -274,7 +279,8 @@ export function onglets() {
   const boutons = [...barre.querySelectorAll<HTMLButtonElement>('[data-onglet]')];
   const sections = new Map(boutons.map((b) => [b.dataset.onglet!, document.getElementById(b.dataset.onglet!)]));
   const montrer = (id: string, defiler = true) => {
-    if (!sections.has(id)) id = boutons[0].dataset.onglet!;
+    const admin = document.documentElement.classList.contains('est-admin');
+    if (!sections.has(id) || (!admin && boutons.find((b) => b.dataset.onglet === id)?.hasAttribute('data-admin'))) id = boutons[0].dataset.onglet!;
     boutons.forEach((b) => {
       const on = b.dataset.onglet === id;
       b.setAttribute('aria-selected', String(on));

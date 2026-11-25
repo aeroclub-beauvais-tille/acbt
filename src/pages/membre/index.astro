@@ -79,12 +79,23 @@ const onglets = [
   { id: 'flotte', nom: 'Flotte', svg: 'M12 14l4.5-4.5M3.5 18a9.5 9.5 0 1 1 17 0M12 14h.01' },
   { id: 'avions', nom: 'Avions', svg: 'M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z' },
   { id: 'preparer', nom: 'Préparer', svg: 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 4v12m10-6H2' },
+  // Réservé aux responsables : visible seulement sur un appareil où le mot de passe admin a été saisi
+  { id: 'admin', nom: 'Admin', svg: 'M12 2l8 3v6c0 5-3.4 9.3-8 11-4.6-1.7-8-6-8-11V5l8-3zM9 12l2 2 4-4', admin: true },
+];
+// Outils de l'onglet Admin
+const outilsAdmin = [
+  { lien: '/membre/messages/', nom: 'Messages du club', desc: 'Écrire un message envoyé à tous les membres', svg: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
+  { lien: '/membre/alertes-meteo/', nom: 'Alertes météo', desc: 'MAA et LVP reçus par mail, arrêter une alerte', svg: 'M12 3 2 20h20L12 3zM12 10v4M12 17h.01' },
+  { lien: '/membre/signalements/', nom: 'Signalements techniques', desc: 'Problèmes signalés sur les avions', svg: 'M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z' },
+  { lien: '/statistiques/', nom: 'Statistiques du site', desc: 'Fréquentation de acbt60.fr et de l\'appli', svg: 'M4 20V10M10 20V4M16 20v-7M22 20H2' },
+  { lien: '/membre/admin/', nom: 'Documents des avions', desc: 'Ajouter ou remplacer un document', svg: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M12 18v-6M9 15h6' },
 ];
 ---
 <MembreApp title="Espace membres">
   <script slot="head" is:inline define:vars={{ connexion }}>
     try {
       var ret = '?retour=' + encodeURIComponent(location.pathname + location.hash);
+      if (localStorage.getItem('acbt-admin-alertes') || localStorage.getItem('acbt-admin-jeton')) document.documentElement.classList.add('est-admin');
       if (!localStorage.getItem('acbt-membre')) location.replace(connexion + ret);
       // Sur téléphone, ouvert dans le navigateur (et pas dans l'appli installée) : on propose d'abord d'installer l'appli
       else if (/android|iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
@@ -298,10 +309,20 @@ const onglets = [
         ))}
       </div>
       </div>
-      <a class="adm-lien" href={url('/membre/admin/')}>Administration</a>
-      <a class="adm-lien" href={url('/membre/messages/')}>Messages du club</a>
-      <a class="adm-lien" href={url('/membre/alertes-meteo/')}>Alertes météo (MAA, LVP)</a>
-      <a class="adm-lien" href={url('/statistiques/')}>Statistiques du site</a>
+    </section>
+
+    <!-- ADMIN (responsables seulement) -->
+    <section class="panneau" id="admin" hidden>
+      <h1 class="titre">Administration</h1>
+      <div class="outils">
+        {outilsAdmin.map((o) => (
+          <a class="outil" href={url(o.lien)}>
+            <span class="o-logo o-adm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={o.svg} /></svg></span>
+            <span class="o-txt"><b>{o.nom}</b><small>{o.desc}</small></span>
+          </a>
+        ))}
+      </div>
+      <button type="button" class="adm-quitter" id="adm-quitter">Quitter le mode admin sur cet appareil</button>
     </section>
 
     <!-- PRÉPARER -->
@@ -329,7 +350,7 @@ const onglets = [
 
   <nav class="tabbar" id="onglets" aria-label="Sections">
     {onglets.map((o) => (
-      <button type="button" data-onglet={o.id} aria-selected={o.id === 'accueil'}>
+      <button type="button" data-onglet={o.id} aria-selected={o.id === 'accueil'} data-admin={o.admin ? '' : undefined}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d={o.svg} /></svg>
         <span>{o.nom}</span>
       </button>
@@ -402,6 +423,11 @@ const onglets = [
   setInterval(maa, 60_000); // le MAA peut commencer ou se terminer pendant la consultation
   signalement();
   import('../../scripts/membre-messages').then((m) => m.messagesClub());
+  document.getElementById('adm-quitter')?.addEventListener('click', () => {
+    if (!confirm('Quitter le mode admin sur cet appareil ? L\'onglet Admin disparaîtra.')) return;
+    try { localStorage.removeItem('acbt-admin-alertes'); localStorage.removeItem('acbt-admin-jeton'); localStorage.removeItem('acbt-admin-stats'); } catch { /* privé */ }
+    location.replace(location.pathname);
+  });
   try { if (localStorage.getItem('acbt-admin-jeton')) import('../../scripts/membre-admin').then((m) => m.modeAdmin()); } catch { /* privé */ }
   boutonInstaller(document.getElementById('installer') as HTMLButtonElement, document.getElementById('aide-ios'));
   document.getElementById('deconnexion')?.addEventListener('click', () => {
@@ -849,6 +875,11 @@ const onglets = [
   /* Outils */
   .bloc { margin-bottom: 8px; }
   .outils { display: grid; gap: 9px; }
+  /* Onglet Admin : invisible pour les membres */
+  :global(html:not(.est-admin)) [data-admin] { display: none !important; }
+  .o-adm { display: grid; place-items: center; color: var(--accent); }
+  .o-adm svg { width: 22px; height: 22px; }
+  .adm-quitter { margin: 22px auto 0; display: block; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font: inherit; font-weight: 700; font-size: .85rem; border-radius: 10px; padding: 10px 16px; cursor: pointer; }
   @media (min-width: 520px) { .outils { grid-template-columns: 1fr 1fr; } }
   .outil { display: flex; gap: 12px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 13px; text-decoration: none; color: inherit; }
   .outil:active { transform: scale(.99); }
