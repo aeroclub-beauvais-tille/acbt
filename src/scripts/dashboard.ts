@@ -3,7 +3,7 @@
 import { ephemeride, heureLocale, type Ephemeride } from '../lib/soleil';
 import { rendreVent, lireMesure, type Obs } from '../lib/vent';
 import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
-import { wintem, temsi, fronts, heureFronts, heureEch, NIVEAUX, LEGENDE_TEMSI, CSS_CARTES, type Cartes } from '../lib/cartes';
+import { wintem, fronts, heureFronts, heureEch, NIVEAUX, CSS_CARTES, type Cartes } from '../lib/cartes';
 import { court, nomCourt, quiResa as quiResaNoms, typeVol } from '../lib/noms-resa';
 
 /* ------------------------------------------------------------------ */
@@ -301,7 +301,7 @@ function flotteEcran() {
 }
 
 /* ------------------------------------------------------------------ */
-/* 5. Cartes aéro : TEMSI, WINTEM, vents en altitude, METAR voisins     */
+/* 5. Cartes aéro : fronts (DWD), WINTEM du club, vents en altitude, METAR voisins */
 /* ------------------------------------------------------------------ */
 const CARTE_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>';
 let flWintem = 0;
@@ -316,20 +316,11 @@ function cartesAero() {
   const vide = (t: string) => `<div class="ca-vide">${CARTE_IC}${t}</div>`;
   const indispo = 'Carte indisponible pour le moment';
   const g = c?.grille;
-  // Panneau de gauche : « TEMSI » du club et carte des fronts en alternance, à chaque passage sur l'écran
-  const voirFronts = flWintem % 2 === 1 && c?.fronts || (!g && c?.fronts);
-  if (voirFronts) {
-    $('temsi-t').textContent = 'Carte des fronts';
-    $('temsi').innerHTML = fronts('/dashboard/api/fronts', c!.fronts!);
-    $('temsi-h').textContent = `analyse ${heureFronts(c!.fronts!)} · DWD`;
-    $('temsi-lg').innerHTML = '© Deutscher Wetterdienst';
-  } else if (g) {
-    const e = echeance(g.heures);
-    $('temsi-t').textContent = 'Temps significatif';
-    $('temsi').innerHTML = temsi(g, e);
-    $('temsi-h').textContent = `prévision ${heureEch(g, e)} · indicatif`;
-    $('temsi-lg').innerHTML = LEGENDE_TEMSI;
-  } else { $('temsi-t').textContent = 'Temps significatif'; $('temsi').innerHTML = vide(indispo); $('temsi-h').textContent = ''; $('temsi-lg').innerHTML = ''; }
+  // Panneau de gauche : carte des fronts du DWD (isobares et fronts au sol)
+  if (c?.fronts) {
+    $('temsi').innerHTML = fronts('/dashboard/api/fronts', c.fronts);
+    $('temsi-h').textContent = `analyse ${heureFronts(c.fronts)} · DWD`;
+  } else { $('temsi').innerHTML = vide(indispo); $('temsi-h').textContent = ''; }
   if (g) {
     const e = echeance(g.heures), n = flWintem % NIVEAUX.length;
     $('wintem').innerHTML = `<div class="ca-fl">${NIVEAUX.map((y, i) => `<span class="${i === n ? 'on' : ''}">${y}</span>`).join('')}</div><div class="ca-svg">${wintem(g, e, n)}</div>`;

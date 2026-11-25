@@ -4,7 +4,7 @@ import { ephemeride, heureLocale } from '../lib/soleil';
 import { rendreVent, lireMesure, ventStation, type Vent } from '../lib/vent';
 import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
 import { quiResa } from '../lib/noms-resa';
-import { wintem, temsi, fronts, heureFronts, heureEch, NIVEAUX, LEGENDE_TEMSI, CSS_CARTES, type Cartes } from '../lib/cartes';
+import { wintem, fronts, heureFronts, heureEch, NIVEAUX, CSS_CARTES, type Cartes } from '../lib/cartes';
 
 const CLE = 'acbt-membre';
 const DOCS = 'acbt-membre-docs';
@@ -831,7 +831,7 @@ export function vent() {
 }
 
 /* Cartes météo du club (onglet Météo), à la place de la TEMSI et de la WINTEM d'Aéroweb : même rendu que la TV.
-   Temps significatif et vent/température sur le nord de la France (modèles Météo-France), carte des fronts du DWD.
+   Carte des fronts du DWD (isobares) et vent/température sur le nord de la France (modèles Météo-France).
    La carte des fronts (~5 Mo) ne se télécharge que si le pilote l'ouvre. */
 export function cartes() {
   const boite = document.getElementById('cartes');
@@ -839,7 +839,7 @@ export function cartes() {
   if (!boite) return;
   { const st = document.createElement('style'); st.textContent = CSS_CARTES; document.head.append(st); }
   let d: Cartes | null = null;
-  let vue = 'temsi', niv = 1, ech = -1;
+  let vue = 'wintem', niv = 1, ech = -1; // vent par défaut : la carte des fronts (~5 Mo) ne se charge que si on la demande
   const bouton = (v: string, t: string, on: boolean) => `<button type="button" data-v="${v}" class="${on ? 'on' : ''}">${t}</button>`;
   const dessiner = () => {
     const g = d?.grille ?? null;
@@ -848,14 +848,12 @@ export function cartes() {
       ech = 0;
       g.heures.forEach((t, i) => { if (Math.abs(Date.parse(t) - Date.now()) < Math.abs(Date.parse(g.heures[ech]) - Date.now())) ech = i; });
     }
-    let o = `<div class="cm-ch" data-r="vue">${bouton('temsi', 'Temps significatif', vue === 'temsi')}${bouton('wintem', 'Vent et temp.', vue === 'wintem')}${bouton('fronts', 'Fronts', vue === 'fronts')}</div>`;
+    let o = `<div class="cm-ch" data-r="vue">${bouton('wintem', 'Vent et température', vue === 'wintem')}${bouton('fronts', 'Carte des fronts', vue === 'fronts')}</div>`;
     if (vue !== 'fronts' && g) {
-      if (vue === 'wintem') o += `<div class="cm-ch pt" data-r="niv">${NIVEAUX.map((n, i) => bouton(String(i), n, i === niv)).join('')}</div>`;
+      o += `<div class="cm-ch pt" data-r="niv">${NIVEAUX.map((n, i) => bouton(String(i), n, i === niv)).join('')}</div>`;
       o += `<div class="cm-ch pt" data-r="ech">${g.heures.map((_, i) => bouton(String(i), heureEch(g, i).replace(' UTC', ''), i === ech)).join('')}</div>`;
-      o += vue === 'wintem' ? wintem(g, ech, niv) : temsi(g, ech);
-      o += vue === 'wintem'
-        ? `<div class="cm-pied"><span>Prévision ${heureEch(g, ech)} · vent en kt (barbe = 10 kt, demi = 5 kt) · température en °C</span></div>`
-        : `<div class="cm-pied">${LEGENDE_TEMSI}</div><p class="cm-note">Prévision ${heureEch(g, ech)}, calculée à partir des modèles Météo-France. Indicative : ne remplace pas la TEMSI officielle (aviation.meteo.fr).</p>`;
+      o += wintem(g, ech, niv);
+      o += `<div class="cm-pied"><span>Prévision ${heureEch(g, ech)} · vent en kt (barbe = 10 kt, demi = 5 kt) · température en °C</span></div>`;
       o += '<p class="cm-note">Données Météo-France (AROME, ARPEGE) via Open-Meteo, licence CC BY 4.0.</p>';
     } else if (vue === 'fronts' && d?.fronts) {
       o += fronts(boite.dataset.fronts!, d.fronts) + `<p class="cm-note">Analyse du ${heureFronts(d.fronts)} · © Deutscher Wetterdienst (données ouvertes).</p>`;
