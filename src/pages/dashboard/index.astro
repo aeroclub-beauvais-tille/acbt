@@ -52,7 +52,7 @@ const modeles = { 'F-BTBJ': 'DR315', ...Object.fromEntries(avions.map((a) => [a.
     <!-- 5. Cartes aéro du club (à la place de TEMSI et WINTEM) : fronts (DWD), vent et température, vents en altitude, METAR voisins -->
     <section class="ecran ec" data-e="4">
       <div class="panel carte-aero"><h2>Carte des fronts <span class="r" id="temsi-h"></span></h2><div class="ca-img" id="temsi"></div><div class="ca-lg">Isobares et fronts au sol · © Deutscher Wetterdienst</div></div>
-      <div class="panel carte-aero"><h2>Vent et température <span class="r" id="wintem-h"></span></h2><div class="ca-img ca-w" id="wintem"></div><div class="ca-lg">Modèles Météo-France (AROME, ARPEGE) via Open-Meteo · barbule = 10 kt, demi = 5 kt</div></div>
+      <div class="panel carte-aero"><h2>Vent et température <span class="r" id="wintem-h"></span></h2><div class="ca-img" id="wintem"></div><div class="ca-lg">Modèles Météo-France (AROME, ARPEGE) via Open-Meteo · barbe = 10 kt, demi = 5 kt · animation heure par heure</div></div>
       <div class="col">
         <div class="panel alt-p"><h2>Vents en altitude LFOB <span class="r">kt · prévision Météo-France</span></h2><div id="altitude"></div></div>
         <div class="panel voisins-p"><h2>METAR voisins <span class="r" id="voisins-h"></span></h2><div id="voisins"></div></div>
@@ -188,9 +188,15 @@ const modeles = { 'F-BTBJ': 'DR315', ...Object.fromEntries(avions.map((a) => [a.
   .ec .col { display: flex; flex-direction: column; gap: 18px; min-height: 0; }
   .carte-aero { display: flex; flex-direction: column; }
   .ca-img { flex: 1; min-height: 0; border-radius: 12px; background: var(--panel2); display: grid; place-items: center; overflow: hidden; }
-  .ca-img > .cm { width: 100%; height: 100%; }
-  .ca-img .cm-fronts { width: min(100%, calc((1080px - 330px) * 1300 / 1450)); }
-  .ca-w { display: flex; flex-direction: column; place-items: stretch; padding: 10px; } .ca-w .ca-svg { flex: 1; min-height: 0; } .ca-w .cm { height: 100%; }
+  .ca-img { position: relative; }
+  .ca-img > .cm, .ca-img > .cm-fronts { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* Repères de la WINTEM animée : niveau et heure, posés sur la carte */
+  .ca-rep { position: absolute; z-index: 1; left: 12px; right: 12px; top: 12px; display: flex; align-items: center; gap: 14px; }
+  .ca-rep .ca-fl { margin: 0; padding: 4px; border-radius: 10px; background: color-mix(in srgb, var(--panel) 88%, transparent); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  .ca-h { flex: 1; display: flex; gap: 4px; align-items: center; height: 30px; padding: 0 8px; border-radius: 10px; background: color-mix(in srgb, var(--panel) 88%, transparent); box-shadow: 0 1px 4px rgba(0,0,0,.15); }
+  .ca-h i { flex: 1; height: 6px; border-radius: 3px; background: var(--line); font-style: normal; }
+  .ca-h i.fait { background: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .ca-h i.on { flex: 0 0 auto; height: auto; padding: 2px 8px; background: var(--accent); color: #fff; font-family: var(--mono); font-weight: 700; font-size: 14px; }
   .ca-lg { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 10px; font-size: 13.5px; font-weight: 600; color: var(--muted); min-height: 20px; }
   .ca-vide { text-align: center; color: var(--muted); font-weight: 700; font-size: 17px; line-height: 1.5; padding: 30px; }
   .ca-vide svg { width: 64px; height: 64px; display: block; margin: 0 auto 14px; opacity: .5; }

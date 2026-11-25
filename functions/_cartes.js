@@ -5,8 +5,8 @@
 // 2. Carte des fronts du service météo allemand (DWD, données ouvertes, sans inscription), analyse toutes les 6 h.
 // Grille gardée 1 h en cache, liste DWD 20 min, image des fronts 6 h.
 
-export const GRILLE = { lat0: 46.5, dlat: 0.625, nlat: 9, lon0: -2.5, dlon: 1, nlon: 9 };
-const ECHEANCES = [0, 3, 6, 9, 12]; // heures après l'heure ronde en cours
+export const GRILLE = { lat0: 45.9, dlat: 0.7, nlat: 9, lon0: -1.95, dlon: 0.9, nlon: 8 };
+const ECHEANCES = [0, 1, 2, 3, 4, 5, 6, 7, 8]; // heures après l'heure ronde en cours (animation heure par heure)
 const NIVEAUX = [925, 850, 700];
 const CHAMPS = NIVEAUX.flatMap((p) => [`wind_direction_${p}hPa`, `wind_speed_${p}hPa`, `temperature_${p}hPa`]);
 const DWD = 'https://opendata.dwd.de/weather/charts/analysis/';
@@ -25,7 +25,7 @@ async function enCache(cache, waitUntil, cle, duree, lire) {
 
 export async function lireGrille(cache, waitUntil) {
   const heure = new Date().toISOString().slice(0, 13);
-  return enCache(cache, waitUntil, `grille-${heure}`, 3600, async () => {
+  return enCache(cache, waitUntil, `grille3-${heure}`, 3600, async () => {
     const la = [], lo = [];
     for (let i = 0; i < GRILLE.nlat; i++) for (let j = 0; j < GRILLE.nlon; j++) {
       la.push((GRILLE.lat0 + i * GRILLE.dlat).toFixed(3));
