@@ -46,30 +46,30 @@ import { url } from '../../lib/utils';
         <section class="carte">
           <div class="tete"><h2 id="g-titre">Visiteurs par jour</h2>
             <span class="legende" id="g-legende"><span><i class="sw"></i>Visiteurs</span><span><i class="sw ligne"></i>Tendance (moyenne sur 7 jours)</span></span></div>
-          <div class="graphe" id="graphe"></div>
+          <div class="graphe" id="graphe" data-c="bleu"></div>
         </section>
 
         <div class="vitrine-seul grille">
           <section class="carte"><h2>Ce que font les visiteurs</h2><ol class="actions" id="l-actions"></ol>
             <p class="sous note">Un « clic Réserver » ouvre le formulaire ; une « demande » est un formulaire réellement envoyé au club.</p></section>
-          <section class="carte"><h2 id="g2-titre">Clics sur Réserver par jour</h2><div class="graphe petit" id="graphe2"></div></section>
-          <section class="carte"><h2>Demandes envoyées, par objet</h2><ol class="barres" id="l-demandes"></ol></section>
-          <section class="carte"><h2>Pages d’où l’on clique sur Réserver</h2><ol class="barres" id="l-reserver"></ol></section>
-          <section class="carte"><h2>Liens cliqués vers d’autres sites</h2><ol class="barres" id="l-sorties"></ol></section>
-          <section class="carte"><h2>Documents ouverts</h2><ol class="barres" id="l-documents"></ol></section>
+          <section class="carte"><h2 id="g2-titre">Clics sur Réserver par jour</h2><div class="graphe petit" id="graphe2" data-c="rouge"></div></section>
+          <section class="carte"><h2>Demandes envoyées, par objet</h2><ol class="barres" id="l-demandes" data-c="rouge"></ol></section>
+          <section class="carte"><h2>Pages d’où l’on clique sur Réserver</h2><ol class="barres" id="l-reserver" data-c="rouge"></ol></section>
+          <section class="carte"><h2>Liens cliqués vers d’autres sites</h2><ol class="barres" id="l-sorties" data-c="ciel"></ol></section>
+          <section class="carte"><h2>Documents ouverts</h2><ol class="barres" id="l-documents" data-c="marine"></ol></section>
         </div>
 
         <div class="grille">
-          <section class="carte"><h2>À quelle heure</h2><div class="graphe petit" id="g-heures"></div></section>
-          <section class="carte"><h2>Quel jour de la semaine</h2><div class="graphe petit" id="g-semaine"></div></section>
-          <section class="carte"><h2>Pages les plus vues</h2><ol class="barres" id="l-pages"></ol></section>
-          <section class="carte"><h2>Page d’arrivée sur le site</h2><ol class="barres" id="l-entrees"></ol></section>
-          <section class="carte"><h2>D’où viennent les visiteurs</h2><ol class="barres" id="l-sources"></ol>
+          <section class="carte"><h2>À quelle heure</h2><div class="graphe petit" id="g-heures" data-c="ciel"></div></section>
+          <section class="carte"><h2>Quel jour de la semaine</h2><div class="graphe petit" id="g-semaine" data-c="bleu"></div></section>
+          <section class="carte"><h2>Pages les plus vues</h2><ol class="barres" id="l-pages" data-c="bleu"></ol></section>
+          <section class="carte"><h2>Page d’arrivée sur le site</h2><ol class="barres" id="l-entrees" data-c="ciel"></ol></section>
+          <section class="carte"><h2>D’où viennent les visiteurs</h2><ol class="barres" id="l-sources" data-c="ciel"></ol>
             <p class="sous note">« Direct » : adresse tapée, favori, lien dans un mail ou une appli qui ne dit pas d’où il vient.</p></section>
-          <section class="carte vitrine-seul"><h2>Pages lues le plus longtemps</h2><ol class="barres" id="l-temps"></ol>
+          <section class="carte vitrine-seul"><h2>Pages lues le plus longtemps</h2><ol class="barres" id="l-temps" data-c="marine"></ol>
             <p class="sous note">Temps moyen passé sur la page, onglet visible.</p></section>
-          <section class="carte"><h2>Appareils</h2><ol class="barres" id="l-appareils"></ol></section>
-          <section class="carte"><h2>Villes</h2><ol class="barres" id="l-villes"></ol>
+          <section class="carte"><h2>Appareils</h2><div class="donut" id="d-appareils"></div></section>
+          <section class="carte"><h2>Villes</h2><ol class="barres" id="l-villes" data-c="bleu"></ol>
             <p class="sous note">Ville approximative, déduite du fournisseur d’accès.</p></section>
         </div>
 
@@ -121,9 +121,9 @@ import { url } from '../../lib/utils';
   function barres(el: HTMLElement, lignes: Ligne[], nom: (l: Ligne) => string, val: string, unite: string, fmt = nb) {
     if (!lignes.length) { el.innerHTML = '<li class="vide">Pas encore de données.</li>'; return; }
     const max = Math.max(...lignes.map((l) => Number(l[val]) || 0), 1);
-    el.innerHTML = lignes.map((l) => {
+    el.innerHTML = lignes.map((l, i) => {
       const n = Number(l[val]) || 0;
-      return `<li title="${esc(nom(l))} : ${fmt(n)} ${unite}"><span class="b" style="width:${(n / max) * 100}%"></span><span class="t">${esc(nom(l))}</span><span class="n">${fmt(n)}</span></li>`;
+      return `<li title="${esc(nom(l))} : ${fmt(n)} ${unite}" style="--i:${i}"><span class="b" style="width:${(n / max) * 100}%"></span><span class="t">${esc(nom(l))}</span><span class="n">${fmt(n)}</span></li>`;
     }).join('');
   }
 
@@ -147,7 +147,7 @@ import { url } from '../../lib/utils';
       ligne = `<svg class="tendance" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="${d}" /></svg>`;
     }
     el.innerHTML = `<div class="axe"><span>${nb(haut)}</span><span>${nb(haut / 2)}</span><span>0</span></div>
-      <div class="zone" style="--n:${n}">${pts.map((x) => `<div class="col" tabindex="0" aria-label="${esc(x.bulle.replace(/<[^>]+>/g, ' '))}">
+      <div class="zone" style="--n:${n}">${pts.map((x, i) => `<div class="col" style="--i:${Math.round((i / n) * 40)}" tabindex="0" aria-label="${esc(x.bulle.replace(/<[^>]+>/g, ' '))}">
         <span class="bar" style="height:${(x.v / haut) * 100}%"></span>
         <span class="bulle">${x.bulle}</span>
         ${x.x ? `<span class="x">${esc(x.x)}</span>` : ''}</div>`).join('')}${ligne}</div>`;
@@ -162,6 +162,49 @@ import { url } from '../../lib/utils';
     return s.map((x, i) => ({ nom: fmt(x.k), x: s.length <= 7 || i % pas === 0 || (i === s.length - 1 && i % pas >= pas / 2) ? fmt(x.k) : '' }));
   }
 
+  const ICONES: Record<string, string> = {
+    gens: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17" cy="9" r="2.6"/><path d="M17 14c2.6 0 4.5 1.8 4.5 4.5"/>',
+    page: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/>',
+    horloge: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    pile: '<rect x="4" y="4" width="12" height="14" rx="2"/><path d="M8 21h10a2 2 0 0 0 2-2V8"/>',
+    sortie: '<path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/><path d="M15 16l4-4-4-4M19 12H9"/>',
+    clic: '<path d="M9 9l11 4-4.5 1.5L14 19z"/><path d="M5 3v3M3 5h3M5.5 9.5 3.5 11.5M9.5 5.5l2-2"/>',
+    envoi: '<path d="M21 3 10 14"/><path d="M21 3 14 21l-4-7-7-4z"/>',
+  };
+  const COUL_APP: Record<string, string> = { telephone: 'bleu', ordinateur: 'ciel', tablette: 'marine', tv: 'rouge' };
+
+  function donut(el: HTMLElement, parts: { nom: string; v: number; c: string }[]) {
+    const tot = parts.reduce((a, b) => a + b.v, 0);
+    if (!tot) { el.innerHTML = '<p class="vide">Pas encore de données.</p>'; return; }
+    let cumul = 0;
+    const arcs = parts.map((x, i) => {
+      const part = (x.v / tot) * 100;
+      const arc = `<circle class="arc" data-c="${x.c}" cx="21" cy="21" r="15.915" pathLength="100" style="--p:${Math.max(part - 0.8, 0.1)};--d:${-cumul};--i:${i}" />`;
+      cumul += part;
+      return arc;
+    }).join('');
+    const top = parts[0];
+    el.innerHTML = `<svg viewBox="0 0 42 42" class="anneau" aria-hidden="true"><circle class="fond" cx="21" cy="21" r="15.915" />${arcs}
+      <text x="21" y="20.5" class="pc">${Math.round((top.v / tot) * 100)} %</text><text x="21" y="26" class="pn">${esc(top.nom.toLowerCase())}</text></svg>
+      <ul class="leg">${parts.map((x) => `<li><i data-c="${x.c}"></i><span>${esc(x.nom)}</span><b>${nb(x.v)}</b><em>${Math.round((x.v / tot) * 100)} %</em></li>`).join('')}</ul>`;
+  }
+
+  const calme = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function compter(racine: HTMLElement) {
+    if (calme) return;
+    racine.querySelectorAll<HTMLElement>('[data-compte]').forEach((el) => {
+      const fin = Number(el.dataset.compte), fmt = el.dataset.fmt;
+      const f = (x: number) => (fmt === 'duree' ? duree(x) : fmt === 'pct' ? `${Math.round(x)} %` : nb(x));
+      const t0 = performance.now(), D = 900;
+      const pas = (t: number) => {
+        const k = Math.min(1, (t - t0) / D);
+        el.textContent = f(fin * (1 - Math.pow(1 - k, 3)));
+        if (k < 1) requestAnimationFrame(pas);
+      };
+      requestAnimationFrame(pas);
+    });
+  }
+
   function afficher(d: Stats) {
     const vitrine = d.section === 'vitrine';
     document.querySelectorAll<HTMLElement>('.vitrine-seul').forEach((x) => { x.hidden = !vitrine; });
@@ -172,16 +215,27 @@ import { url } from '../../lib/utils';
     const act = (e: string, champ = 'n') => Number(d.actions.find((x) => x.e === e)?.[champ] || 0);
     const actAvant = (e: string) => Number(d.actionsAvant.find((x) => x.e === e)?.n || 0);
     const rebond = d.rebond.tous ? Math.round((d.rebond.seuls / d.rebond.tous) * 100) : 0;
-    const tuile = (l: string, v: string, sous = '') => `<div class="tuile"><span class="l">${l}</span><b>${v}</b>${sous}</div>`;
+    const spark = (v: number[]) => {
+      if (!v.length || Math.max(...v) === 0) return '';
+      const m = Math.max(...v), n = v.length;
+      const pts = v.map((y, i) => `${(i / Math.max(n - 1, 1)) * 100},${30 - (y / m) * 26}`);
+      return `<svg class="spark" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true"><path class="aire" d="M0,32 L${pts.join(' L')} L100,32 Z" /><path class="trait" d="M${pts.join(' L')}" /></svg>`;
+    };
+    const tuile = (l: string, v: string, sous: string, c: string, ic: string, compte?: [number, string], sp: number[] = []) =>
+      `<div class="tuile" data-c="${c}"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONES[ic]}</svg></span><span class="l">${l}</span>` +
+      `<b${compte ? ` data-compte="${compte[0]}" data-fmt="${compte[1]}"` : ''}>${v}</b>${sous}${spark(sp)}</div>`;
+    const serieDe = (k: keyof Jour) => d.serie.map((x) => Number(x[k]) || 0);
     const demandeurs = act('formulaire', 'visiteurs');
     $('tuiles').innerHTML = [
-      tuile('Visiteurs', nb(vis), ecart(vis, Number(p.visiteurs), comparer)),
-      tuile('Pages vues', nb(vues), ecart(vues, Number(p.vues), comparer)),
-      vitrine ? tuile('Temps moyen par visiteur', vis && d.tempsTotal ? duree(d.tempsTotal / vis) : '—') : tuile('Pages par visiteur', vis ? (vues / vis).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : '—'),
-      tuile('Repartis après 1 page', d.rebond.tous ? `${rebond} %` : '—'),
+      tuile('Visiteurs', nb(vis), ecart(vis, Number(p.visiteurs), comparer), 'bleu', 'gens', [vis, 'nb'], serieDe('visiteurs')),
+      tuile('Pages vues', nb(vues), ecart(vues, Number(p.vues), comparer), 'ciel', 'page', [vues, 'nb'], serieDe('vues')),
+      vitrine
+        ? tuile('Temps moyen par visiteur', vis && d.tempsTotal ? duree(d.tempsTotal / vis) : '—', '', 'marine', 'horloge', vis && d.tempsTotal ? [d.tempsTotal / vis, 'duree'] : undefined)
+        : tuile('Pages par visiteur', vis ? (vues / vis).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : '—', '', 'marine', 'pile'),
+      tuile('Repartis après 1 page', d.rebond.tous ? `${rebond} %` : '—', '', 'marine', 'sortie', d.rebond.tous ? [rebond, 'pct'] : undefined),
       ...(vitrine ? [
-        tuile('Clics « Réserver »', nb(act('clic-contact')), ecart(act('clic-contact'), actAvant('clic-contact'), comparer)),
-        tuile('Demandes envoyées', nb(act('formulaire')), vis ? `<span class="ev">${(demandeurs / vis * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} % des visiteurs</span>` : ''),
+        tuile('Clics « Réserver »', nb(act('clic-contact')), ecart(act('clic-contact'), actAvant('clic-contact'), comparer), 'rouge', 'clic', [act('clic-contact'), 'nb'], serieDe('clics')),
+        tuile('Demandes envoyées', nb(act('formulaire')), vis ? `<span class="ev">${(demandeurs / vis * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} % des visiteurs</span>` : '', 'rouge', 'envoi', [act('formulaire'), 'nb'], serieDe('demandes')),
       ] : []),
     ].join('');
     $('parties').innerHTML = 'Visiteurs sur la période : ' + ['vitrine', 'membre', 'perfs'].map((s) => {
@@ -217,8 +271,9 @@ import { url } from '../../lib/utils';
     barres($('l-pages'), d.pages, (l) => nomPage(String(l.page)), 'vues', 'pages vues');
     barres($('l-entrees'), d.entrees, (l) => nomPage(String(l.page)), 'visiteurs', 'visiteurs');
     barres($('l-sources'), d.sources, (l) => String(l.source), 'visiteurs', 'visiteurs');
-    barres($('l-appareils'), d.appareils, (l) => APPAREILS[String(l.appareil)] || String(l.appareil), 'visiteurs', 'visiteurs');
+    donut($('d-appareils'), d.appareils.map((l) => ({ nom: APPAREILS[String(l.appareil)] || String(l.appareil), v: Number(l.visiteurs) || 0, c: COUL_APP[String(l.appareil)] || 'marine' })));
     barres($('l-villes'), d.villes, (l) => `${l.ville}${l.pays && l.pays !== 'FR' ? ` (${(() => { try { return PAYS.of(String(l.pays)); } catch { return l.pays; } })()})` : ''}`, 'visiteurs', 'visiteurs');
+    compter($('tuiles'));
     const dir = $('direct');
     dir.hidden = false;
     dir.textContent = d.enDirect ? `${d.enDirect} en ce moment` : 'Personne en ce moment';
@@ -233,7 +288,7 @@ import { url } from '../../lib/utils';
       $('contenu').hidden = true; $('connexion').hidden = false;
       const e = $('erreur');
       e.hidden = !etat.mdp;
-      e.textContent = !r ? 'Pas de réseau ?' : d.erreur || 'Erreur.';
+      e.textContent = !r ? 'Pas de réseau ?' : d.erreur || `Le serveur a répondu par une erreur (${r.status}). Réessayez dans un instant.`;
       return;
     }
     try { localStorage.setItem(CLE, etat.mdp); } catch { /* privé */ }
@@ -261,9 +316,17 @@ import { url } from '../../lib/utils';
 </script>
 
 <style>
-  .ecran { --stat: #1d5fa8; --stat-bar: #8db4e2; --stat-ligne: #0b2f5e; }
-  :global(:root[data-theme=dark]) .ecran { --stat: #5b9be6; --stat-bar: #2f5f99; --stat-ligne: #e9f1ff; }
-  @media (prefers-color-scheme: dark) { :global(:root:not([data-theme=light])) .ecran { --stat: #5b9be6; --stat-bar: #2f5f99; --stat-ligne: #e9f1ff; } }
+  /* Couleurs du logo : bleus et rouge */
+  .ecran { --stat: #1d5fa8; --stat-bar: #8db4e2; --stat-ligne: #d7262e;
+    --c-bleu: #1d5fa8; --c-bleu-2: #6fa2dd; --c-ciel: #0098da; --c-ciel-2: #7fd3f7; --c-marine: #0b2f5e; --c-marine-2: #5d7ea8; --c-rouge: #d7262e; --c-rouge-2: #f08a8e; }
+  :global(:root[data-theme=dark]) .ecran { --stat: #5b9be6; --stat-bar: #2f5f99; --stat-ligne: #ff5a60;
+    --c-bleu: #5b9be6; --c-bleu-2: #24528c; --c-ciel: #3cc3ff; --c-ciel-2: #0f6f9a; --c-marine: #a9c1e4; --c-marine-2: #34507a; --c-rouge: #ff5a60; --c-rouge-2: #8f2328; }
+  @media (prefers-color-scheme: dark) { :global(:root:not([data-theme=light])) .ecran { --stat: #5b9be6; --stat-bar: #2f5f99; --stat-ligne: #ff5a60;
+    --c-bleu: #5b9be6; --c-bleu-2: #24528c; --c-ciel: #3cc3ff; --c-ciel-2: #0f6f9a; --c-marine: #a9c1e4; --c-marine-2: #34507a; --c-rouge: #ff5a60; --c-rouge-2: #8f2328; } }
+  .ecran :global([data-c=bleu]) { --c: var(--c-bleu); --c2: var(--c-bleu-2); }
+  .ecran :global([data-c=ciel]) { --c: var(--c-ciel); --c2: var(--c-ciel-2); }
+  .ecran :global([data-c=marine]) { --c: var(--c-marine); --c2: var(--c-marine-2); }
+  .ecran :global([data-c=rouge]) { --c: var(--c-rouge); --c2: var(--c-rouge-2); }
   .ecran { min-height: 100svh; display: flex; flex-direction: column; background: var(--bg); }
   .haut { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 10px; min-height: calc(54px + env(safe-area-inset-top, 0px)); padding: 0 16px 0 8px; padding-top: env(safe-area-inset-top, 0px); background: var(--bar); color: var(--bar-ink); }
   .retour { display: grid; place-items: center; width: 34px; height: 34px; color: var(--bar-ic); }
@@ -273,12 +336,14 @@ import { url } from '../../lib/utils';
   .direct { margin-left: auto; font-size: .78rem; font-weight: 700; opacity: .8; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
   .direct::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .5; }
   .direct.on { opacity: 1; }
-  .direct.on::before { background: #3ecf7a; opacity: 1; }
+  .direct.on::before { background: #3ecf7a; opacity: 1; animation: pouls 1.8s ease-out infinite; }
   .corps { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; padding: 18px 16px 40px; display: grid; gap: 14px; align-content: start; box-sizing: border-box; }
   #contenu { display: grid; gap: 14px; min-width: 0; }
   .carte { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
   .connexion { max-width: 420px; width: 100%; margin: 6vh auto 0; box-sizing: border-box; }
-  h2 { font-size: 1rem; margin: 0 0 12px; }
+  h2 { font-size: 1rem; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+  .carte h2::before { content: ""; width: 4px; height: 1.05em; border-radius: 2px; background: linear-gradient(var(--c-ciel), var(--c-bleu)); flex: none; }
+  .connexion h2::before { display: none; }
   .sous { color: var(--muted); font-size: .86rem; margin: 0; }
   .note { margin-top: 12px; font-size: .8rem; }
   label { display: block; font-weight: 700; font-size: .76rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 8px 0 6px; }
@@ -290,7 +355,13 @@ import { url } from '../../lib/utils';
   .seg button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 700; font-size: .86rem; padding: 8px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
   .seg button[aria-pressed=true] { background: var(--stat); color: #fff; }
   .tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
-  .tuiles :global(.tuile) { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .tuiles :global(.tuile) { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 14px; padding: 14px 16px 40px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .tuiles :global(.ic) { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); }
+  .tuiles :global(.ic svg) { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .tuiles :global(.tuile .l) { padding-right: 34px; }
+  .tuiles :global(.spark) { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 34px; }
+  .tuiles :global(.spark .aire) { fill: color-mix(in srgb, var(--c) 16%, transparent); stroke: none; }
+  .tuiles :global(.spark .trait) { fill: none; stroke: var(--c); stroke-width: 1.8; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
   .tuiles :global(.tuile .l) { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
   .tuiles :global(.tuile b) { font-size: 1.9rem; font-weight: 800; line-height: 1.15; font-variant-numeric: tabular-nums; color: var(--ink); }
   .tuiles :global(.ev) { font-size: .8rem; font-weight: 700; color: var(--muted); }
@@ -301,8 +372,8 @@ import { url } from '../../lib/utils';
   .graphe :global(.zone) { position: relative; display: grid; grid-template-columns: repeat(var(--n), minmax(0, 1fr)); align-items: end; gap: 2px; border-bottom: 1px solid var(--line);
     background: linear-gradient(var(--line), var(--line)) 0 0 / 100% 1px no-repeat, linear-gradient(var(--line), var(--line)) 0 50% / 100% 1px no-repeat; }
   .graphe :global(.col) { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: center; outline: none; }
-  .graphe :global(.bar) { display: block; width: 100%; max-width: 28px; min-height: 0; background: var(--stat-bar); border-radius: 4px 4px 0 0; }
-  .graphe :global(.col:hover .bar), .graphe :global(.col:focus .bar) { background: var(--stat); }
+  .graphe :global(.bar) { display: block; width: 100%; max-width: 28px; min-height: 0; background: linear-gradient(to top, var(--c), var(--c2)); border-radius: 4px 4px 0 0; transform-origin: bottom; }
+  .graphe :global(.col:hover .bar), .graphe :global(.col:focus .bar) { background: var(--c); filter: saturate(1.2); }
   .graphe :global(.x) { position: absolute; top: 100%; margin-top: 5px; font-size: .7rem; color: var(--muted); white-space: nowrap; }
   .graphe :global(.bulle) { display: none; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); z-index: 5; background: var(--ink); color: var(--bg); font-size: .78rem; line-height: 1.35; padding: 7px 10px; border-radius: 8px; white-space: nowrap; pointer-events: none; }
   .graphe :global(.bulle b) { display: block; }
@@ -315,7 +386,7 @@ import { url } from '../../lib/utils';
   .tete h2 { margin: 0; }
   .legende { display: flex; flex-wrap: wrap; gap: 14px; font-size: .78rem; color: var(--muted); }
   .legende > span { display: inline-flex; align-items: center; gap: 6px; }
-  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: var(--stat-bar); }
+  .sw { display: inline-block; width: 12px; height: 12px; border-radius: 3px; background: linear-gradient(to top, var(--c-bleu), var(--c-bleu-2)); }
   .sw.ligne { height: 2px; border-radius: 0; background: var(--stat-ligne); }
   .graphe.petit { height: 150px; }
   .graphe :global(.tendance) { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
@@ -330,12 +401,42 @@ import { url } from '../../lib/utils';
   .grille { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
   .barres { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
   .barres :global(li) { position: relative; display: flex; justify-content: space-between; gap: 10px; padding: 7px 10px; font-size: .9rem; border-radius: 6px; overflow: hidden; }
-  .barres :global(.b) { position: absolute; inset: 0 auto 0 0; background: color-mix(in srgb, var(--stat) 18%, transparent); border-radius: 6px; }
+  .barres :global(.b) { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, color-mix(in srgb, var(--c, var(--stat)) 30%, transparent), color-mix(in srgb, var(--c, var(--stat)) 12%, transparent)); border-left: 3px solid var(--c, var(--stat)); border-radius: 6px; transform-origin: left; }
   .barres :global(.t) { position: relative; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
   .barres :global(.n) { position: relative; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ink); }
   .barres :global(.vide) { color: var(--muted); }
   .pied-note::after { content: ' ' attr(data-depuis); }
   .lien { justify-self: start; background: none; border: 0; padding: 0; color: var(--muted); font: inherit; font-size: .84rem; text-decoration: underline; cursor: pointer; }
+  .donut { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+  .donut :global(.anneau) { width: 150px; height: 150px; flex: none; transform: rotate(-90deg); }
+  .donut :global(.fond) { fill: none; stroke: var(--line); stroke-width: 6; }
+  .donut :global(.arc) { fill: none; stroke: var(--c); stroke-width: 6; stroke-dasharray: var(--p) 100; stroke-dashoffset: var(--d); }
+  .donut :global(text) { transform: rotate(90deg); transform-origin: 21px 21px; text-anchor: middle; fill: var(--ink); }
+  .donut :global(.pc) { font-size: 7px; font-weight: 800; }
+  .donut :global(.pn) { font-size: 3.6px; fill: var(--muted); }
+  .donut :global(.leg) { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; flex: 1; min-width: 170px; }
+  .donut :global(.leg li) { display: grid; grid-template-columns: 12px 1fr auto auto; align-items: center; gap: 10px; font-size: .92rem; color: var(--ink); }
+  .donut :global(.leg i) { width: 12px; height: 12px; border-radius: 4px; background: var(--c); }
+  .donut :global(.leg b) { font-variant-numeric: tabular-nums; }
+  .donut :global(.leg em) { font-style: normal; color: var(--muted); font-size: .82rem; min-width: 3em; text-align: right; }
+  .donut :global(.vide) { color: var(--muted); margin: 0; }
+  @keyframes pouls { 0% { box-shadow: 0 0 0 0 rgba(62, 207, 122, .7); } 100% { box-shadow: 0 0 0 8px rgba(62, 207, 122, 0); } }
+  @media (prefers-reduced-motion: no-preference) {
+    .graphe :global(.bar) { animation: monte .7s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 12ms); }
+    .graphe :global(.tendance) { animation: devoile 1.3s .35s ease-out both; }
+    .barres :global(.b) { animation: large .8s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+    .tuiles :global(.tuile) { animation: apparait .5s ease-out both; }
+    .tuiles :global(.tuile:nth-child(2)) { animation-delay: .05s; } .tuiles :global(.tuile:nth-child(3)) { animation-delay: .1s; }
+    .tuiles :global(.tuile:nth-child(4)) { animation-delay: .15s; } .tuiles :global(.tuile:nth-child(5)) { animation-delay: .2s; } .tuiles :global(.tuile:nth-child(6)) { animation-delay: .25s; }
+    .tuiles :global(.spark) { animation: devoile 1.2s .3s ease-out both; }
+    .donut :global(.arc) { animation: arc 1s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--i, 0) * 120ms); }
+    .carte { animation: apparait .5s ease-out both; }
+  }
+  @keyframes monte { from { transform: scaleY(0); } }
+  @keyframes large { from { transform: scaleX(0); } }
+  @keyframes devoile { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+  @keyframes arc { from { stroke-dasharray: 0 100; } }
+  @keyframes apparait { from { opacity: 0; transform: translateY(8px); } }
   [hidden] { display: none !important; }
   @media (max-width: 760px) {
     .tuiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
