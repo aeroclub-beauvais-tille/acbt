@@ -66,11 +66,16 @@ const cols = [
   </div>
 </Base>
 <script>
-  // Téléphone : la barre Réserver / Appeler n'arrive qu'une fois le bandeau du haut sorti de l'écran
+  // Téléphone : la barre Réserver / Appeler n'arrive qu'une fois les tarifs dépassés
+  // (ils ont déjà leurs boutons), c'est-à-dire quand la section bleue « Le jour J » occupe l'écran.
   const barre = document.querySelector('.barre-mobile');
-  const tete = document.querySelector('.page-head');
-  if (barre && tete && 'IntersectionObserver' in window) {
-    new IntersectionObserver(([e]) => barre.classList.toggle('visible', !e.isIntersecting)).observe(tete);
+  const bleue = document.querySelector('.section.dark');
+  if (barre && bleue) {
+    let attente = false;
+    const maj = () => { attente = false; barre.classList.toggle('visible', bleue.getBoundingClientRect().top < innerHeight * 0.25); };
+    addEventListener('scroll', () => { if (!attente) { attente = true; requestAnimationFrame(maj); } }, { passive: true });
+    addEventListener('resize', maj);
+    maj();
   } else barre?.classList.add('visible');
 </script>
 <style>
