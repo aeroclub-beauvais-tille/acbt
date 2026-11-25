@@ -340,14 +340,16 @@ export function avions() {
     return { dot: 'ok', txt: '' };
   };
 
-  // remplit la pastille et le libellé d'état de chaque ligne
-  [...opts, ...items].forEach((o) => {
+  // remplit la pastille et le libellé d'état de chaque ligne (de nouveau quand des documents déposés arrivent)
+  const points = () => [...opts, ...items].forEach((o) => {
     const e = etat(o.dataset.avion!);
     const dot = o.querySelector<HTMLElement>('.av-dot');
     const st = o.querySelector<HTMLElement>('.av-st');
     if (dot) dot.className = `av-dot av-${e.dot}`;
     if (st) { st.textContent = e.txt; st.className = `av-st av-${e.dot}`; }
   });
+  points();
+  document.addEventListener('docs-maj', points);
 
   const txt = trig.querySelector<HTMLElement>('.av-trig-txt');
   const sub = trig.querySelector<HTMLElement>('.av-trig-sub');
@@ -890,4 +892,97 @@ export function aero() {
   };
   charger();
   setInterval(() => { if (!document.hidden) charger(); }, 10 * 60_000);
+}
+
+
+/**
+ * Documents des avions déposés depuis l'appli (onglet Admin) : rangés sur Cloudflare (base D1), ajoutés ici dans les fiches.
+ * Un document de vol prend la place prévue pour son type (l'ancien passe dans l'historique) ;
+ * un manuel, un guide, un mémo ou une checklist s'ajoute aux « Manuels du matériel ».
+ * Les lignes sont copiées sur celles déjà dans la page, pour garder exactement le même style.
+ */
+type DocDepose = { id: string; avion: string; type: string; colonne: string; titre: string; debut: string | null; fin: string | null; fichier: string; archive: string | null };
+const PLACE: Record<string, string> = {
+  "Certificat d'immatriculation": 'immat', 'Certificat de navigabilité (CDN)': 'cdn', "Certificat d'examen de navigabilité (CEN)": 'cen',
+  'Licence station radio': 'lsa', 'Certificat acoustique': 'acoustique', Assurance: 'assurance', 'Fiche de pesée et centrage': 'pesee', 'Manuel de vol': 'mdv',
+};
+export async function documentsDeposes() {
+  const fiches = document.getElementById('fiches');
+  if (!fiches) return;
+  let docs: DocDepose[] = [];
+  try {
+    const r = await fetch(url('/membre/api/documents'), { credentials: 'same-origin', cache: 'no-store' });
+    if (!r.ok || !(r.headers.get('content-type') || '').includes('json')) return;
+    docs = (await r.json()).docs || [];
+  } catch { return; }
+  if (!docs.length) return;
+  const modeleLigne = fiches.querySelector<HTMLElement>('.doc.ligne:not(.manquant)') || fiches.querySelector<HTMLElement>('.doc.ligne');
+  const modeleManuel = document.querySelector<HTMLElement>('.liste > .doc:not(.ligne)');
+  const finIso = (d: string | null) => (d ? `${d}T12:00:00.000Z` : '');
+  const ligne = (d: DocDepose, nom: string) => {
+    if (!modeleLigne) return null;
+    const a = modeleLigne.cloneNode(true) as HTMLAnchorElement;
+    a.classList.remove('manquant', 'vide');
+    a.removeAttribute('role');
+    a.href = url(`/membre/api/documents/${d.id}`); a.target = '_blank'; a.rel = 'noopener';
+    a.dataset.doc = 'd1-' + d.id;
+    a.querySelector('strong')!.textContent = nom;
+    let val = a.querySelector<HTMLElement>('.lg-val');
+    if (!val) {
+      // le modèle était une place vide : on reprend le bloc d'état d'une autre ligne
+      const v = fiches.querySelector<HTMLElement>('.doc.ligne .lg-val');
+      if (v) { val = v.cloneNode(true) as HTMLElement; a.append(val); }
+    }
+    const b = val?.querySelector<HTMLElement>('.badge');
+    if (b) {
+      b.dataset.fin = finIso(d.fin); b.dataset.debut = finIso(d.debut); b.dataset.titre = d.titre; b.dataset.vers = 'avions';
+      if (!d.fin) delete b.dataset.fin;
+      if (!d.debut) delete b.dataset.debut;
+    }
+    return a;
+  };
+  const manuel = (d: DocDepose) => {
+    if (!modeleManuel) return null;
+    const a = modeleManuel.cloneNode(true) as HTMLAnchorElement;
+    a.classList.remove('vide', 'manquant');
+    a.href = url(`/membre/api/documents/${d.id}`); a.target = '_blank'; a.rel = 'noopener';
+    a.dataset.doc = 'd1-' + d.id;
+    a.querySelector('strong')!.textContent = d.titre.replace(/^(Manuel|Guide|Mémo|Checklist) - /, '$1 · ');
+    a.querySelector('.valid')?.remove(); a.querySelector('.meta')?.remove();
+    const t = a.querySelector<HTMLElement>('.type');
+    if (t) { t.textContent = /\.(mp4|mov|webm)$/i.test(d.fichier) ? 'VIDÉO' : 'PDF'; t.classList.remove('attente'); }
+    return a;
+  };
+  const histo = (f: HTMLElement, el: HTMLElement) => {
+    const h = f.querySelector<HTMLDetailsElement>('.histo');
+    if (!h) { el.remove(); return; }
+    h.hidden = false;
+    h.querySelector('.liste')?.append(el);
+    const s = h.querySelector('summary');
+    if (s) s.textContent = `Historique (${h.querySelectorAll('.liste > *').length})`;
+  };
+  // du plus ancien au plus récent : le dernier déposé finit à sa place
+  for (const d of [...docs].reverse()) {
+    const f = fiches.querySelector<HTMLElement>(`[data-ims="${d.avion}"]`);
+    if (!f) continue;
+    if (d.colonne === 'manuel') {
+      const el = manuel(d);
+      const liste = f.querySelector<HTMLElement>('[data-manuels]');
+      if (el && liste) { (d.archive ? histo(f, el) : liste.prepend(el)); f.querySelector<HTMLElement>('[data-manuels-t]')?.removeAttribute('hidden'); }
+      continue;
+    }
+    const nom = d.type === 'Autre document de vol' ? d.titre.replace(`${d.avion} - `, '') : f.querySelector<HTMLElement>(`[data-place="${PLACE[d.type]}"] strong`)?.textContent || d.type;
+    const el = ligne(d, nom);
+    if (!el) continue;
+    if (d.archive) { histo(f, el); continue; }
+    const place = PLACE[d.type] && f.querySelector<HTMLElement>(`.compacte [data-place="${PLACE[d.type]}"]`);
+    if (place) {
+      el.dataset.place = PLACE[d.type];
+      place.replaceWith(el);
+      // l'ancien document (s'il y en avait un) passe dans l'historique
+      if (!place.classList.contains('manquant')) { delete place.dataset.place; histo(f, place); }
+    } else f.querySelector('.compacte')?.append(el);
+  }
+  badges();
+  document.dispatchEvent(new Event('docs-maj'));
 }

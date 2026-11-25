@@ -24,15 +24,15 @@ const rangRub = (d: Doc) => RUBRIQUES_AVION.indexOf((d.rubrique ?? 'Autre') as (
 const modele = (t: string) => t.replace(/-\d+.*$| Petit Prince| Paris-Nice/g, '').trim();
 
 // Documents à emporter lors d'un vol (« le minimum exigé »), dans cet ordre.
-const REQUIS: { nom: string; types?: string[]; rubrique?: string; pesee?: boolean }[] = [
-  { nom: 'Certificat d’immatriculation', types: ["Certificat d'immatriculation"] },
-  { nom: 'Certificat de navigabilité', types: ['Certificat de navigabilité (CDN)'] },
-  { nom: 'Certificat d’examen de navigabilité', types: ["Certificat d'examen de navigabilité (CEN)"] },
-  { nom: 'Licence station radio (LSA)', types: ['Licence station radio', 'Autorisation radio'] },
-  { nom: 'Certificat de limitation de nuisance', types: ['Certificat acoustique'] },
-  { nom: 'Attestation d’assurance RC', types: ['Assurance'] },
-  { nom: 'Fiche de pesée et centrage', pesee: true },
-  { nom: 'Manuel de vol', rubrique: 'Manuel de vol' },
+const REQUIS: { nom: string; place: string; types?: string[]; rubrique?: string; pesee?: boolean }[] = [
+  { place: 'immat', nom: 'Certificat d’immatriculation', types: ["Certificat d'immatriculation"] },
+  { place: 'cdn', nom: 'Certificat de navigabilité', types: ['Certificat de navigabilité (CDN)'] },
+  { place: 'cen', nom: 'Certificat d’examen de navigabilité', types: ["Certificat d'examen de navigabilité (CEN)"] },
+  { place: 'lsa', nom: 'Licence station radio (LSA)', types: ['Licence station radio', 'Autorisation radio'] },
+  { place: 'acoustique', nom: 'Certificat de limitation de nuisance', types: ['Certificat acoustique'] },
+  { place: 'assurance', nom: 'Attestation d’assurance RC', types: ['Assurance'] },
+  { place: 'pesee', nom: 'Fiche de pesée et centrage', pesee: true },
+  { place: 'mdv', nom: 'Manuel de vol', rubrique: 'Manuel de vol' },
 ];
 const PIECES_PILOTE = ['Licence', 'Certificat médical', 'CNI'];
 const estPesee = (d: Doc) => d.type === 'Fiche de pesée et centrage' || /pes[ée]e/i.test(d.titre ?? '');
@@ -45,7 +45,7 @@ const flotte = avions.map((a) => {
   const requis = REQUIS.map((r) => {
     const doc = vivants.find((d) => !pris.has(d.id) && (r.pesee ? estPesee(d) : r.types ? r.types.includes(d.type ?? '') : !estOfficiel(d) && d.rubrique === r.rubrique));
     if (doc) pris.add(doc.id);
-    return { nom: r.nom, doc };
+    return { nom: r.nom, place: r.place, doc };
   });
   // Autres documents officiels de l'avion (type non listé ci-dessus) : à la suite, avec leur badge
   const autres = vivants.filter((d) => estOfficiel(d) && !pris.has(d.id)).sort((p, q) => rangType(p) - rangType(q));
@@ -88,7 +88,7 @@ const outilsAdmin = [
   { lien: '/membre/alertes-meteo/', nom: 'Alertes météo', desc: 'MAA et LVP reçus par mail, arrêter une alerte', svg: 'M12 3 2 20h20L12 3zM12 10v4M12 17h.01' },
   { lien: '/membre/signalements/', nom: 'Signalements techniques', desc: 'Problèmes signalés sur les avions', svg: 'M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z' },
   { lien: '/statistiques/', nom: 'Statistiques du site', desc: 'Fréquentation de acbt60.fr et de l\'appli', svg: 'M4 20V10M10 20V4M16 20v-7M22 20H2' },
-  { lien: '/membre/admin/', nom: 'Documents des avions', desc: 'Ajouter ou remplacer un document', svg: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M12 18v-6M9 15h6' },
+  { lien: '/membre/admin/', nom: 'Documents des avions', desc: 'Déposer, remplacer ou retirer un document', svg: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M12 18v-6M9 15h6' },
 ];
 ---
 <MembreApp title="Espace membres">
@@ -293,18 +293,16 @@ const outilsAdmin = [
             <h5 class="sep sep-col">Documents nécessaires au vol</h5>
             <div class="liste compacte">
               {x.requis.map((r) => r.doc
-                ? <DocLien doc={r.doc} court={r.nom} badge vers="avions" ligne />
-                : <DocLien doc={{ titre: r.nom }} manquant ligne />)}
+                ? <DocLien doc={r.doc} court={r.nom} badge vers="avions" ligne place={r.place} />
+                : <DocLien doc={{ titre: r.nom }} manquant ligne place={r.place} />)}
               {x.autres.map((d) => <DocLien doc={d} vers="avions" ligne />)}
             </div>
             <div class="pilote"><span class="pilote-t">Pilote, à avoir sur soi</span>{PIECES_PILOTE.map((p) => <span class="piece">{p}</span>)}</div>
             </div><div>
-            {x.techniques.length > 0 && <h5 class="sep">Manuels du matériel</h5>}
-            <div class="liste">{x.techniques.map((d) => <DocLien doc={d} court={titreDoc(d).replace(` ${x.im}`, '')} />)}</div>
+            <h5 class="sep" data-manuels-t hidden={x.techniques.length === 0}>Manuels du matériel</h5>
+            <div class="liste" data-manuels>{x.techniques.map((d) => <DocLien doc={d} court={titreDoc(d).replace(` ${x.im}`, '')} />)}</div>
             </div></div>
-            {x.historique.length > 0 && (
-              <details class="histo"><summary>Historique ({x.historique.length})</summary><div class="liste">{x.historique.map((d) => <DocLien doc={d} vers="avions" />)}</div></details>
-            )}
+            <details class="histo" hidden={x.historique.length === 0}><summary>Historique ({x.historique.length})</summary><div class="liste">{x.historique.map((d) => <DocLien doc={d} vers="avions" />)}</div></details>
           </article>
         ))}
       </div>
@@ -405,12 +403,13 @@ const outilsAdmin = [
 </MembreApp>
 
 <script>
-  import { enregistrer, boutonInstaller, seDeconnecter, badges, maa, maaEnLigne, onglets, signalement, theme, avions, soleil, flotte, notam, vent, aero } from '../../scripts/membre-app';
+  import { enregistrer, boutonInstaller, seDeconnecter, badges, documentsDeposes, maa, maaEnLigne, onglets, signalement, theme, avions, soleil, flotte, notam, vent, aero } from '../../scripts/membre-app';
   enregistrer();
   theme(document.getElementById('btn-theme'));
   const montrer = onglets();
   badges();
   avions();
+  documentsDeposes();
   maa();
   maaEnLigne();
   soleil();
@@ -883,6 +882,7 @@ const outilsAdmin = [
   /* Outils */
   .bloc { margin-bottom: 8px; }
   .outils { display: grid; gap: 9px; }
+  [data-manuels-t][hidden], .histo[hidden] { display: none !important; }
   /* Onglet Admin : invisible pour les membres */
   :global(html:not(.est-admin)) [data-admin] { display: none !important; }
   .o-adm { display: grid; place-items: center; color: var(--accent); }
