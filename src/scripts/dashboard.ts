@@ -877,7 +877,7 @@ const RWY = /\b(?:RWY|RUNWAY)\s+(\d{2}[LRC]?(?:\s*\/\s*\d{2}[LRC]?)?)\b[^.]{0,60
 type Fermeture = { ref: string; enCours: boolean; debut: string; fin: string; aal: boolean; piste?: string; t: string };
 function fermetures(): Fermeture[] {
   const n = Date.now();
-  const jl = (iso: string | null) => { if (!iso || !/^\d{4}-/.test(iso)) return 'nouvel ordre'; const d = new Date(iso); return `${d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'Europe/Paris' }).replace('.', '')} ${heureLocale(d).replace(':', 'h')}`; };
+  const jl = (iso: string | null) => { if (!iso || !/^\d{4}-/.test(iso)) return 'nouvel ordre'; const d = new Date(iso); return `${d.toLocaleDateString('fr-FR', { weekday: 'short', day: '2-digit', month: '2-digit', timeZone: 'Europe/Paris' }).replace('.', '')} · ${heureLocale(d).replace(':', 'h')}`; };
   const out: Fermeture[] = [];
   for (const x of D?.notam?.notam ?? []) {
     if (x.fin && /^\d{4}-/.test(x.fin) && Date.parse(x.fin) <= n) continue;
