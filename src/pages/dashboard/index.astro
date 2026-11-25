@@ -111,7 +111,9 @@ const modeles = { 'F-BTBJ': 'DR315', ...Object.fromEntries(avions.map((a) => [a.
   #aal .fz.prevu { background: #ffb81f; color: #1b1b1b; } /* ambre vif, le même en thème jour et nuit */
   #aal i { flex: none; width: 40px; height: 40px; } #aal i svg { width: 100%; height: 100%; }
   #aal .on i { animation: clignote 1.6s ease-in-out infinite; }
-  #aal .lvp i.lvp-logo { width: auto; height: auto; font-style: normal; font-size: 24px; font-weight: 900; letter-spacing: .04em; line-height: 1; color: var(--bad); background: #fff; border-radius: 8px; padding: 7px 12px; animation: none; }
+  /* LVP : même rouge de jour comme de nuit (rouge du thème clair) */
+  #aal .fz.lvp { background: #d33434; color: #fff; }
+  #aal .lvp i.lvp-logo { width: auto; height: auto; font-style: normal; font-size: 24px; font-weight: 900; letter-spacing: .04em; line-height: 1; color: #d33434; background: #fff; border-radius: 8px; padding: 7px 12px; animation: none; }
   #aal .fz > div { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 18px; white-space: nowrap; overflow: hidden; }
   #aal b { font-size: 28px; font-weight: 800; line-height: 1; } #aal span { font-size: 20px; font-weight: 700; opacity: .92; }
   #aal em { font-style: normal; font-family: var(--mono); font-size: 20px; font-weight: 700; padding: 6px 14px; border-radius: 10px; background: rgba(0,0,0,.2); }
