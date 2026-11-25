@@ -3,6 +3,7 @@
 import { ephemeride, heureLocale, type Ephemeride } from '../lib/soleil';
 import { rendreVent, lireMesure, type Obs } from '../lib/vent';
 import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
+import { wintem, temsi, fronts, heureFronts, heureEch, NIVEAUX, LEGENDE_TEMSI, CSS_CARTES, type Cartes } from '../lib/cartes';
 import { court, nomCourt, quiResa as quiResaNoms, typeVol } from '../lib/noms-resa';
 
 /* ------------------------------------------------------------------ */
@@ -37,7 +38,7 @@ interface Donnees {
   messages?: { id: number; titre: string; texte?: string; auteur?: string; date: string; important?: boolean }[] | null;
   voisins?: { id: string; nom: string; raw: string; obs?: string }[] | null;
   altitude?: { heures: string[]; niveaux: { nom: string; dir: number[]; ff: number[]; t: number[] }[] } | null;
-  cartes?: { temsi?: { url: string; validite: string } | null; wintem?: { fl: string; url: string; validite: string }[] | null; raison?: string } | null;
+  cartes?: Cartes | null;
 }
 
 /* ------------------------------------------------------------------ */
@@ -304,21 +305,40 @@ function flotteEcran() {
 /* ------------------------------------------------------------------ */
 const CARTE_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2z"/><path d="M9 4v14M15 6v14"/></svg>';
 let flWintem = 0;
+// Échéance de la grille la plus proche de maintenant (prévisions toutes les 3 h)
+function echeance(h: string[]) {
+  let k = 0;
+  h.forEach((t, i) => { if (Math.abs(Date.parse(t) - Date.now()) < Math.abs(Date.parse(h[k]) - Date.now())) k = i; });
+  return k;
+}
 function cartesAero() {
   const c = D?.cartes;
   const vide = (t: string) => `<div class="ca-vide">${CARTE_IC}${t}</div>`;
-  const attente = 'En attente du code d’accès Aéroweb<br>(serveur de données Météo-France)';
-  if (c?.temsi) { $('temsi').innerHTML = `<img src="${esc(c.temsi.url)}" alt="TEMSI France">`; $('temsi-h').textContent = `valide ${c.temsi.validite}`; }
-  else { $('temsi').innerHTML = vide(attente); $('temsi-h').textContent = 'surface → FL150'; }
-  const w = c?.wintem ?? [];
-  if (w.length) {
-    const x = w[flWintem % w.length];
-    $('wintem').innerHTML = `<div class="ca-fl">${w.map((y, i) => `<span class="${i === flWintem % w.length ? 'on' : ''}">FL${esc(y.fl)}</span>`).join('')}</div><img src="${esc(x.url)}" alt="WINTEM FL${esc(x.fl)}">`;
-    $('wintem-h').textContent = `valide ${x.validite}`;
-  } else { $('wintem').innerHTML = vide(attente); $('wintem-h').textContent = 'vent et température · FL020 à FL100'; }
+  const indispo = 'Carte indisponible pour le moment';
+  const g = c?.grille;
+  // Panneau de gauche : « TEMSI » du club et carte des fronts en alternance, à chaque passage sur l'écran
+  const voirFronts = flWintem % 2 === 1 && c?.fronts || (!g && c?.fronts);
+  if (voirFronts) {
+    $('temsi-t').textContent = 'Carte des fronts';
+    $('temsi').innerHTML = fronts('/dashboard/api/fronts', c!.fronts!);
+    $('temsi-h').textContent = `analyse ${heureFronts(c!.fronts!)} · DWD`;
+    $('temsi-lg').innerHTML = '© Deutscher Wetterdienst';
+  } else if (g) {
+    const e = echeance(g.heures);
+    $('temsi-t').textContent = 'Temps significatif';
+    $('temsi').innerHTML = temsi(g, e);
+    $('temsi-h').textContent = `prévision ${heureEch(g, e)} · indicatif`;
+    $('temsi-lg').innerHTML = LEGENDE_TEMSI;
+  } else { $('temsi-t').textContent = 'Temps significatif'; $('temsi').innerHTML = vide(indispo); $('temsi-h').textContent = ''; $('temsi-lg').innerHTML = ''; }
+  if (g) {
+    const e = echeance(g.heures), n = flWintem % NIVEAUX.length;
+    $('wintem').innerHTML = `<div class="ca-fl">${NIVEAUX.map((y, i) => `<span class="${i === n ? 'on' : ''}">${y}</span>`).join('')}</div><div class="ca-svg">${wintem(g, e, n)}</div>`;
+    $('wintem-h').textContent = `prévision ${heureEch(g, e)} · kt`;
+  } else { $('wintem').innerHTML = vide(indispo); $('wintem-h').textContent = 'vent et température · FL020 à FL100'; }
   altitude();
   voisins();
 }
+{ const st = document.createElement('style'); st.textContent = CSS_CARTES; document.head.append(st); }
 
 function altitude() {
   const a = D?.altitude;
