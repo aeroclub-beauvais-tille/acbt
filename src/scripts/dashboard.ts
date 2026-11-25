@@ -307,6 +307,7 @@ const CARTE_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 // WINTEM animée : heure par heure (de maintenant à +8 h), puis niveau suivant (FL020, FL050, FL100).
 // Une image toutes les 1,1 s, la dernière heure tenue une image de plus ; l'écran dure le temps des trois niveaux.
 const PAS_ANIM = 1100;
+const LFOB_REPERE = '<div class="lfob"><i></i><span>LFOB</span></div>'; // même repère que satellite et radar, au centre de la carte
 let animFl = 0, animH = 0, animMinuterie = 0, frontsAffiches = '';
 function cartesAero() {
   const c = D?.cartes;
@@ -314,7 +315,7 @@ function cartesAero() {
   const indispo = 'Carte indisponible pour le moment';
   // Panneau de gauche : carte des fronts du DWD (isobares et fronts au sol), rechargée seulement à une nouvelle analyse
   if (c?.fronts) {
-    if (frontsAffiches !== c.fronts) { $('temsi').innerHTML = fronts('/dashboard/api/fronts', c.fronts); frontsAffiches = c.fronts; }
+    if (frontsAffiches !== c.fronts) { $('temsi').innerHTML = fronts('/dashboard/api/fronts', c.fronts) + LFOB_REPERE; frontsAffiches = c.fronts; }
     $('temsi-h').textContent = `analyse ${heureFronts(c.fronts)} · DWD`;
   } else { $('temsi').innerHTML = vide(indispo); $('temsi-h').textContent = ''; frontsAffiches = ''; }
   imageWintem();
@@ -327,7 +328,7 @@ function imageWintem() {
   const h = Math.min(animH, g.heures.length - 1), n = animFl % NIVEAUX.length;
   const repere = `<div class="ca-rep"><div class="ca-fl">${NIVEAUX.map((y, i) => `<span class="${i === n ? 'on' : ''}">${y}</span>`).join('')}</div>`
     + `<div class="ca-h">${g.heures.map((t, i) => `<i class="${i === h ? 'on' : i < h ? 'fait' : ''}">${i === h ? `${t.slice(11, 13)} h` : ''}</i>`).join('')}</div></div>`;
-  $('wintem').innerHTML = repere + wintem(g, h, n);
+  $('wintem').innerHTML = repere + wintem(g, h, n) + LFOB_REPERE;
   $('wintem-h').textContent = `${NIVEAUX[n]} · prévision ${heureEch(g, h)} · kt`;
 }
 function animerWintem(depart: boolean) {

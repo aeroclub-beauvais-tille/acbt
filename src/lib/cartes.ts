@@ -31,7 +31,6 @@ const STYLE = `<style>
 .cm-v{fill:var(--cm-encre,#55607a);font-size:12px;opacity:.85}.cm-vp{fill:var(--cm-encre,#55607a)}
 .cm-b{stroke:var(--cm-barbule,#0b2a5b);fill:var(--cm-barbule,#0b2a5b);stroke-width:2;stroke-linecap:round}
 .cm-tc,.cm-tf{font-weight:800;font-size:15px;paint-order:stroke;stroke:var(--cm-terre,#f6f8fb);stroke-width:4px;stroke-linejoin:round}.cm-tc{fill:var(--cm-chaud,#c0141f)}.cm-tf{fill:var(--cm-froid,#1f4fd1)}
-.cm-lfob{fill:#ec091d;stroke:#fff;stroke-width:2}.cm-lfobt{fill:var(--cm-titre,#0b2a5b);font-weight:800;font-size:13px;paint-order:stroke;stroke:var(--cm-terre,#f6f8fb);stroke-width:3px}
 </style>`;
 
 const DEFS = `<defs>
@@ -48,8 +47,7 @@ function villes() {
     if (x < 10 || x > W - 40 || y < 10 || y > H - 10) continue;
     s += `<circle class="cm-vp" cx="${f1(x)}" cy="${f1(y)}" r="2.4"/><text class="cm-v" x="${f1(x + 5)}" y="${f1(y + 12)}">${n}</text>`;
   }
-  const [x, y] = P(2.1128, 49.4544);
-  return s + `<circle class="cm-lfob" cx="${f1(x)}" cy="${f1(y)}" r="6"/><text class="cm-lfobt" x="${f1(x + 9)}" y="${f1(y - 8)}">LFOB</text>`;
+  return s; // LFOB : repère au centre posé par la page, identique aux cartes satellite et radar
 }
 
 const svg = (contenu: string, titre: string) =>
@@ -107,9 +105,9 @@ export function wintem(g: Grille, ech: number, niveau: number) {
   return svg(s, `Vent et température ${NIVEAUX[niveau]}`);
 }
 
-// Carte des fronts du DWD, recadrée sur la France aux proportions de la case de la TV (608 × 830)
+// Carte des fronts du DWD, recadrée sur LFOB aux proportions de la case de la TV (608 × 830)
 // (fractions de l'image d'origine, qui fait environ 4389 × 3114 px)
-const CADRE = { x0: 0.4443, x1: 0.6865, y0: 0.3693, y1: 0.8349 };
+const CADRE = { x0: 0.4442, x1: 0.6864, y0: 0.3497, y1: 0.8154 }; // centré sur LFOB (≈ 2481 × 1814 px)
 export function fronts(adresse: string, t: string | null) {
   const lx = CADRE.x1 - CADRE.x0;
   // translate(%) se rapporte à l'image elle-même : le recadrage ne dépend pas de la taille du cadre
