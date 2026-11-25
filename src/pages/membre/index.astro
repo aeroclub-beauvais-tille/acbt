@@ -800,9 +800,10 @@ const outilsAdmin = [
     .fl-liste > :global(*) { flex: 0 1 calc((100% - 36px) / 3); min-width: 0; zoom: 1.15; }
   }
   @media (min-width: 1600px) { .fl-liste > :global(*) { zoom: 1.3; } }
-  /* PC : MAA côte à côte (jusqu'à 4 selon la largeur) ; Vent et pistes aux mêmes tailles que le tableau de bord TV */
-  @media (min-width: 1100px) {
-    #maa-zone { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+  /* PC et tablette en paysage : MAA côte à côte (jusqu'à 4 selon la largeur) */
+  @media (min-width: 1100px) { #maa-zone { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); } }
+  /* PC (souris) seulement : Vent et pistes aux mêmes tailles que le tableau de bord TV ; la tablette garde la taille normale */
+  @media (min-width: 1100px) and (hover: hover) and (pointer: fine) {
     .carte-vent :global(.vd .t) { font-size: 48px; gap: 22px; }
     .carte-vent :global(.vd .t .sep) { width: 3px; height: 40px; }
     .carte-vent :global(.vd .t small) { font-size: 18px; }
