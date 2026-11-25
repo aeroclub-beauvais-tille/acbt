@@ -4,11 +4,12 @@ import { photo, photoUrl } from '../lib/photo';
 // Le prix affiché est celui en vigueur au moment de la publication (le site se republie chaque nuit).
 import type { CollectionEntry } from 'astro:content';
 import { url, asset, tarifEnVigueur } from '../lib/utils';
+import { tarifsAvion } from '../lib/tarifs';
 interface Props { avions: CollectionEntry<'avions'>[] }
 const { avions } = Astro.props;
 const n = (x?: number) => (x == null ? '—' : x.toLocaleString('fr-FR'));
 // Un avion sans tarif saisi (ex. F-BTBJ) n'apparaît pas dans les prix.
-const lignes = avions.filter((a) => a.data.tarifs.length).map((a) => ({ a, t: tarifEnVigueur(a.data.tarifs).actuel }));
+const lignes = avions.map((a) => ({ a, liste: tarifsAvion(a.data.immatriculation, a.data.tarifs) })).filter((x) => x.liste.length).map(({ a, liste }) => ({ a, t: tarifEnVigueur(liste).actuel }));
 // Regroupe les avions qui ont exactement les mêmes tarifs
 const groupes = Object.values(
   lignes.reduce<Record<string, typeof lignes>>((acc, l) => {

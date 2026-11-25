@@ -1,5 +1,5 @@
 // Données de la page Baptême (/decouvrir-le-vol).
-import t from '../data/tarifs.json';
+import { tarifs as t } from './tarifs';
 import d from '../data/decouvrir.json';
 import club from '../data/club.json';
 export const n = (x: number) => x.toLocaleString('fr-FR');

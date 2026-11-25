@@ -9,6 +9,7 @@ name: Publier sur Cloudflare (acbt60.fr)
 # Quand :
 #  - à chaque modification sur main (back-office compris) ;
 #  - chaque nuit (tarifs planifiés, documents qui expirent, date du jour) ;
+#  - quand l'admin change un tarif dans l'appli (tarifs.yml le vérifie tous les quarts d'heure) ;
 #  - quand Perfs change, le dépôt calculateurperformances fait la même publication de son côté ;
 #  - à la main : onglet Actions > « Publier sur Cloudflare » > Run workflow.
 #
@@ -62,6 +63,10 @@ jobs:
           path: public/opt
           key: photos-cf-${{ hashFiles('public/uploads/**', 'scripts/optimiser-images.mjs') }}
           restore-keys: photos-cf-
+      # Tarifs programmés par l'admin dans l'appli (Cloudflare) : copiés avant la construction
+      - name: Lire les tarifs programmés
+        if: steps.reglages.outputs.pret == 'oui'
+        run: node scripts/tarifs-planifies.mjs
       - name: Construire le site
         if: steps.reglages.outputs.pret == 'oui'
         run: npm run build
