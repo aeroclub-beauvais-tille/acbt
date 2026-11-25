@@ -89,7 +89,7 @@ function barbule(x: number, y: number, dir: number, kt: number) {
   return s;
 }
 
-/** WINTEM du club : niveau 0 = FL020 (925 hPa), 1 = FL050 (850 hPa), 2 = FL100 (700 hPa) */
+/** WINTEM du club : niveau 0 = FL020 (950 hPa), 1 = FL050 (850 hPa), 2 = FL100 (700 hPa) */
 export function wintem(g: Grille, ech: number, niveau: number) {
   let s = fond() + villes();
   for (const p of points(g, ech)) {
