@@ -776,7 +776,7 @@ export function flotte() {
       const apres = !x ? null : (a.occupe ?? []).map((o) => jm(o.debut)).filter(([dj, dm]) => dj === x[0] && dm >= x[2]).sort((p, q) => p[1] - q[1])[0] ?? null;
       const suite = apres ? `libre jusqu’à ${hm(apres[1])}` : 'aucune réservation ensuite';
       const creneau: [string, string] = !x ? ['', ''] : toutJour ? ['Toute la journée', apres ? suite : 'aucune réservation'] : finJour ? [`Dès ${hm(x[1])}`, suite] : [`${hm(x[1])} → ${hm(x[2])}`, duree(x[2] - x[1])];
-      if (!hs) lignes.push(x ? ligne('Prochaine dispo. > 30 min', jourTxt(x[0]), creneau[0], creneau[1], 'fl-vert', 'dispo') : ligne('Prochaine dispo. > 30 min', 'dans les 7 jours', 'Aucune', '', 'fl-vert', 'dispo'));
+      if (!hs) lignes.push(x ? ligne('Prochaine dispo. > 30\'', jourTxt(x[0]), creneau[0], creneau[1], 'fl-vert', 'dispo') : ligne('Prochaine dispo. > 30\'', 'dans les 7 jours', 'Aucune', '', 'fl-vert', 'dispo'));
       if (a.dernier) {
         const dd = lireAg(a.dernier.debut), ff = lireAg(a.dernier.fin);
         const [dj, dm] = jm(a.dernier.debut); const [fj, fm] = jm(a.dernier.fin);
