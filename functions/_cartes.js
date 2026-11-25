@@ -1,14 +1,14 @@
-// Cartes météo du club, à la place de la TEMSI et de la WINTEM d'Aéroweb (Météo-France n'ouvre plus son API).
+// Cartes météo du club, à la place de la WINTEM d'Aéroweb (la TEMSI n'a pas d'équivalent libre) (Météo-France n'ouvre plus son API).
 // 1. Grille de prévision sur le nord de la France (Open-Meteo, modèles Météo-France AROME/ARPEGE, licence CC BY 4.0) :
-//    vent et température à 925, 850 et 700 hPa (≈ FL020, FL050, FL100), nuages bas et moyens, temps présent, CAPE, pluie.
-//    Le dessin (WINTEM et « TEMSI » du club) est fait dans le navigateur : src/lib/cartes.ts.
+//    vent et température à 925, 850 et 700 hPa (≈ FL020, FL050, FL100).
+//    Le dessin (WINTEM du club) est fait dans le navigateur : src/lib/cartes.ts.
 // 2. Carte des fronts du service météo allemand (DWD, données ouvertes, sans inscription), analyse toutes les 6 h.
 // Grille gardée 1 h en cache, liste DWD 20 min, image des fronts 6 h.
 
 export const GRILLE = { lat0: 46.5, dlat: 0.625, nlat: 9, lon0: -2.5, dlon: 1, nlon: 9 };
 const ECHEANCES = [0, 3, 6, 9, 12]; // heures après l'heure ronde en cours
 const NIVEAUX = [925, 850, 700];
-const CHAMPS = [...NIVEAUX.flatMap((p) => [`wind_direction_${p}hPa`, `wind_speed_${p}hPa`, `temperature_${p}hPa`]), 'cloud_cover_low', 'cloud_cover_mid', 'weather_code', 'cape', 'precipitation'];
+const CHAMPS = NIVEAUX.flatMap((p) => [`wind_direction_${p}hPa`, `wind_speed_${p}hPa`, `temperature_${p}hPa`]);
 const DWD = 'https://opendata.dwd.de/weather/charts/analysis/';
 const DWD_DERNIERE = `${DWD}Z__C_EDZW_LATEST_tka01%2Cana_bwkman_dwdna_O_000000_000000_LATEST_WV12.png`;
 
@@ -41,7 +41,7 @@ export async function lireGrille(cache, waitUntil) {
     return {
       grille: GRILLE,
       heures: ech.map((i) => `${t[i]}Z`),
-      // v[échéance][point] = [dir925, ff925, t925, dir850, ff850, t850, dir700, ff700, t700, nuagesBas, nuagesMoyens, temps, cape, pluie]
+      // v[échéance][point] = [dir925, ff925, t925, dir850, ff850, t850, dir700, ff700, t700]
       v: ech.map((i) => l.map((p) => CHAMPS.map((c) => arrondi(p.hourly[c]?.[i])))),
     };
   });
