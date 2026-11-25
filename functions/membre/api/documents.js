@@ -2,7 +2,8 @@
 //   GET                                       → { docs: [...] } (membres)
 //   POST multipart (admin) : fichier, avion, type, titre?, debut?, fin?, motDePasse
 //        → enregistre le document ; un document de vol du même type et du même avion passe en historique
-//   POST JSON { action: 'supprimer', id, motDePasse } (admin) → document effacé
+//   POST JSON { action: 'supprimer' | 'restaurer' | 'archiver', id, motDePasse } (admin)
+//        → effacé / remis en ligne (l'actuel du même type passe en historique) / mis dans l'historique
 import { estAdmin, json } from '../../_alertes.js';
 import { tableDocs, nommer, TYPES_VOL, TYPES_MANUEL, MORCEAU } from '../../_docs.js';
 
@@ -37,6 +38,24 @@ export async function onRequestPost({ request, env }) {
       if (doc && !doc.archive && doc.colonne === 'vol' && doc.type !== 'Autre document de vol') {
         await env.DB.prepare(`UPDATE docs SET archive = NULL WHERE id = (SELECT id FROM docs WHERE avion = ?1 AND type = ?2 ORDER BY cree DESC LIMIT 1)`).bind(doc.avion, doc.type).run();
       }
+      return json({ ok: true });
+    }
+    if (d.action === 'restaurer') {
+      // Une ancienne version reprend sa place ; le document en vigueur du même type passe dans l'historique
+      const id = String(d.id || '');
+      const doc = await env.DB.prepare('SELECT avion, type, colonne FROM docs WHERE id = ?1').bind(id).first();
+      if (!doc) return json({ ok: false, erreur: 'Document introuvable.' }, 404);
+      const maintenant = new Date().toISOString();
+      const lots = [];
+      if (doc.colonne === 'vol' && doc.type !== 'Autre document de vol') {
+        lots.push(env.DB.prepare('UPDATE docs SET archive = ?3 WHERE avion = ?1 AND type = ?2 AND archive IS NULL').bind(doc.avion, doc.type, maintenant));
+      }
+      lots.push(env.DB.prepare('UPDATE docs SET archive = NULL, cree = ?2 WHERE id = ?1').bind(id, maintenant));
+      await env.DB.batch(lots);
+      return json({ ok: true });
+    }
+    if (d.action === 'archiver') {
+      await env.DB.prepare('UPDATE docs SET archive = ?2 WHERE id = ?1').bind(String(d.id || ''), new Date().toISOString()).run();
       return json({ ok: true });
     }
     return json({ ok: false, erreur: 'Action inconnue.' }, 400);
