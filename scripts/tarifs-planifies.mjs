@@ -8,6 +8,7 @@ let d = null;
 for (let essai = 1; essai <= 3 && !d; essai++) {
   try {
     const r = await fetch(source, { headers: { 'User-Agent': 'acbt-publication' } });
+    if (r.status === 404) { console.log('Pas encore de /api/tarifs en ligne : aucun changement programmé.'); process.exit(0); }
     if (r.ok) d = await r.json();
     else console.log(`Essai ${essai} : réponse ${r.status}`);
   } catch (e) { console.log(`Essai ${essai} : ${e.message}`); }
