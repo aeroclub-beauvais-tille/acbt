@@ -284,4 +284,13 @@ const groupes = [...new Set(elements.map((e) => e.groupe))];
   .prix :global(small) { grid-column: 1 / -1; color: var(--accent); font-size: .8rem; font-weight: 650; }
   @media (max-width: 520px) { .prix :global(li) { grid-template-columns: 1fr; } .prix :global(span) { text-align: left; } }
   [hidden] { display: none !important; }
+
+  /* PC : bandeau aligné sur le contenu, page plus large sur deux colonnes (demande du club, 25/11) */
+  @media (min-width: 1100px) {
+    .haut { padding-inline: max(16px, calc((100% - 1400px) / 2 + 8px)); min-height: 64px; }
+    .haut span { font-size: 1.2rem; }
+    .corps { max-width: 1400px; padding: 26px 28px 48px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+    .carte { padding: 26px 26px; }
+    #form { grid-row: span 2; position: sticky; top: 84px; }
+  }
 </style>

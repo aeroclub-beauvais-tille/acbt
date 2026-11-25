@@ -5,7 +5,7 @@
 //   POST JSON { action: 'supprimer' | 'restaurer' | 'archiver', id, motDePasse } (admin)
 //        → effacé / remis en ligne (l'actuel du même type passe en historique) / mis dans l'historique
 import { estAdmin, json } from '../../_alertes.js';
-import { tableDocs, nommer, TYPES_VOL, TYPES_MANUEL, MORCEAU } from '../../_docs.js';
+import { tableDocs, nommer, TYPES_VOL, TYPES_MANUEL, TYPES_DATES, MORCEAU } from '../../_docs.js';
 
 const date = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
 
@@ -74,6 +74,9 @@ export async function onRequestPost({ request, env }) {
   if (!/^[A-Z]-[A-Z0-9]{4}$/.test(avion)) return json({ ok: false, erreur: 'Avion inconnu.' }, 400);
   const colonne = TYPES_VOL.includes(t) ? 'vol' : TYPES_MANUEL.includes(t) ? 'manuel' : null;
   if (!colonne) return json({ ok: false, erreur: 'Type de document inconnu.' }, 400);
+  const avecDates = TYPES_DATES.includes(t);
+  if (avecDates && (!date(f.get('debut')) || !date(f.get('fin')))) return json({ ok: false, erreur: 'Indiquez la date de début de validité et la date d’expiration.' }, 400);
+  if (avecDates && date(f.get('fin')) < date(f.get('debut'))) return json({ ok: false, erreur: 'La date d’expiration est avant la date de début.' }, 400);
   if ((colonne === 'manuel' || t === 'Autre document de vol') && !titre) return json({ ok: false, erreur: 'Indiquez le nom du document.' }, 400);
 
   const id = crypto.randomUUID();
@@ -91,7 +94,7 @@ export async function onRequestPost({ request, env }) {
   if (colonne === 'vol' && t !== 'Autre document de vol') lots.push(env.DB.prepare('UPDATE docs SET archive = ?3 WHERE avion = ?1 AND type = ?2 AND archive IS NULL').bind(avion, t, maintenant));
   lots.push(env.DB.prepare(`INSERT INTO docs (id, avion, type, colonne, titre, debut, fin, fichier, mime, taille, morceaux, cree, archive)
     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, NULL)`).bind(
-    id, avion, t, colonne, nom, date(f.get('debut')), date(f.get('fin')), nom + ext, fichier.type || 'application/octet-stream', octets.length, n, maintenant));
+    id, avion, t, colonne, nom, avecDates ? date(f.get('debut')) : null, avecDates ? date(f.get('fin')) : null, nom + ext, fichier.type || 'application/octet-stream', octets.length, n, maintenant));
   await env.DB.batch(lots);
   return json({ ok: true, id, titre: nom });
 }

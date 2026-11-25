@@ -17,6 +17,8 @@ export const TYPES_VOL = [
   'Manuel de vol',
   'Autre document de vol',
 ];
+// Documents qui ont une date d'expiration : « valable à partir du » et « date d'expiration » obligatoires
+export const TYPES_DATES = ["Certificat d'examen de navigabilité (CEN)", 'Assurance'];
 // Manuels du matériel : ajoutés à la colonne « Manuels du matériel », ils ne remplacent rien.
 export const TYPES_MANUEL = ['Manuel', 'Guide', 'Mémo', 'Checklist'];
 

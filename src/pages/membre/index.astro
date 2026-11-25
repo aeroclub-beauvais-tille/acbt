@@ -34,7 +34,8 @@ const REQUIS: { nom: string; place: string; types?: string[]; rubrique?: string;
   { place: 'pesee', nom: 'Fiche de pesée et centrage', pesee: true },
   { place: 'mdv', nom: 'Manuel de vol', rubrique: 'Manuel de vol' },
 ];
-const PIECES_PILOTE = ['Licence', 'Certificat médical', 'CNI'];
+// Pièces à avoir sur soi (texte voulu par le club, 25/11)
+const PIECES = [['Pilote', 'Licence, Classe 2, CNI, CB'], ['Passager(s)', 'CNI']];
 const estPesee = (d: Doc) => d.type === 'Fiche de pesée et centrage' || /pes[ée]e/i.test(d.titre ?? '');
 
 const flotte = avions.map((a) => {
@@ -138,7 +139,7 @@ const outilsAdmin = [
         <span class="lvp-logo" aria-hidden="true">LVP</span>
         <span class="maa-txt">
           <strong>Procédures par faible visibilité</strong>
-          <span class="maa-num" id="lvp-depuis">LVP activées à LFOB</span>
+          <span class="maa-num" id="lvp-depuis">LVP activées</span>
         </span>
       </div>
       <div id="maa-zone" hidden>
@@ -298,7 +299,7 @@ const outilsAdmin = [
                 : <DocLien doc={{ titre: r.nom }} manquant ligne place={r.place} />)}
               {x.autres.map((d) => <DocLien doc={d} vers="avions" ligne />)}
             </div>
-            <div class="pilote"><span class="pilote-t">Pilote, à avoir sur soi</span>{PIECES_PILOTE.map((p) => <span class="piece">{p}</span>)}</div>
+            <div class="pilote">{PIECES.map(([qui, quoi]) => <p class="piece"><b>{qui} :</b> {quoi}</p>)}</div>
             </div><div>
             <h5 class="sep" data-manuels-t hidden={x.techniques.length === 0}>Manuels du matériel</h5>
             <div class="liste" data-manuels>{x.techniques.map((d) => <DocLien doc={d} court={titreDoc(d).replace(` ${x.im}`, '')} />)}</div>
@@ -915,9 +916,9 @@ const outilsAdmin = [
   .liste.compacte { gap: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
   .liste.compacte > :global(* + *) { border-top: 1px solid var(--line); }
   .rien { color: var(--muted); font-size: .88rem; margin: 0; }
-  .pilote { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
-  .pilote-t { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
-  .piece { font-size: .8rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); }
+  .pilote { display: grid; gap: 4px; margin-top: 10px; }
+  .piece { margin: 0; font-size: .9rem; font-weight: 600; color: var(--ink); }
+  .piece b { font-weight: 800; }
   .histo { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; }
   .histo summary { cursor: pointer; font-size: .84rem; font-weight: 600; color: var(--muted); }
   .histo .liste { margin-top: 10px; }
@@ -948,6 +949,16 @@ const outilsAdmin = [
   .o-txt { min-width: 0; }
   .o-txt b { display: block; font-size: .95rem; font-weight: 650; }
   .o-txt small { color: var(--muted); font-size: .82rem; line-height: 1.3; display: block; }
+  /* PC : cartes d'outils (Admin, Préparer) plus grandes, trois par ligne */
+  @media (min-width: 1100px) {
+    .outils { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+    .outil { gap: 18px; padding: 22px 22px; border-radius: 16px; min-height: 104px; }
+    .o-logo { width: 60px; height: 60px; border-radius: 14px; }
+    .o-adm svg { width: 28px; height: 28px; }
+    .o-logo img { width: 40px; height: 40px; }
+    .o-txt b { font-size: 1.15rem; } .o-txt small { font-size: .95rem; margin-top: 3px; }
+    .adm-quitter { font-size: .95rem; padding: 12px 20px; }
+  }
 
   .liens { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
   .lien-o { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 9px 13px; font-weight: 600; font-size: .88rem; text-decoration: none; color: var(--ink); }
