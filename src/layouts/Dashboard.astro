@@ -31,6 +31,9 @@ const polices = `@font-face{font-family:'Manrope';font-style:normal;font-weight:
     --ok: #40c97f; --okbg: rgba(64,201,127,.14); --warn: #ffb81f; --warnbg: rgba(255,184,31,.14); --bad: #ff6464; --badbg: rgba(255,100,100,.14);
     --r1: #3d7fd6; --r2: #8b6ce0; --r3: #2d9b8a; --mono: 'JetBrains Mono', ui-monospace, monospace;
     --civ1: #1b2c5c; --civ2: #3b5aa0; --passe: rgba(0,0,0,.25);
+    /* Cartes météo du club (src/lib/cartes.ts) */
+    --cm-mer: #1a2a4a; --cm-terre: #2a3758; --cm-voisin: #212c48; --cm-trait: #5d6b8c; --cm-encre: #aab4cc; --cm-titre: #ffffff;
+    --cm-barbule: #e6ecfa; --cm-chaud: #ff8a8a; --cm-froid: #8fb0ff; --cm-nuage: #c3ccdd;
   }
   /* Thème clair, choisi automatiquement pendant le jour civil (de l'aube au crépuscule civils) */
   :root[data-theme="clair"] {
@@ -38,6 +41,8 @@ const polices = `@font-face{font-family:'Manrope';font-style:normal;font-weight:
     --ink: #0b1630; --ink2: #2c3a5a; --muted: #5d6987; --accent: #3550c8; --yellow: #d18f00;
     --ok: #17914f; --okbg: rgba(23,145,79,.12); --warn: #b97800; --warnbg: rgba(209,143,0,.14); --bad: #d33434; --badbg: rgba(211,52,52,.11);
     --civ1: #8fa6d8; --civ2: #b9cdf0; --passe: rgba(11,22,48,.12);
+    --cm-mer: #cfdcec; --cm-terre: #f6f8fb; --cm-voisin: #e4e8ef; --cm-trait: #8f9bb0; --cm-encre: #55607a; --cm-titre: #0b2a5b;
+    --cm-barbule: #0b2a5b; --cm-chaud: #c0141f; --cm-froid: #1f4fd1; --cm-nuage: #7d8799;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); transition: background .6s, color .6s; }
