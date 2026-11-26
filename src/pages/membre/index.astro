@@ -737,6 +737,11 @@ const outilsAdmin = [
   :global(.fl-r-dernier)::before { background: var(--muted); }
   :global(.fl-h) { text-align: right; font-size: 1rem; font-weight: 800; white-space: nowrap; align-self: center; font-variant-numeric: tabular-nums; }
   :global(.fl-h small) { display: block; font-size: .7rem; color: var(--muted); font-weight: 700; }
+  /* « Prochaine dispo. > 30' » toujours en entier : le petit texte de droite passe à la ligne si besoin */
+  :global(.fl-r .fl-lbl) { overflow: visible; text-overflow: clip; }
+  :global(.fl-r .fl-g) { min-width: max-content; }
+  :global(.fl-h) { min-width: 0; }
+  :global(.fl-h small) { white-space: normal; }
   :global(.fl-tol) { margin: 8px 0 0; font-size: .72rem; color: var(--muted); font-weight: 600; }
   /* Avion indisponible (maintenance) : carte hachurée en diagonale + bandeau */
   :global(.fl-carte.fl-hs) { background: var(--surface) repeating-linear-gradient(135deg, transparent 0 12px, color-mix(in srgb, var(--bad) 8%, transparent) 12px 14px); border-color: var(--bad-line); }
