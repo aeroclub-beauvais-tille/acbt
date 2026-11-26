@@ -47,6 +47,10 @@ jobs:
           fi
           echo "Paris : $(TZ=Europe/Paris date '+%H:%M %z'), lancement : $ok"
           echo "ok=$ok" >> "$GITHUB_OUTPUT"
+          # Hors saison : la tâche est annulée, pour que l'onglet Facebook de l'espace membre l'ignore.
+          if [ "$ok" = false ]; then gh run cancel ${{ github.run_id }} --repo ${{ github.repository }}; sleep 30; fi
+        env:
+          GH_TOKEN: ${{ github.token }}
       - uses: actions/checkout@v4
         if: steps.heure.outputs.ok == 'true'
       - uses: actions/setup-node@v4

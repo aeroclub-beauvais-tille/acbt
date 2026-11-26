@@ -7,7 +7,7 @@
 // dans src/data/facebook-copiees.json. Si le club modifie ou supprime l'actu dans le
 // back-office, le script n'y touche plus.
 //
-// Lancé par .github/workflows/facebook.yml toutes les 3 heures.
+// Lancé par .github/workflows/facebook.yml à 9h, 13h, 16h, 19h et 23h (Paris).
 // Réglages (secrets GitHub) :
 //   FACEBOOK_PAGE_ID    identifiant de la page ACBT60
 //   FACEBOOK_PAGE_TOKEN clé d'accès à la page (sans date d'expiration)
@@ -28,7 +28,8 @@ const REGISTRE = path.join(RACINE, 'src/data/facebook-copiees.json');
 
 if ((!PAGE || !CLE) && !process.argv.includes('--nettoyer')) {
   console.log('FACEBOOK_PAGE_ID ou FACEBOOK_PAGE_TOKEN absent : rien à faire.');
-  process.exit(0);
+  // Sur GitHub, une clé absente = lien Facebook coupé : la tâche échoue pour que ça se voie (mail + espace membre).
+  process.exit(process.env.GITHUB_ACTIONS === 'true' ? 1 : 0);
 }
 
 async function appel(chemin, params = {}) {

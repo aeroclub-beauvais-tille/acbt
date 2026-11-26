@@ -1,0 +1,180 @@
+---
+// Copie des actus Facebook (admin) : lien actif ou non, dernier passage, publications récupérées, et lancer la copie à la main.
+import MembreApp from '../../layouts/MembreApp.astro';
+import Logo from '../../components/Logo.astro';
+import { url } from '../../lib/utils';
+---
+<MembreApp title="Actus Facebook">
+  <div class="ecran" id="ecran" data-api={url('/membre/api/facebook')} data-actus={url('/actualites/')}>
+    <header class="haut">
+      <a href={url('/membre/#admin')} class="retour" aria-label="Retour à l'administration">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
+      </a>
+      <Logo class="logo" />
+      <span>Actus Facebook</span>
+    </header>
+
+    <main class="corps">
+      <section class="carte">
+        <h2>Lien avec Facebook</h2>
+        <p class="statut" id="statut"><span class="pastille"></span><b id="statut-t">Chargement…</b></p>
+        <dl class="infos">
+          <div><dt>Dernière vérification</dt><dd id="i-derniere">…</dd></div>
+          <div><dt>Dernière réussie</dt><dd id="i-reussie">…</dd></div>
+          <div><dt>Actus copiées depuis Facebook</dt><dd id="i-total">…</dd></div>
+          <div><dt>Dernière actu copiée</dt><dd id="i-actu">…</dd></div>
+        </dl>
+        <p class="sous note">Vérification automatique à 9h, 13h, 16h, 19h et 23h. Seules les publications avec photos deviennent des actus.</p>
+      </section>
+
+      <section class="carte">
+        <h2>Récupérations</h2>
+        <p class="sous" id="r-vide" hidden>Aucune publication récupérée pour le moment.</p>
+        <ul class="recups" id="recups"></ul>
+      </section>
+
+      <section class="carte">
+        <h2>Lancer la copie maintenant</h2>
+        <p class="sous">Utile juste après une publication sur Facebook. Les nouvelles actus apparaissent sur le site quelques minutes plus tard.</p>
+        <label for="m-mdp">Mot de passe admin</label>
+        <input id="m-mdp" type="password" autocomplete="current-password" />
+        <p class="erreur" id="erreur" role="alert" hidden></p>
+        <p class="ok" id="ok" role="status" hidden></p>
+        <button class="pri" type="button" id="forcer">Récupérer les publications</button>
+      </section>
+    </main>
+  </div>
+</MembreApp>
+
+<script>
+  const ecran = document.getElementById('ecran')!;
+  const API = ecran.dataset.api!;
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const erreur = $('erreur'), ok = $('ok'), mdp = $<HTMLInputElement>('m-mdp'), forcer = $<HTMLButtonElement>('forcer');
+  type Passage = { date: string; ok: boolean; manuel: boolean } | null;
+  const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const montrer = (el: HTMLElement, t: string) => { el.textContent = t; el.hidden = !t; };
+  const quand = (d?: string | null) => {
+    if (!d) return '—';
+    const j = new Date(d);
+    const jour = j.toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' }) === new Date().toLocaleDateString('fr-FR', { timeZone: 'Europe/Paris' })
+      ? 'aujourd’hui' : 'le ' + j.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'Europe/Paris' });
+    return `${jour} à ${j.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' }).replace(':', 'h')}`;
+  };
+  const p = (x: Passage) => (x ? quand(x.date) + (x.manuel ? ' (à la main)' : '') : '—');
+  // « 2026-10-05-retour-sur-une-journee » → « 5 octobre 2026 · Retour sur une journee »
+  const actu = (nom: string | null) => {
+    if (!nom) return '—';
+    const m = /^(\d{4}-\d{2}-\d{2})-(.*)$/.exec(nom);
+    if (!m) return esc(nom);
+    const d = new Date(m[1] + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const t = m[2].replace(/-/g, ' ');
+    return `${d} · ${esc(t.charAt(0).toUpperCase() + t.slice(1))}…`;
+  };
+  try { mdp.value = localStorage.getItem('acbt-admin-alertes') || ''; } catch { /* privé */ }
+  let attente = 0;
+
+  async function charger(frais = false) {
+    const statut = $('statut'), st = $('statut-t');
+    try {
+      const d = await (await fetch(API + (frais ? '?frais=1' : ''), { credentials: 'same-origin', cache: 'no-store' })).json();
+      forcer.hidden = d.peutForcer === false;
+      if (!d.peutForcer) montrer(erreur, 'Le bouton sera disponible quand la clé GitHub sera rangée dans Cloudflare (secret GITHUB_JETON).');
+      if (!d.ok) { statut.dataset.e = 'inconnu'; st.textContent = d.erreur || 'État indisponible.'; return; }
+      statut.dataset.e = d.enCours ? 'cours' : d.actif ? 'ok' : d.actif === false ? 'ko' : 'inconnu';
+      st.textContent = d.enCours ? 'Copie en cours…' : d.actif ? 'Actif' : d.actif === false ? 'Coupé : la dernière vérification a échoué (clé Facebook à refaire ?)' : 'Pas encore de vérification';
+      $('i-derniere').textContent = p(d.derniere);
+      $('i-reussie').textContent = p(d.derniereReussie);
+      $('i-total').textContent = String(d.total ?? '—');
+      $('i-actu').innerHTML = actu(d.derniereActu);
+      const r: { date: string; nombre: number }[] = d.recuperations || [];
+      $('r-vide').hidden = r.length > 0;
+      $('recups').innerHTML = r.map((x) => `<li><span>${esc(quand(x.date))}</span><b>${x.nombre} publication${x.nombre > 1 ? 's' : ''}</b></li>`).join('');
+      if (attente && !d.enCours && Date.now() - attente > 90_000) { attente = 0; montrer(ok, 'Copie terminée.'); }
+    } catch { statut.dataset.e = 'inconnu'; st.textContent = 'Impossible de charger l’état (pas de réseau ?).'; }
+  }
+
+  forcer.addEventListener('click', async () => {
+    montrer(ok, '');
+    if (!mdp.value) { montrer(erreur, 'Indiquez le mot de passe admin.'); mdp.focus(); return; }
+    forcer.disabled = true; forcer.textContent = 'Lancement…';
+    const r = await fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motDePasse: mdp.value }) }).catch(() => null);
+    const d = r ? await r.json().catch(() => ({})) : {};
+    forcer.disabled = false; forcer.textContent = 'Récupérer les publications';
+    if (!r || !r.ok) { montrer(erreur, d.erreur || 'Envoi impossible (pas de réseau ?).'); return; }
+    try { localStorage.setItem('acbt-admin-alertes', mdp.value); } catch { /* privé */ }
+    montrer(erreur, '');
+    montrer(ok, 'Copie lancée : comptez une à deux minutes.');
+    attente = Date.now();
+    setTimeout(() => charger(true), 15_000);
+  });
+
+  charger();
+  setInterval(() => charger(!!attente), 30_000);
+</script>
+
+<style>
+  .ecran { min-height: 100svh; display: flex; flex-direction: column; background: var(--bg); }
+  .haut { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 10px; min-height: calc(54px + env(safe-area-inset-top, 0px)); padding: 0 16px 0 8px; padding-top: env(safe-area-inset-top, 0px); background: var(--bar); color: var(--bar-ink); }
+  .retour { display: grid; place-items: center; width: 34px; height: 34px; color: var(--bar-ic); }
+  .retour svg { width: 22px; height: 22px; }
+  .haut :global(.logo) { --logo-h: 40px; --logo-rouge: var(--bar-rouge); color: var(--bar-ink); }
+  .haut span { font-weight: 800; font-size: 1.05rem; }
+  .corps { flex: 1; width: 100%; max-width: 640px; margin: 0 auto; padding: 18px 16px 40px; display: grid; gap: 14px; align-content: start; }
+  .carte { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; }
+  h2 { font-size: 1.1rem; margin: 0 0 4px; }
+  .titre-liste { margin-top: 10px; }
+  .sous { color: var(--muted); font-size: .9rem; margin: 0 0 8px; }
+  label { display: block; font-weight: 700; font-size: .76rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 12px 0 6px; }
+  input[type=password], input[type=text], textarea, select { width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; font: inherit; background: var(--surface-2, var(--surface)); color: var(--ink); box-sizing: border-box; }
+  textarea { resize: vertical; }
+  .ligne { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .diff { display: grid; border-top: 1px solid var(--line); }
+  .opt { display: flex; gap: 12px; align-items: flex-start; margin: 0; padding: 12px 2px; border-bottom: 1px solid var(--line); text-transform: none; letter-spacing: 0; color: var(--ink); font-size: .95rem; cursor: pointer; }
+  .opt input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--navy); flex: none; }
+  .opt b { display: block; font-weight: 700; }
+  .opt small { display: block; color: var(--muted); font-weight: 500; font-size: .84rem; margin-top: 2px; }
+  .ok { color: var(--ok, #1f8a4c); background: var(--ok-bg, #e6f6ec); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; font-weight: 650; }
+  .liste :global(.tags) { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+  .liste :global(.tag) { font-size: .7rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; }
+  .coche { text-transform: none; letter-spacing: 0; font-weight: 650; font-size: .92rem; color: var(--ink); display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+  input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; }
+  .pri { width: 100%; min-height: 48px; margin-top: 16px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+  .pri:disabled { opacity: .7; cursor: wait; }
+  .sec { width: 100%; min-height: 46px; margin-top: 8px; border: 1px solid var(--bad); border-radius: 10px; background: transparent; color: var(--bad); font: inherit; font-weight: 800; cursor: pointer; }
+  .sec:disabled { opacity: .6; cursor: wait; }
+  .note { margin-top: 12px; font-size: .84rem; }
+  #lvp-etat { margin: 4px 0 0; color: var(--ink); font-weight: 650; }
+  .etat { margin: 0; color: var(--muted); }
+  .liste { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .liste :global(.msg) { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; padding: 14px 14px 12px; }
+  .liste :global(.msg) { border-left-color: #e0982a; }
+  .liste :global(.msg.imp) { border-left-color: #c4161c; }
+  .liste :global(.msg b) { font-size: 1.02rem; }
+  .liste :global(.msg p) { margin: 6px 0 0; line-height: 1.45; overflow-wrap: anywhere; }
+  .liste :global(.pied) { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 10px; font-size: .84rem; color: var(--muted); }
+  .liste :global(.pied button) { border: 1px solid var(--line); background: transparent; color: var(--bad); border-radius: 8px; padding: 6px 10px; font: inherit; font-weight: 700; font-size: .8rem; cursor: pointer; }
+  .statut { display: flex; align-items: center; gap: 10px; margin: 6px 0 4px; font-size: 1.05rem; }
+  .pastille { width: 14px; height: 14px; border-radius: 50%; background: var(--muted); flex: none; }
+  .statut[data-e=ok] .pastille { background: var(--ok, #1f8a4c); }
+  .statut[data-e=ko] .pastille { background: var(--bad, #c4161c); }
+  .statut[data-e=ko] b { color: var(--bad, #c4161c); }
+  .statut[data-e=cours] .pastille { background: #e0982a; }
+  .infos { margin: 14px 0 0; display: grid; border-top: 1px solid var(--line); }
+  .infos div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 2px; border-bottom: 1px solid var(--line); }
+  .infos dt { color: var(--muted); font-size: .9rem; }
+  .infos dd { margin: 0; font-weight: 700; text-align: right; overflow-wrap: anywhere; }
+  .recups { list-style: none; margin: 6px 0 0; padding: 0; display: grid; border-top: 1px solid var(--line); }
+  .recups :global(li) { display: flex; justify-content: space-between; gap: 12px; padding: 10px 2px; border-bottom: 1px solid var(--line); font-size: .95rem; }
+  .recups :global(li span) { color: var(--muted); }
+  [hidden] { display: none !important; }
+
+  /* PC : bandeau aligné sur le contenu, page plus large sur deux colonnes (demande du club, 25/11) */
+  @media (min-width: 1100px) {
+    .haut { padding-inline: max(16px, calc((100% - 1400px) / 2 + 8px)); min-height: 64px; }
+    .haut span { font-size: 1.2rem; }
+    .corps { max-width: 1400px; padding: 26px 28px 48px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
+    .carte { padding: 26px 26px; }
+  }
+</style>
