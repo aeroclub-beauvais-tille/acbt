@@ -1,5 +1,5 @@
 ---
-// Copie des actus Facebook (admin) : lien actif ou non, dernier passage, publications récupérées, et lancer la copie à la main.
+// Copie des actus Facebook (admin) : lien actif ou non, dernier passage, publications récupérées (consultation seule).
 import MembreApp from '../../layouts/MembreApp.astro';
 import Logo from '../../components/Logo.astro';
 import { url } from '../../lib/utils';
@@ -33,15 +33,6 @@ import { url } from '../../lib/utils';
         <ul class="recups" id="recups"></ul>
       </section>
 
-      <section class="carte">
-        <h2>Lancer la copie maintenant</h2>
-        <p class="sous">Utile juste après une publication sur Facebook. Les nouvelles actus apparaissent sur le site quelques minutes plus tard.</p>
-        <label for="m-mdp">Mot de passe admin</label>
-        <input id="m-mdp" type="password" autocomplete="current-password" />
-        <p class="erreur" id="erreur" role="alert" hidden></p>
-        <p class="ok" id="ok" role="status" hidden></p>
-        <button class="pri" type="button" id="forcer">Récupérer les publications</button>
-      </section>
     </main>
   </div>
 </MembreApp>
@@ -50,10 +41,8 @@ import { url } from '../../lib/utils';
   const ecran = document.getElementById('ecran')!;
   const API = ecran.dataset.api!;
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-  const erreur = $('erreur'), ok = $('ok'), mdp = $<HTMLInputElement>('m-mdp'), forcer = $<HTMLButtonElement>('forcer');
   type Passage = { date: string; ok: boolean; manuel: boolean } | null;
   const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-  const montrer = (el: HTMLElement, t: string) => { el.textContent = t; el.hidden = !t; };
   const quand = (d?: string | null) => {
     if (!d) return '—';
     const j = new Date(d);
@@ -71,15 +60,11 @@ import { url } from '../../lib/utils';
     const t = m[2].replace(/-/g, ' ');
     return `${d} · ${esc(t.charAt(0).toUpperCase() + t.slice(1))}…`;
   };
-  try { mdp.value = localStorage.getItem('acbt-admin-alertes') || ''; } catch { /* privé */ }
-  let attente = 0;
 
-  async function charger(frais = false) {
+  async function charger() {
     const statut = $('statut'), st = $('statut-t');
     try {
-      const d = await (await fetch(API + (frais ? '?frais=1' : ''), { credentials: 'same-origin', cache: 'no-store' })).json();
-      forcer.hidden = d.peutForcer === false;
-      if (!d.peutForcer) montrer(erreur, 'Le bouton sera disponible quand la clé GitHub sera rangée dans Cloudflare (secret GITHUB_JETON).');
+      const d = await (await fetch(API, { credentials: 'same-origin', cache: 'no-store' })).json();
       if (!d.ok) { statut.dataset.e = 'inconnu'; st.textContent = d.erreur || 'État indisponible.'; return; }
       statut.dataset.e = d.enCours ? 'cours' : d.actif ? 'ok' : d.actif === false ? 'ko' : 'inconnu';
       st.textContent = d.enCours ? 'Copie en cours…' : d.actif ? 'Actif' : d.actif === false ? 'Coupé : la dernière vérification a échoué (clé Facebook à refaire ?)' : 'Pas encore de vérification';
@@ -90,27 +75,11 @@ import { url } from '../../lib/utils';
       const r: { date: string; nombre: number }[] = d.recuperations || [];
       $('r-vide').hidden = r.length > 0;
       $('recups').innerHTML = r.map((x) => `<li><span>${esc(quand(x.date))}</span><b>${x.nombre} publication${x.nombre > 1 ? 's' : ''}</b></li>`).join('');
-      if (attente && !d.enCours && Date.now() - attente > 90_000) { attente = 0; montrer(ok, 'Copie terminée.'); }
     } catch { statut.dataset.e = 'inconnu'; st.textContent = 'Impossible de charger l’état (pas de réseau ?).'; }
   }
 
-  forcer.addEventListener('click', async () => {
-    montrer(ok, '');
-    if (!mdp.value) { montrer(erreur, 'Indiquez le mot de passe admin.'); mdp.focus(); return; }
-    forcer.disabled = true; forcer.textContent = 'Lancement…';
-    const r = await fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ motDePasse: mdp.value }) }).catch(() => null);
-    const d = r ? await r.json().catch(() => ({})) : {};
-    forcer.disabled = false; forcer.textContent = 'Récupérer les publications';
-    if (!r || !r.ok) { montrer(erreur, d.erreur || 'Envoi impossible (pas de réseau ?).'); return; }
-    try { localStorage.setItem('acbt-admin-alertes', mdp.value); } catch { /* privé */ }
-    montrer(erreur, '');
-    montrer(ok, 'Copie lancée : comptez une à deux minutes.');
-    attente = Date.now();
-    setTimeout(() => charger(true), 15_000);
-  });
-
   charger();
-  setInterval(() => charger(!!attente), 30_000);
+  setInterval(charger, 60_000);
 </script>
 
 <style>
