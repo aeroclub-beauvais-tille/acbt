@@ -1,0 +1,293 @@
+---
+// Documents du club (admin) : ajouter, modifier, remplacer ou supprimer les documents de l'onglet Préparer.
+// Rangé sur Cloudflare (base D1, privée derrière le mot de passe membres) ; seul le mot de passe admin (MOT_DE_PASSE_ADMIN) est demandé.
+// Chaque changement garde la version d'avant dans l'historique, d'où elle peut être remise en ligne.
+import { getCollection } from 'astro:content';
+import MembreApp from '../../layouts/MembreApp.astro';
+import Logo from '../../components/Logo.astro';
+import { url, asset } from '../../lib/utils';
+import { RUBRIQUES_CLUB, baseClub } from '../../lib/docs-club';
+const docs = (await getCollection('documents')).map((d) => ({ id: d.id, ...d.data }));
+const base = baseClub(docs, (d) => (d.fichier ? asset(d.fichier) : d.lien || ''));
+---
+<MembreApp title="Documents du club">
+  <div class="ecran" id="ecran" data-api={url('/membre/api/documents-club')}>
+    <header class="haut">
+      <a href={url('/membre/#admin')} class="retour" aria-label="Retour à l'administration">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
+      </a>
+      <Logo class="logo" />
+      <span>Documents du club</span>
+    </header>
+
+    <main class="corps">
+      <form class="carte" id="form" novalidate>
+        <div class="f-tete">
+          <h1 id="f-titre">Ajouter un document</h1>
+          <button type="button" class="annuler" id="annuler" hidden>Annuler</button>
+        </div>
+
+        <label class="lbl" for="rubrique">Rubrique</label>
+        <select id="rubrique" required>
+          <option value="">Choisir…</option>
+          {RUBRIQUES_CLUB.map((r) => <option value={r.id}>{r.nom}</option>)}
+        </select>
+
+        <label class="lbl" for="titre">Nom du document</label>
+        <input id="titre" type="text" maxlength="120" placeholder="ex. Mémo sécurité" />
+
+        <label class="lbl" for="descr">Description <i>(facultatif)</i></label>
+        <input id="descr" type="text" maxlength="200" placeholder="ex. Consignes de sécurité du club." />
+
+        <div class="choix" role="tablist" aria-label="Fichier ou lien">
+          <button type="button" role="tab" data-mode="fichier" aria-selected="true">Fichier</button>
+          <button type="button" role="tab" data-mode="lien" aria-selected="false">Lien internet</button>
+        </div>
+
+        <label class="depot" id="depot" for="fichier">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5" /><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" /></svg>
+          <b id="depot-t">Glissez le fichier ici</b>
+          <small id="depot-s">ou touchez pour le choisir (PDF, photo, tableur…)</small>
+          <input type="file" id="fichier" accept=".pdf,image/*,video/*,.doc,.docx,.xls,.xlsx,.odt,.ods" />
+        </label>
+        <div id="z-lien" hidden>
+          <input id="lien" type="url" inputmode="url" placeholder="https://…" />
+        </div>
+        <p class="garde" id="garde" hidden>Sans nouveau fichier, le document garde son fichier actuel.</p>
+
+        <label class="lbl" for="mdp">Mot de passe admin</label>
+        <input id="mdp" type="password" autocomplete="current-password" />
+
+        <p class="erreur" id="erreur" role="alert" hidden></p>
+        <p class="ok" id="ok" role="status" hidden></p>
+        <button class="pri" type="submit" id="envoyer">Mettre en ligne</button>
+      </form>
+
+      <div class="droite">
+        <section class="carte">
+          <h2>Documents en ligne</h2>
+          <p class="sous" id="etat">Chargement…</p>
+          <div id="liste"></div>
+        </section>
+        <section class="carte" id="c-histo" hidden>
+          <h2>Historique</h2>
+          <p class="sous">Versions remplacées et documents supprimés. Ils ne sont plus visibles par les membres.</p>
+          <ul class="docs" id="histo"></ul>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script type="application/json" id="base" set:html={JSON.stringify(base)} />
+</MembreApp>
+
+<script>
+  import { RUBRIQUES_CLUB, fusion, type BaseClub, type DocClub, type LigneClub } from '../../lib/docs-club';
+  const API = document.getElementById('ecran')!.dataset.api!;
+  const BASE: BaseClub[] = JSON.parse(document.getElementById('base')!.textContent || '[]');
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+  const rubrique = $<HTMLSelectElement>('rubrique'), titre = $<HTMLInputElement>('titre'), descr = $<HTMLInputElement>('descr');
+  const fichier = $<HTMLInputElement>('fichier'), lien = $<HTMLInputElement>('lien'), mdp = $<HTMLInputElement>('mdp');
+  const erreur = $('erreur'), ok = $('ok'), envoyer = $<HTMLButtonElement>('envoyer'), depot = $('depot');
+  const esc = (t: string) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const montrer = (el: HTMLElement, t: string) => { el.textContent = t; el.hidden = !t; };
+  const nomRub = (id: string) => RUBRIQUES_CLUB.find((r) => r.id === id)?.nom || id;
+  const jour = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Paris' });
+  try { mdp.value = localStorage.getItem('acbt-admin-alertes') || ''; } catch { /* privé */ }
+
+  let docs: DocClub[] = [];
+  let choisi: File | null = null;
+  let mode: 'fichier' | 'lien' = 'fichier';
+  let edite: DocClub | null = null;
+
+  const choisirMode = (m: 'fichier' | 'lien') => {
+    mode = m;
+    document.querySelectorAll<HTMLButtonElement>('.choix button').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.mode === m)));
+    depot.hidden = m !== 'fichier';
+    $('z-lien').hidden = m !== 'lien';
+    $('garde').hidden = !(edite && m === 'fichier' && edite.genre !== 'LIEN');
+  };
+  document.querySelectorAll<HTMLButtonElement>('.choix button').forEach((b) => b.addEventListener('click', () => choisirMode(b.dataset.mode as 'fichier' | 'lien')));
+
+  const viderFichier = () => {
+    choisi = null; fichier.value = '';
+    $('depot-t').textContent = edite ? 'Remplacer le fichier (facultatif)' : 'Glissez le fichier ici';
+    $('depot-s').textContent = 'ou touchez pour le choisir (PDF, photo, tableur…)';
+    depot.classList.remove('plein');
+  };
+  const prendre = (f: File | undefined | null) => {
+    if (!f) return;
+    choisi = f;
+    $('depot-t').textContent = f.name;
+    $('depot-s').textContent = `${(f.size / 1_048_576).toFixed(1).replace('.', ',')} Mo · touchez pour changer`;
+    depot.classList.add('plein');
+    if (!titre.value.trim()) titre.value = f.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').replace(/^./, (c) => c.toUpperCase());
+  };
+  fichier.addEventListener('change', () => prendre(fichier.files?.[0]));
+  ['dragenter', 'dragover'].forEach((e) => depot.addEventListener(e, (ev) => { ev.preventDefault(); depot.classList.add('survol'); }));
+  ['dragleave', 'drop'].forEach((e) => depot.addEventListener(e, () => depot.classList.remove('survol')));
+  depot.addEventListener('drop', (ev) => { ev.preventDefault(); prendre((ev as DragEvent).dataTransfer?.files?.[0]); });
+
+  const baseDe = (cle: string) => BASE.find((b) => b.cle === cle) || null;
+
+  const editer = (d: DocClub | null) => {
+    edite = d;
+    $('f-titre').textContent = d ? 'Modifier le document' : 'Ajouter un document';
+    $('annuler').hidden = !d;
+    envoyer.textContent = d ? 'Enregistrer' : 'Mettre en ligne';
+    rubrique.value = d?.rubrique || '';
+    titre.value = d?.titre || '';
+    descr.value = d?.descr || '';
+    lien.value = d && d.genre === 'LIEN' ? d.href : '';
+    montrer(erreur, ''); montrer(ok, '');
+    viderFichier();
+    choisirMode(d && d.genre === 'LIEN' ? 'lien' : 'fichier');
+    if (d) $('form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  $('annuler').addEventListener('click', () => editer(null));
+
+  $('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    montrer(ok, '');
+    const l = lien.value.trim();
+    const manque = !rubrique.value ? 'Choisissez la rubrique.' : !titre.value.trim() ? 'Indiquez le nom du document.'
+      : mode === 'lien' && !/^https?:\/\/\S+$/i.test(l) ? 'Indiquez l’adresse du lien (elle commence par https://).'
+      : mode === 'fichier' && !choisi && !(edite && edite.genre !== 'LIEN') ? 'Choisissez un fichier.'
+      : !mdp.value ? 'Indiquez le mot de passe admin.' : '';
+    if (manque) { montrer(erreur, manque); return; }
+    montrer(erreur, '');
+    envoyer.disabled = true; const avant = envoyer.textContent; envoyer.textContent = 'Envoi…';
+    const f = new FormData();
+    f.append('motDePasse', mdp.value); f.append('rubrique', rubrique.value);
+    f.append('titre', titre.value.trim()); f.append('descr', descr.value.trim());
+    if (edite) { f.append('cle', edite.cle); const b = baseDe(edite.cle); if (b) f.append('base', JSON.stringify(b)); }
+    if (mode === 'lien') f.append('lien', l);
+    else if (choisi) f.append('fichier', choisi);
+    const r = await fetch(API, { method: 'POST', credentials: 'same-origin', body: f }).catch(() => null);
+    const d = r ? await r.json().catch(() => ({})) : {};
+    envoyer.disabled = false; envoyer.textContent = avant;
+    if (!r || !r.ok) { montrer(erreur, d.erreur || 'Envoi impossible (pas de réseau ?).'); return; }
+    try { localStorage.setItem('acbt-admin-alertes', mdp.value); } catch { /* privé */ }
+    const msg = `« ${d.titre} » est en ligne dans « ${nomRub(rubrique.value)} ».`;
+    editer(null);
+    montrer(ok, msg);
+    charger();
+  });
+
+  const ligne = (d: DocClub, histo = false) => {
+    const l = d.ligne;
+    const info = histo && l
+      ? `${esc(nomRub(d.rubrique))} · ${l.etat === 'retire' ? 'supprimé' : 'remplacé'} le ${jour(l.change || l.cree)}`
+      : `${esc(d.genre)}${d.descr ? ' · ' + esc(d.descr) : ''}`;
+    const actions = histo
+      ? `<button type="button" class="b-remettre" data-action="restaurer" data-id="${esc(l!.id)}">Remettre en ligne</button>
+         <button type="button" class="b-suppr" data-action="effacer" data-id="${esc(l!.id)}">Effacer</button>`
+      : `<button type="button" data-modifier="${esc(d.cle)}">Modifier</button>
+         <button type="button" class="b-suppr" data-action="retirer" data-cle="${esc(d.cle)}">Supprimer</button>`;
+    return `<li${histo ? ' class="ancien"' : ''}>
+      <a href="${esc(d.href)}" target="_blank" rel="noopener"><b>${esc(d.titre)}</b><small>${info}</small></a>
+      <span class="act"><a href="${esc(d.href)}" target="_blank" rel="noopener">Ouvrir</a>${actions}</span></li>`;
+  };
+
+  async function charger() {
+    try {
+      const rep = await (await fetch(API, { credentials: 'same-origin', cache: 'no-store' })).json();
+      const lignes: LigneClub[] = rep.lignes || [];
+      const f = fusion(BASE, lignes, API);
+      docs = f.docs;
+      montrer($('etat'), docs.length ? '' : 'Aucun document.');
+      $('liste').innerHTML = RUBRIQUES_CLUB.map((r) => {
+        const ici = docs.filter((d) => d.rubrique === r.id);
+        return ici.length ? `<h3>${esc(r.nom)} <span>${ici.length}</span></h3><ul class="docs">${ici.map((d) => ligne(d)).join('')}</ul>` : '';
+      }).join('');
+      $('c-histo').hidden = !f.historique.length;
+      $('histo').innerHTML = f.historique.map((d) => ligne(d, true)).join('');
+    } catch { montrer($('etat'), 'Impossible de charger la liste (pas de réseau ?).'); }
+  }
+
+  const QUESTION: Record<string, string> = {
+    retirer: 'Supprimer ce document de la liste des membres ? Il restera dans l’historique, d’où il pourra être remis en ligne.',
+    restaurer: 'Remettre cette version en ligne ? La version actuelle passera dans l’historique.',
+    effacer: 'Effacer définitivement cette version ? Elle ne pourra pas être récupérée.',
+  };
+  document.querySelector('.droite')!.addEventListener('click', async (e) => {
+    const m = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-modifier]');
+    if (m) { editer(docs.find((d) => d.cle === m.dataset.modifier) || null); return; }
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
+    if (!b) return;
+    if (!mdp.value) { montrer(erreur, 'Indiquez le mot de passe admin.'); mdp.focus(); return; }
+    if (!confirm(QUESTION[b.dataset.action!])) return;
+    b.disabled = true;
+    const corps: Record<string, unknown> = { action: b.dataset.action, motDePasse: mdp.value };
+    if (b.dataset.cle) { corps.cle = b.dataset.cle; const base = baseDe(b.dataset.cle); if (base) corps.base = base; }
+    if (b.dataset.id) corps.id = b.dataset.id;
+    const r = await fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) }).catch(() => null);
+    if (!r || !r.ok) { b.disabled = false; montrer(erreur, (r && (await r.json().catch(() => ({}))).erreur) || 'Action impossible (pas de réseau ?).'); return; }
+    try { localStorage.setItem('acbt-admin-alertes', mdp.value); } catch { /* privé */ }
+    montrer(erreur, '');
+    if (edite && b.dataset.cle === edite.cle) editer(null);
+    charger();
+  });
+
+  editer(null);
+  charger();
+</script>
+
+<style>
+  .ecran { min-height: 100svh; display: flex; flex-direction: column; background: var(--bg); }
+  .haut { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 10px; min-height: calc(54px + env(safe-area-inset-top, 0px)); padding: 0 16px 0 8px; padding-top: env(safe-area-inset-top, 0px); background: var(--bar); color: var(--bar-ink); }
+  .retour { display: grid; place-items: center; width: 34px; height: 34px; color: var(--bar-ic); }
+  .retour svg { width: 22px; height: 22px; }
+  .haut :global(.logo) { --logo-h: 40px; --logo-rouge: var(--bar-rouge); color: var(--bar-ink); }
+  .haut span { font-weight: 800; font-size: 1.05rem; }
+  .corps { flex: 1; width: 100%; max-width: 680px; margin: 0 auto; padding: 18px 16px 40px; display: grid; gap: 14px; align-content: start; }
+  .droite { display: grid; gap: 14px; align-content: start; min-width: 0; }
+  .carte { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; min-width: 0; }
+  .f-tete { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  h1 { font-size: 1.25rem; margin: 0; }
+  h2 { font-size: 1.1rem; margin: 0 0 6px; }
+  .annuler { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: .85rem; border-radius: 8px; padding: 6px 12px; cursor: pointer; }
+  .sous { color: var(--muted); font-size: .9rem; margin: 0; }
+  .lbl { display: block; font-weight: 700; font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; }
+  .lbl i { font-style: normal; text-transform: none; letter-spacing: 0; font-weight: 600; }
+  input[type=password], input[type=text], input[type=url], select { width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; font: inherit; background: var(--surface-2, var(--surface)); color: var(--ink); box-sizing: border-box; }
+  .choix { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 16px 0 10px; padding: 4px; border-radius: 11px; background: var(--surface-2); border: 1px solid var(--line); }
+  .choix button { border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 700; font-size: .9rem; border-radius: 8px; padding: 8px; cursor: pointer; }
+  .choix button[aria-selected='true'] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,42,90,.12); }
+  .depot { position: relative; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; border: 2px dashed var(--line); border-radius: 14px; padding: 20px 14px; cursor: pointer; background: var(--surface-2); color: var(--ink); }
+  .depot svg { width: 28px; height: 28px; color: var(--accent); margin-bottom: 4px; }
+  .depot b { font-size: 1rem; overflow-wrap: anywhere; }
+  .depot small { color: var(--muted); font-size: .84rem; }
+  .depot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .depot.survol { border-color: var(--accent); background: var(--accent-soft); }
+  .depot.plein { border-style: solid; border-color: var(--ok-line); background: var(--ok-bg); }
+  .depot.plein svg { color: var(--ok); }
+  .garde { margin: 8px 0 0; font-size: .84rem; color: var(--muted); }
+  .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; }
+  .ok { color: var(--ok); background: var(--ok-bg); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; font-weight: 650; }
+  .pri { width: 100%; height: 50px; margin-top: 16px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; }
+  .pri:disabled { opacity: .7; cursor: wait; }
+  #liste :global(h3) { margin: 18px 0 8px; font-size: .74rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+  #liste :global(h3:first-child) { margin-top: 10px; }
+  #liste :global(h3 span) { font-size: .7rem; background: var(--surface-2); border-radius: 999px; padding: 1px 8px; letter-spacing: 0; }
+  .droite :global(.docs) { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 8px; }
+  #liste :global(.docs) { margin-top: 0; }
+  .droite :global(.docs li) { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  .droite :global(li.ancien) { background: var(--surface-2); }
+  .droite :global(li > a) { flex: 1 1 220px; min-width: 0; color: inherit; text-decoration: none; }
+  .droite :global(li b) { display: block; font-size: .92rem; overflow-wrap: anywhere; }
+  .droite :global(li small) { display: block; color: var(--muted); font-size: .78rem; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .droite :global(.act) { display: flex; gap: 6px; flex-wrap: wrap; }
+  .droite :global(.act > *) { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: .8rem; border-radius: 8px; padding: 6px 10px; cursor: pointer; text-decoration: none; }
+  .droite :global(.b-remettre) { border-color: var(--ok-line) !important; background: var(--ok-bg) !important; color: var(--ok) !important; }
+  .droite :global(.b-suppr) { border-color: var(--bad-line) !important; background: var(--bad-bg) !important; color: var(--bad) !important; }
+  [hidden] { display: none !important; }
+
+  /* PC : formulaire à gauche (reste visible), listes à droite */
+  @media (min-width: 1100px) {
+    .haut { padding-inline: max(16px, calc((100% - 1400px) / 2 + 8px)); min-height: 64px; }
+    .haut span { font-size: 1.2rem; }
+    .corps { max-width: 1400px; padding: 26px 28px 48px; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: start; }
+    .carte { padding: 26px 26px; }
+    #form { position: sticky; top: 84px; }
+  }
+</style>
