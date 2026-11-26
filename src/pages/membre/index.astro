@@ -8,6 +8,7 @@ import { getCollection } from 'astro:content';
 import { RUBRIQUES_AVION, TYPES_AVION } from '../../content.config';
 import AdminDocs from '../../components/AdminDocs.astro';
 import { titreDoc, marquerHistorique, estOfficiel, type Doc } from '../../lib/documents';
+import { baseClub } from '../../lib/docs-club';
 import outils from '../../data/outils.json';
 import club from '../../data/club.json';
 import { asset, url, cleFormulaire } from '../../lib/utils';
@@ -60,8 +61,8 @@ const flotte = avions.map((a) => {
 
 // Bulletins météo (MAA) — gérés à part (horaires précis, pas « à renouveler »)
 const meteo = docs.filter((d) => d.type === 'Bulletin météo' && !d.archive).sort((a, b) => (a.debut?.getTime() ?? 0) - (b.debut?.getTime() ?? 0));
-const memos = ['Sécurité', 'Préparation des vols', 'Météo', 'Formulaires']
-  .map((c) => ({ c, docs: vivants(c).filter((d) => !estOfficiel(d)) })).filter((x) => x.docs.length);
+// Documents du club (onglet Préparer) : rangés en rubriques ; l'admin peut les changer depuis l'appli (Admin > Documents du club)
+const docsClub = baseClub(docs, (d) => (d.fichier ? asset(d.fichier) : d.lien || ''));
 // Données pour le mode admin (mêmes informations que les fiches, déjà publiques)
 const jour = (d?: Date) => d ? d.toISOString().slice(0, 10) : undefined;
 const adminDonnees = {
@@ -92,6 +93,7 @@ const outilsAdmin = [
   { lien: '/statistiques/', nom: 'Statistiques du site', desc: 'Fréquentation de acbt60.fr et de l\'appli', svg: 'M4 20V10M10 20V4M16 20v-7M22 20H2' },
   { lien: '/membre/tarifs/', nom: 'Tarifs', desc: 'Programmer un changement de prix avec sa date d\'effet', svg: 'M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6' },
   { lien: '/membre/perfs/archives.html', nom: 'Archives Perfs', desc: 'Fiches de préparation des vols enregistrées par Perfs', svg: 'M21 8v13H3V8M1 3h22v5H1zM10 12h4' },
+  { lien: '/membre/documents-club/', nom: 'Documents du club', desc: 'Ajouter, modifier, remplacer ou supprimer un document de l\'onglet Préparer', svg: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM12 11v6M9 14h6' },
   { lien: '/membre/admin/', nom: 'Documents des avions', desc: 'Déposer, remplacer ou retirer un document', svg: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M12 18v-6M9 15h6' },
 ];
 ---
@@ -348,8 +350,9 @@ const outilsAdmin = [
           </div>
         </div>
       ))}
-      {vivants('Documentation pilote').length > 0 && <div class="bloc"><h5 class="sep">Terrain et espace aérien</h5><div class="liste">{vivants('Documentation pilote').map((d) => <DocLien doc={d} />)}</div></div>}
-      {memos.map((x) => <div class="bloc"><h5 class="sep">{x.c}</h5><div class="liste">{x.docs.map((d) => <DocLien doc={d} />)}</div></div>)}
+      <h5 class="sep">Documents du club</h5>
+      <div class="rubriques" id="docs-club" data-api={url('/membre/api/documents-club')}></div>
+      <script type="application/json" id="docs-club-base" set:html={JSON.stringify(docsClub)} />
     </section>
   </main>
 
@@ -462,6 +465,36 @@ const outilsAdmin = [
     document.querySelectorAll<HTMLElement>('[data-q]').forEach((el) => { el.hidden = !!v && !norm(el.dataset.q || '').includes(v); });
     if (aucun) aucun.hidden = !v || !!document.querySelector('[data-q]:not([hidden])');
   });
+</script>
+
+<script>
+  // Documents du club (onglet Préparer) : documents du site + changements faits par l'admin (gardés aussi sur l'appareil pour le hors ligne)
+  import { RUBRIQUES_CLUB, fusion, type BaseClub, type LigneClub } from '../../lib/docs-club';
+  const boite = document.getElementById('docs-club');
+  if (boite) {
+    const API = boite.dataset.api!;
+    const base: BaseClub[] = JSON.parse(document.getElementById('docs-club-base')?.textContent || '[]');
+    const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+    const afficher = (lignes: LigneClub[]) => {
+      const { docs } = fusion(base, lignes, API);
+      boite.innerHTML = RUBRIQUES_CLUB.map((r) => {
+        const ici = docs.filter((d) => d.rubrique === r.id);
+        if (!ici.length) return '';
+        return `<section class="rb"><header class="rb-h"><span class="rb-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${r.svg}"/></svg></span><h3>${esc(r.nom)}</h3><span class="rb-nb">${ici.length}</span></header>
+          <div class="rb-l">${ici.map((d) => `<a class="dc" href="${esc(d.href)}" target="_blank" rel="noopener" data-q="${esc(`${d.titre} ${d.descr} ${r.nom}`.toLowerCase())}">
+            <span class="dc-t${d.genre === 'PDF' ? ' dc-pdf' : ''}">${esc(d.genre)}</span>
+            <span class="dc-x"><b>${esc(d.titre)}</b>${d.descr ? `<small>${esc(d.descr)}</small>` : ''}</span></a>`).join('')}</div></section>`;
+      }).join('');
+    };
+    let garde: LigneClub[] = [];
+    try { garde = JSON.parse(localStorage.getItem('acbt-docs-club') || '[]'); } catch { /* rien */ }
+    afficher(garde);
+    fetch(API, { credentials: 'same-origin', cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((d) => {
+      if (!d || !Array.isArray(d.lignes)) return;
+      try { localStorage.setItem('acbt-docs-club', JSON.stringify(d.lignes)); } catch { /* plein */ }
+      afficher(d.lignes);
+    }).catch(() => { /* hors ligne : on garde l'affichage */ });
+  }
 </script>
 
 <style>
@@ -973,6 +1006,38 @@ const outilsAdmin = [
   .maa-sub { display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap; }
   .maa-chip { flex: none; font-size: .72rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface-2); }
   .maa-row[data-etat='en-cours'] .maa-chip { color: var(--bad); background: var(--bad-bg); border-color: var(--bad-line); }
+
+  /* Documents du club : une carte par rubrique. Téléphone : une colonne ; tablette : deux ; PC : trois */
+  .rubriques { columns: 1; column-gap: 14px; }
+  .rubriques :global(.rb) { break-inside: avoid; margin: 0 0 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: inline-block; width: 100%; }
+  .rubriques :global(.rb:not(:has(.dc:not([hidden])))) { display: none; }
+  .rubriques :global(.rb-h) { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+  .rubriques :global(.rb-ic) { flex: none; width: 32px; height: 32px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
+  .rubriques :global(.rb-ic svg) { width: 18px; height: 18px; }
+  .rubriques :global(.rb-h h3) { flex: 1; margin: 0; font-size: .98rem; font-weight: 800; color: var(--ink); }
+  .rubriques :global(.rb-nb) { flex: none; font-size: .74rem; font-weight: 700; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 2px 9px; }
+  .rubriques :global(.rb-l > .dc + .dc) { border-top: 1px solid var(--line); }
+  .rubriques :global(.dc) { display: flex; align-items: center; gap: 11px; padding: 10px 14px; text-decoration: none; color: inherit; }
+  .rubriques :global(.dc[hidden]) { display: none; }
+  .rubriques :global(.dc:hover) { background: var(--surface-2); }
+  .rubriques :global(.dc:active) { background: var(--accent-soft); }
+  .rubriques :global(.dc-t) { flex: none; min-width: 40px; text-align: center; font-weight: 700; font-size: .6rem; letter-spacing: .03em; padding: 5px 4px; border-radius: 7px; background: var(--accent-soft); color: var(--accent-text); }
+  .rubriques :global(.dc-t.dc-pdf) { background: var(--bad-bg); color: var(--bad); }
+  .rubriques :global(.dc-x) { min-width: 0; flex: 1; }
+  .rubriques :global(.dc-x b) { display: block; font-weight: 650; font-size: .92rem; line-height: 1.25; }
+  .rubriques :global(.dc-x small) { display: block; color: var(--muted); font-size: .78rem; line-height: 1.3; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (min-width: 700px) { .rubriques { columns: 2; } }
+  @media (min-width: 1100px) {
+    .rubriques { columns: 3; column-gap: 16px; }
+    .rubriques :global(.rb) { margin-bottom: 16px; border-radius: 16px; }
+    .rubriques :global(.rb-h) { padding: 14px 18px; }
+    .rubriques :global(.rb-ic) { width: 38px; height: 38px; border-radius: 10px; }
+    .rubriques :global(.rb-ic svg) { width: 21px; height: 21px; }
+    .rubriques :global(.rb-h h3) { font-size: 1.08rem; }
+    .rubriques :global(.dc) { padding: 12px 18px; }
+    .rubriques :global(.dc-x b) { font-size: 1rem; }
+    .rubriques :global(.dc-x small) { font-size: .84rem; }
+  }
 
   /* Outils */
   .bloc { margin-bottom: 8px; }
