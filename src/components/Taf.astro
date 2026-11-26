@@ -6,7 +6,7 @@ const t = await taf();
 <div class="taf" data-cle={AVWX_CLE}>
   <span class="station">TAF LFOB</span>
   <code class="raw" title="Dernier TAF publié pour Beauvais-Tillé" hidden={!t}>{t?.raw}</code>
-  <span class="raw vide" hidden={!!t}>Pas de TAF reçu. Consultez <a href="https://aviation.meteo.fr/login.php" target="_blank" rel="noopener">AEROWEB</a>.</span>
+  <span class="raw vide" hidden={!!t}>Pas de TAF reçu. Consultez <a href="https://aeroweb.meteo.fr/#/login" target="_blank" rel="noopener">AEROWEB</a>.</span>
 </div>
 <script>
   const tafs = () => document.querySelectorAll<HTMLElement>('.taf');

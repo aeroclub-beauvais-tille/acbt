@@ -11,7 +11,7 @@ const m = await metar();
   <span class:list={['etat', m ? 'attente' : 'rouge']}><i></i><b>{m ? 'En direct' : 'Indisponible'}</b></span>
   <span class="station">METAR LFOB</span>
   <code class="raw" title="Dernier METAR publié pour Beauvais-Tillé" hidden={!m}>{m?.raw}</code>
-  <span class="raw vide" hidden={!!m}>Pas de METAR reçu. Consultez <a href="https://aviation.meteo.fr/login.php" target="_blank" rel="noopener">AEROWEB</a>.</span>
+  <span class="raw vide" hidden={!!m}>Pas de METAR reçu. Consultez <a href="https://aeroweb.meteo.fr/#/login" target="_blank" rel="noopener">AEROWEB</a>.</span>
 </div>
 <script>
   const metars = () => document.querySelectorAll<HTMLElement>('.metar');
