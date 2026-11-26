@@ -31,7 +31,7 @@ interface Histo { t: string; vent: number | null; rafales: number | null; dir: n
 interface Donnees {
   ok: boolean; maj: string;
   flotte: { ok: boolean; avions: Avion[]; instructeurs?: Instructeur[] } | null;
-  maa: Maa[] | null; lvp?: { actif: boolean; depuis?: string } | null; metar: Metar | null; taf: Taf | null;
+  maa: Maa[] | null; lvp?: { actif: boolean; type?: string; depuis?: string } | null; metar: Metar | null; taf: Taf | null;
   notam: { ok: boolean; raison?: string; notam?: Notam[]; sup?: Notam[] } | null;
   historique: Histo[] | null;
   vigilance?: { maj: string | null; departements: { id: string; nom: string; couleur: number; phenomenes: { phenomene: string; couleur: number; debut: string; fin: string }[] }[] } | null;
@@ -936,7 +936,7 @@ function alerteAAL() {
   const l = fermetures().slice(0, 2);
   const sc = $('scene'), band = $('aal');
   // LVP : bandeau rouge toujours en premier, au-dessus des fermetures
-  const lvp = D?.lvp?.actif ? `<div class="fz on lvp"><i class="lvp-logo">LVP</i><div><b>Procédures par faible visibilité activées${D.lvp.depuis ? ` depuis ${hLoc(utc(D.lvp.depuis)!)} LT` : ''}</b></div></div>` : '';
+  const lvp = D?.lvp?.actif ? `<div class="fz on lvp"><i class="lvp-logo">${D.lvp.type === 'Pré-LVP' ? 'Pré-LVP' : 'LVP'}</i><div><b>${D.lvp.type === 'Pré-LVP' ? 'Pré-LVP' : 'Procédures par faible visibilité'} activées${D.lvp.depuis ? ` depuis ${hLoc(utc(D.lvp.depuis)!)} LT` : ''}</b></div></div>` : '';
   if (!l.length && !lvp) { band.hidden = true; band.innerHTML = ''; sc.classList.remove('avec-aal'); return; }
   band.innerHTML = lvp + l.map((f) => {
     const titre = f.aal ? (f.enCours ? 'Aire de trafic nord fermée' : 'Fermeture prévue de l’aire de trafic nord')
