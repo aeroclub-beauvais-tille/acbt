@@ -756,7 +756,7 @@ export function flotte() {
           + L('fl-nom', `depuis le ${hs.debut.slice(6, 8)}/${hs.debut.slice(4, 6)}`)
         : r
         ? L('fl-lbl', a.enCours ? 'Réservation en cours' : 'Prochaine réservation')
-          + L('fl-jour', jourTxt(r.debut.slice(0, 8)) + (r.duree ? ` · ${duree(r.duree)} de vol` : ''))
+          + L('fl-jour', jourTxt(r.debut.slice(0, 8)))
           + L('fl-gros', `${lireAg(r.debut).h} → ${lireAg(r.fin).h}`)
           + (qui(r) ? L('fl-nom', qui(r)) : '')
         : L('fl-lbl', 'Prochaine réservation') + L('fl-jour', 'dans les 7 jours') + L('fl-gros', 'Aucune');
@@ -775,7 +775,9 @@ export function flotte() {
       // Après la nuit aéro, l'avion peut rester libre (vol de nuit) : on regarde la réservation suivante du même jour
       const apres = !x ? null : (a.occupe ?? []).map((o) => jm(o.debut)).filter(([dj, dm]) => dj === x[0] && dm >= x[2]).sort((p, q) => p[1] - q[1])[0] ?? null;
       const suite = apres ? `libre jusqu’à ${hm(apres[1])}` : 'aucune réservation ensuite';
-      const creneau: [string, string] = !x ? ['', ''] : toutJour ? ['Toute la journée', apres ? suite : 'aucune réservation'] : finJour ? [`Dès ${hm(x[1])}`, suite] : [`${hm(x[1])} → ${hm(x[2])}`, duree(x[2] - x[1])];
+      // Libre dès maintenant (créneau d'aujourd'hui qui commence à l'heure actuelle) : « Dès maintenant » ou « Maintenant → 11:00 »
+      const tout_de_suite = !!x && x[0] === jourParis(new Date()) && x[1] <= minutesParis(new Date()) + 1 && !toutJour;
+      const creneau: [string, string] = !x ? ['', ''] : toutJour ? ['Toute la journée', apres ? suite : 'aucune réservation'] : finJour ? [tout_de_suite ? 'Dès maintenant' : `Dès ${hm(x[1])}`, suite] : [`${tout_de_suite ? 'Maintenant' : hm(x[1])} → ${hm(x[2])}`, duree(x[2] - x[1])];
       if (!hs) lignes.push(x ? ligne('Prochaine dispo. > 30\'', jourTxt(x[0]), creneau[0], creneau[1], 'fl-vert', 'dispo') : ligne('Prochaine dispo. > 30\'', 'dans les 7 jours', 'Aucune', '', 'fl-vert', 'dispo'));
       if (a.dernier) {
         const dd = lireAg(a.dernier.debut), ff = lireAg(a.dernier.fin);
