@@ -113,7 +113,7 @@ function soleil() {
   const sv = `<div class="sv"><div class="ac"><small>Aube civile</small><b>${t(e.aubeCivile)}</b></div><div class="ae"><small>Jour aéro.</small><b>${t(e.jourAero)}</b></div><div><small>Lever</small><b>${t(e.lever)}</b></div>`
     + `<div><small>Coucher</small><b>${t(e.coucher)}</b></div><div class="ae"><small>Nuit aéro.</small><b>${t(e.nuitAero)}</b></div><div class="ac"><small>Crépusc. civil</small><b>${t(e.crepuscule)}</b></div></div>`;
   const lg = '<span class="r lg2"><span><i style="background:#3d6fc4"></i>Jour</span><span><i style="background:linear-gradient(90deg,var(--civ1),var(--civ2))"></i>Crépuscule civil</span><span><i style="border:2px solid var(--yellow)"></i>Jour aéronautique</span><span><i style="background:repeating-linear-gradient(135deg,rgba(143,166,255,.6) 0 3px,transparent 3px 6px)"></i>Nuit</span></span>';
-  $('soleil').innerHTML = `<h2>Soleil · jour civil et aéronautique ${lg}</h2>${barre}${ax}${sv}`;
+  $('soleil').innerHTML = `<h2>Jour et nuit civils et aéro ${lg}</h2>${barre}${ax}${sv}`;
 }
 
 // Thème clair pendant le jour civil, sombre la nuit. Forçage : ?theme=clair|sombre dans l'adresse,
