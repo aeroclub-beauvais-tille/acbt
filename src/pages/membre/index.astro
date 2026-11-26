@@ -137,6 +137,7 @@ const outilsAdmin = [
   <main class="content">
     <!-- ACCUEIL -->
     <section class="panneau" id="accueil">
+      <div class="alertes-haut">
       <div class="lvp-banniere" id="lvp" hidden>
         <span class="lvp-logo" aria-hidden="true">LVP</span>
         <span class="maa-txt">
@@ -155,6 +156,7 @@ const outilsAdmin = [
             <span class="maa-pdf">PDF ↗</span>
           </a>
         ))}
+      </div>
       </div>
       <div class="snow-alerte" id="snow-alerte" hidden>
         <span class="maa-txt"><strong>SNOWTAM en vigueur</strong><span class="maa-num">état des pistes publié · voir l'onglet NOTAM</span></span>
@@ -537,6 +539,15 @@ const outilsAdmin = [
 
   /* MAA */
   #maa-zone { margin-bottom: 18px; display: grid; gap: 9px; }
+  /* Tablette et PC : LVP en premier puis les MAA, tous sur la même ligne */
+  .alertes-haut { display: contents; }
+  @media (min-width: 760px) {
+    .alertes-haut { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 9px; }
+    .alertes-haut:has(> :not([hidden])) { margin-bottom: 12px; }
+    .alertes-haut > #maa-zone:not([hidden]) { display: contents; }
+    .alertes-haut > .lvp-banniere { margin-bottom: 0; }
+    .alertes-haut .maa-txt strong { white-space: normal; } /* titre sur 2 lignes plutôt que coupé */
+  }
   /* Rien en cours : même bandeau que la TV (« Aucune alerte météo » en vert, le détail en texte normal) */
   .maa-rien { display: flex; align-items: center; gap: 10px; margin: 0 0 18px; padding: 11px 16px; border-radius: 999px; background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ink); font-size: .9rem; line-height: 1.35; }
   .maa-rien[hidden] { display: none; }
