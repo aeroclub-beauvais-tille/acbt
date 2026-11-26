@@ -308,8 +308,8 @@ const CARTE_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 // WINTEM animée : heure par heure (de maintenant à +8 h), puis niveau suivant (FL020, FL050, FL100).
 // Une image toutes les 1,1 s, la dernière heure tenue une image de plus ; l'écran dure le temps des trois niveaux.
 const PAS_ANIM = 1100;
-// WINTEM : rond jaune au centre ; le fond de carte n'a pas les villes, donc on écrit « Beauvais » à côté
-const LFOB_REPERE = '<div class="lfob"><i></i><span class="nom">Beauvais</span></div>';
+// WINTEM : rond jaune seul au centre (comme satellite et radar)
+const LFOB_REPERE = '<div class="lfob"><i></i></div>';
 let animFl = 0, animH = 0, animMinuterie = 0, frontsAffiches = '';
 function cartesAero() {
   const c = D?.cartes;
