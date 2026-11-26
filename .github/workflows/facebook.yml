@@ -11,13 +11,16 @@ name: Copier les publications Facebook en actus
 #
 # GitHub planifie en heure UTC, sans heure d'été : on prévoit les deux séries d'horaires
 # et la tâche s'arrête tout de suite (quelques secondes) quand ce n'est pas la bonne saison.
+# GitHub saute souvent des lancements planifiés (constaté : environ un sur deux) : chaque horaire a
+# un second essai 30 minutes plus tard, qui s'arrête tout de suite si la copie a déjà été faite.
+# Les passages arrêtés sont « annulés » (gris dans GitHub) et ne comptent pas comme des copies.
 # Le lancement à la main (bouton « Run workflow ») marche toujours, à toute heure.
 on:
   schedule:
-    # Heure d'hiver (Paris = UTC+1) : 9h, 13h, 16h, 19h, 23h
-    - cron: '7 8,12,15,18,22 * * *'
-    # Heure d'été (Paris = UTC+2) : 9h, 13h, 16h, 19h, 23h
-    - cron: '7 7,11,14,17,21 * * *'
+    # Heure d'hiver (Paris = UTC+1) : 9h, 13h, 16h, 19h, 23h (+ second essai à la demie)
+    - cron: '7,37 8,12,15,18,22 * * *'
+    # Heure d'été (Paris = UTC+2) : 9h, 13h, 16h, 19h, 23h (+ second essai à la demie)
+    - cron: '7,37 7,11,14,17,21 * * *'
   workflow_dispatch:
 
 permissions:
@@ -42,13 +45,23 @@ jobs:
           ok=true
           if [ -n "$planif" ]; then
             case "$planif" in
-              '7 8,12,15,18,22 * * *') [ "$decalage" = "+0100" ] || ok=false ;;
-              '7 7,11,14,17,21 * * *') [ "$decalage" = "+0200" ] || ok=false ;;
+              '7,37 8,12,15,18,22 * * *') [ "$decalage" = "+0100" ] || ok=false ;;
+              '7,37 7,11,14,17,21 * * *') [ "$decalage" = "+0200" ] || ok=false ;;
             esac
+            # Second essai : rien à faire si une copie a réussi (ou tourne) depuis moins de 50 minutes.
+            if [ "$ok" = true ]; then
+              depuis=$(date -u -d '-50 min' +%Y-%m-%dT%H:%M:%SZ)
+              deja=$(gh run list --repo "${{ github.repository }}" --workflow facebook.yml --limit 10 \
+                --json databaseId,status,conclusion,createdAt \
+                --jq "[.[] | select(.databaseId != ${{ github.run_id }} and .createdAt >= \"$depuis\" and (.conclusion == \"success\" or .status == \"in_progress\"))] | length")
+              [ "${deja:-0}" = 0 ] || { ok=false; echo "Copie déjà faite pour cet horaire."; }
+            fi
           fi
           echo "Paris : $(TZ=Europe/Paris date '+%H:%M %z'), lancement : $ok"
           echo "ok=$ok" >> "$GITHUB_OUTPUT"
-
+          if [ "$ok" = false ]; then gh run cancel ${{ github.run_id }} --repo "${{ github.repository }}"; sleep 60; fi
+        env:
+          GH_TOKEN: ${{ github.token }}
       - uses: actions/checkout@v4
         if: steps.heure.outputs.ok == 'true'
       - uses: actions/setup-node@v4
