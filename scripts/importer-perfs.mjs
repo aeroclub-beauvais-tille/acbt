@@ -73,6 +73,8 @@ try {
 
   let doc = lire('documentation.html').split('href="/icons/').join('href="icons/');
   let archives = lire('archives.html').split("fetch('/api/fiches").join(`fetch('${ARCHIVE}/api/fiches`);
+  // Connecté en admin dans l'espace membre : le mot de passe admin gardé sur l'appareil ouvre directement les archives
+  archives = archives.replace('</head>', '<script>try{if(!sessionStorage.getItem("acbt-archives-pw")){var a=localStorage.getItem("acbt-admin-alertes");if(a)sessionStorage.setItem("acbt-archives-pw",a);}}catch(e){}</script>\n</head>');
 
   rmSync(CIBLE, { recursive: true, force: true });
   mkdirSync(CIBLE, { recursive: true });
