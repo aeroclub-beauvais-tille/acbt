@@ -466,12 +466,21 @@ const modeles = { 'F-BTBJ': 'DR315', ...Object.fromEntries(avions.map((a) => [a.
   .carte { position: relative; flex: 1; border-radius: 12px; overflow: hidden; background: #0b1430; }
   .carte img { position: absolute; left: 50%; top: 50%; width: 1060px; height: 1060px; transform: translate(-50%, -50%); }
   .carte img.fond { filter: brightness(.55) contrast(1.1); }
+  /* Jour : fond de carte clair (pluie observée, prévision) ; nuit : fond sombre */
+  .carte img.fond-c { display: none; filter: none; }
+  [data-theme="clair"] .carte img.fond-c { display: block; }
+  [data-theme="clair"] .carte img.fond-s { display: none; }
+  [data-theme="clair"] #rad, [data-theme="clair"] #aro { background: #eef1f6; }
+  [data-theme="clair"] #rad .pt, [data-theme="clair"] #aro .pt { color: #0b1530; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+  [data-theme="clair"] #rad .pt::before, [data-theme="clair"] #aro .pt::before { background: #0b1530; }
   /* Passage direct d'une prise de vue à la suivante (sans fondu) */
   .carte img.f { opacity: 0; } .carte img.f.on { opacity: 1; }
   .carte .pt { position: absolute; transform: translate(-50%, -50%); font-size: 14px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px #000; white-space: nowrap; z-index: 3; }
   .carte .pt::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #fff; margin-right: 6px; vertical-align: middle; }
   .carte .lfob, .ca-img .lfob { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 4; display: grid; justify-items: center; gap: 4px; }
   .carte .lfob i, .ca-img .lfob i { width: 18px; height: 18px; border-radius: 50%; border: 4px solid var(--yellow); background: rgba(255,184,31,.35); }
+  /* Rond jaune seul ; sur la WINTEM, « Beauvais » écrit à droite du rond */
+  .ca-img .lfob span.nom { position: absolute; left: calc(100% + 6px); top: 50%; transform: translateY(-50%); font-family: inherit; font-size: 14px; background: none; box-shadow: none; padding: 0; color: var(--ink); text-shadow: 0 0 3px var(--card), 0 0 3px var(--card); white-space: nowrap; }
   .carte .lfob span, .ca-img .lfob span { font-family: var(--mono); font-weight: 700; font-size: 15px; color: #fff; background: #0b1530; box-shadow: 0 0 0 1px rgba(255,255,255,.25); padding: 1px 8px; border-radius: 6px; }
   .carte .msg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-weight: 600; z-index: 5; }
   .anim { display: flex; align-items: center; gap: 14px; margin-top: 12px; font-family: var(--mono); font-size: 15px; color: var(--ink2); }
