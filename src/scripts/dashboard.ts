@@ -762,9 +762,11 @@ function decor(id: string, avecVilles: boolean) {
   return `${villes}<div class="lfob"><i></i><span>LFOB</span></div><div class="msg" id="${id}-msg"></div>`;
 }
 
-function preparer(id: string, fond: string, dessus: string, villes: boolean) {
+// Fond de carte : version sombre (nuit) et claire (jour), l'une ou l'autre affichée selon le thème
+const fonds = (f: (ton: 'dark' | 'light') => string) => `<img class="fond fond-s" src="${f('dark')}" alt=""><img class="fond fond-c" src="${f('light')}" alt="">`;
+function preparer(id: string, fond: ((ton: 'dark' | 'light') => string) | null, dessus: string, villes: boolean) {
   const c = $(id);
-  c.innerHTML = (fond ? `<img class="fond" src="${fond}" alt="">` : '') + `<div class="cadres"></div>` + (dessus ? `<img src="${dessus}" alt="" style="z-index:2">` : '') + decor(id, villes);
+  c.innerHTML = (fond ? fonds(fond) : '') + `<div class="cadres"></div>` + (dessus ? `<img src="${dessus}" alt="" style="z-index:2">` : '') + decor(id, villes);
 }
 
 function animer(id: string, cadres: { t: number; src: string }[]) {
@@ -795,7 +797,7 @@ function animer(id: string, cadres: { t: number; src: string }[]) {
       const d = new Date(ok[n.i].t);
       // Échéance « +2 h 30 » arrondie à 10 min ; la fin de la barre = la dernière image vraiment disponible
       const ech = (t: number) => { const m = Math.max(0, Math.round((t - Date.now()) / 600000) * 10); return m < 60 ? `+${m} min` : `+${Math.floor(m / 60)} h${m % 60 ? ` ${p2(m % 60)}` : ''}`; };
-      $(`${id}-h`).textContent = id === 'aro' ? `${ech(ok[n.i].t)} · ${heureLocale(d)} locale` : `${hUtc(d)} UTC`;
+      $(`${id}-h`).textContent = id === 'aro' ? `${ech(ok[n.i].t)} · ${heureLocale(d)} LT` : `${hUtc(d)} UTC`;
       if (id === 'aro') { const f = document.getElementById('aro-fin'); if (f) f.textContent = ech(ok[ok.length - 1].t); }
       ($(`${id}-b`) as HTMLElement).style.width = `${ok.length > 1 ? (n.i / (ok.length - 1)) * 100 : 100}%`;
     }
@@ -834,11 +836,11 @@ function arome() {
   $('aro-p').hidden = false;
   document.querySelector('.e4')!.classList.add('trois');
   if (!aromePret) {
-    const fond = `https://view.eumetsat.int/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=osmgray:dark,osmgray:dark_labels&styles=&crs=EPSG:4326&bbox=${AR_BBOX}&width=1024&height=1024&format=image/png`;
+    const fond = (ton: string) => `https://view.eumetsat.int/geoserver/ows?service=WMS&version=1.3.0&request=GetMap&layers=osmgray:${ton},osmgray:${ton}_labels&styles=&crs=EPSG:4326&bbox=${AR_BBOX}&width=1024&height=1024&format=image/png`;
     const c = $('aro');
     const k = TAILLE_IMG / 2;
     const villes = VILLES.map(([nm, la, lo]) => `<span class="pt" style="left:calc(50% + ${(((lo - LFOB.lon) / AR.dLon) * k).toFixed(0)}px);top:calc(50% - ${(((la - LFOB.lat) / AR.dLat) * k).toFixed(0)}px)">${nm}</span>`).join('');
-    c.innerHTML = `<img class="fond" src="${fond}" alt=""><div class="cadres"></div>${villes}<div class="lfob"><i></i><span>LFOB</span></div><div class="msg" id="aro-msg"></div>`;
+    c.innerHTML = `${fonds(fond)}<div class="cadres"></div>${villes}<div class="lfob"><i></i><span>LFOB</span></div><div class="msg" id="aro-msg"></div>`;
     aromePret = true;
   }
   const base = Math.floor(Date.now() / 1800000) * 1800000;
@@ -851,8 +853,8 @@ function arome() {
 }
 
 function imagesInit() {
-  preparer('sat', '', wms('backgrounds:ne_10m_coastline,osmgray:ne_10m_admin_0_boundary_lines_land', 'image/png', '&transparent=true'), true);
-  preparer('rad', wms('osmgray:dark,osmgray:dark_labels', 'image/png'), '', false);
+  preparer('sat', null, wms('backgrounds:ne_10m_coastline,osmgray:ne_10m_admin_0_boundary_lines_land', 'image/png', '&transparent=true'), true);
+  preparer('rad', (ton) => wms(`osmgray:${ton},osmgray:${ton}_labels`, 'image/png'), '', false);
   satellite();
   radar();
   arome();

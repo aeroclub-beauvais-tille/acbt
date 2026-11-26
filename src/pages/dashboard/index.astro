@@ -466,6 +466,13 @@ const modeles = { 'F-BTBJ': 'DR315', ...Object.fromEntries(avions.map((a) => [a.
   .carte { position: relative; flex: 1; border-radius: 12px; overflow: hidden; background: #0b1430; }
   .carte img { position: absolute; left: 50%; top: 50%; width: 1060px; height: 1060px; transform: translate(-50%, -50%); }
   .carte img.fond { filter: brightness(.55) contrast(1.1); }
+  /* Jour : fond de carte clair (pluie observée, prévision) ; nuit : fond sombre */
+  .carte img.fond-c { display: none; filter: none; }
+  [data-theme="clair"] .carte img.fond-c { display: block; }
+  [data-theme="clair"] .carte img.fond-s { display: none; }
+  [data-theme="clair"] #rad, [data-theme="clair"] #aro { background: #eef1f6; }
+  [data-theme="clair"] #rad .pt, [data-theme="clair"] #aro .pt { color: #0b1530; text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+  [data-theme="clair"] #rad .pt::before, [data-theme="clair"] #aro .pt::before { background: #0b1530; }
   /* Passage direct d'une prise de vue à la suivante (sans fondu) */
   .carte img.f { opacity: 0; } .carte img.f.on { opacity: 1; }
   .carte .pt { position: absolute; transform: translate(-50%, -50%); font-size: 14px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px #000; white-space: nowrap; z-index: 3; }
