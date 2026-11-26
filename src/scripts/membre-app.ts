@@ -196,14 +196,18 @@ function majRien() {
  * Chaque bulletin ajoute un bandeau comme ceux écrits dans la page, puis maa() décide lesquels montrer.
  * Sans réseau (ou sur la maquette GitHub, sans serveur), on garde la dernière liste reçue sur l'appareil.
  */
-/** Logo rouge « LVP » tant que l'aéroport n'a pas envoyé le mail de désactivation (LVP ou Pré-LVP, même logo). */
-function lvp(etat?: { actif?: boolean; depuis?: string } | null) {
+/** Logo rouge « LVP » tant que l'aéroport n'a pas envoyé le mail de désactivation (LVP ou Pré-LVP, précisé dans le logo et le texte). */
+function lvp(etat?: { actif?: boolean; type?: string; depuis?: string } | null) {
   const el = document.querySelector<HTMLElement>('#lvp');
   if (!el || etat == null) return;
   el.hidden = !etat.actif;
   const d = etat.depuis ? new Date(etat.depuis) : null;
   const txt = el.querySelector<HTMLElement>('#lvp-depuis');
-  if (txt && d && !isNaN(+d)) txt.textContent = `LVP activées depuis ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })} LT`;
+  const type = etat.type === 'Pré-LVP' ? 'Pré-LVP' : 'LVP';
+  const logo = el.querySelector<HTMLElement>('.lvp-logo');
+  if (logo) logo.textContent = type;
+  if (txt) txt.textContent = `${type} activées`;
+  if (txt && d && !isNaN(+d)) txt.textContent = `${type} activées depuis ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' })} LT`;
 }
 
 type MaaEnLigne = { id: string; numero?: string; motif?: string; debut?: string; fin?: string };

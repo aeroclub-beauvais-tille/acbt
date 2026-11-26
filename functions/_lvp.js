@@ -37,11 +37,12 @@ export function lireLvp(sujet, texte, recu = new Date()) {
   return null;
 }
 
-/** Enregistre l'activation ou la désactivation (un mail plus ancien que l'état connu est ignoré). */
+/** Enregistre l'activation ou la désactivation : l'heure affichée est toujours celle du DERNIER mail reçu
+ * (à la réouverture du terrain, l'aéroport renvoie une activation ; un mail plus ancien que l'état connu est ignoré). */
 export async function appliquerLvp(db, lu) {
   await tableLvp(db);
   const r = await db.prepare(`INSERT INTO lvp (cle, actif, depuis, maj, vu) VALUES (?1, ?2, ?3, ?3, ?4)
-    ON CONFLICT(cle) DO UPDATE SET actif = ?2, depuis = CASE WHEN ?2 = 1 AND lvp.actif = 1 THEN lvp.depuis ELSE ?3 END, maj = ?3, vu = ?4
+    ON CONFLICT(cle) DO UPDATE SET actif = ?2, depuis = ?3, maj = ?3, vu = ?4
     WHERE lvp.maj <= ?3`).bind(lu.cle, lu.actif ? 1 : 0, lu.date, new Date().toISOString()).run();
   return r.meta.changes > 0;
 }
@@ -50,10 +51,10 @@ export async function appliquerLvp(db, lu) {
 export async function etatLvp(db) {
   try {
     await tableLvp(db);
-    const { results } = await db.prepare('SELECT cle, actif, depuis, vu FROM lvp').all();
+    const { results } = await db.prepare('SELECT cle, actif, depuis, maj, vu FROM lvp').all();
     const n = Date.now();
     const en = (cle) => (results || []).find((r) => r.cle === cle && r.actif && n < finAuto(r.vu || r.depuis));
     const l = en('lvp') || en('prelvp');
-    return l ? { actif: true, type: l.cle === 'lvp' ? 'LVP' : 'Pré-LVP', depuis: l.depuis } : { actif: false };
+    return l ? { actif: true, type: l.cle === 'lvp' ? 'LVP' : 'Pré-LVP', depuis: l.maj || l.depuis } : { actif: false }; // depuis = heure du dernier mail reçu
   } catch { return null; }
 }
