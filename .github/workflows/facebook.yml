@@ -23,6 +23,7 @@ on:
 permissions:
   contents: write
   actions: write
+  id-token: write   # pour signer l'envoi de l'état au site (aucun jeton à gérer)
 
 concurrency:
   group: facebook
@@ -47,10 +48,7 @@ jobs:
           fi
           echo "Paris : $(TZ=Europe/Paris date '+%H:%M %z'), lancement : $ok"
           echo "ok=$ok" >> "$GITHUB_OUTPUT"
-          # Hors saison : la tâche est annulée, pour que l'onglet Facebook de l'espace membre l'ignore.
-          if [ "$ok" = false ]; then gh run cancel ${{ github.run_id }} --repo ${{ github.repository }}; sleep 30; fi
-        env:
-          GH_TOKEN: ${{ github.token }}
+
       - uses: actions/checkout@v4
         if: steps.heure.outputs.ok == 'true'
       - uses: actions/setup-node@v4
@@ -79,3 +77,17 @@ jobs:
         run: gh workflow run cloudflare.yml --ref main
         env:
           GH_TOKEN: ${{ github.token }}
+      # État envoyé au site, pour la page « Actus Facebook » de l'espace membre (onglet Admin).
+      # GitHub signe l'envoi lui-même : rien à régler, rien qui expire.
+      - name: Envoyer l'état au site
+        if: always() && steps.heure.outputs.ok == 'true'
+        continue-on-error: true
+        run: |
+          jeton=$(curl -sf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=acbt60-facebook" | jq -r .value)
+          corps=$(node -e '
+            const fs = require("fs");
+            let r = {}; try { r = JSON.parse(fs.readFileSync("src/data/facebook-copiees.json", "utf8")); } catch {}
+            const actus = Object.values(r).filter((v) => typeof v === "string").sort();
+            console.log(JSON.stringify({ ok: process.argv[1] === "success", ajoutees: Number(process.argv[2]) || 0, total: actus.length, derniereActu: actus.at(-1) || null }));
+          ' "${{ steps.import.outcome }}" "${{ steps.import.outputs.ajoutees }}")
+          curl -sS --fail-with-body -X POST https://acbt60.fr/api/facebook-etat -H "Authorization: Bearer $jeton" -H 'Content-Type: application/json' -d "$corps"

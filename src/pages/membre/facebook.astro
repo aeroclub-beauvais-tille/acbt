@@ -67,7 +67,7 @@ import { url } from '../../lib/utils';
       const d = await (await fetch(API, { credentials: 'same-origin', cache: 'no-store' })).json();
       if (!d.ok) { statut.dataset.e = 'inconnu'; st.textContent = d.erreur || 'État indisponible.'; return; }
       statut.dataset.e = d.enCours ? 'cours' : d.actif ? 'ok' : d.actif === false ? 'ko' : 'inconnu';
-      st.textContent = d.enCours ? 'Copie en cours…' : d.actif ? 'Actif' : d.actif === false ? 'Coupé : la dernière vérification a échoué (clé Facebook à refaire ?)' : 'Pas encore de vérification';
+      st.textContent = d.enCours ? 'Copie en cours…' : d.actif ? 'Actif' : d.actif === false ? 'Coupé : la dernière vérification a échoué (clé Facebook à refaire ?)' : 'En attente de la prochaine vérification';
       $('i-derniere').textContent = p(d.derniere);
       $('i-reussie').textContent = p(d.derniereReussie);
       $('i-total').textContent = String(d.total ?? '—');
