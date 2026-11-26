@@ -798,7 +798,7 @@ function animer(id: string, cadres: { t: number; src: string }[]) {
       const d = new Date(ok[n.i].t);
       // Échéance « +2 h 30 » arrondie à 10 min ; la fin de la barre = la dernière image vraiment disponible
       const ech = (t: number) => { const m = Math.max(0, Math.round((t - Date.now()) / 600000) * 10); return m < 60 ? `+${m} min` : `+${Math.floor(m / 60)} h${m % 60 ? ` ${p2(m % 60)}` : ''}`; };
-      $(`${id}-h`).textContent = id === 'aro' ? `${ech(ok[n.i].t)} · ${heureLocale(d)} LT` : `${hUtc(d)} UTC`;
+      $(`${id}-h`).textContent = id === 'aro' ? `${ech(ok[n.i].t)} · ${hUtc(d)} UTC` : `${hUtc(d)} UTC`;
       if (id === 'aro') { const f = document.getElementById('aro-fin'); if (f) f.textContent = ech(ok[ok.length - 1].t); }
       ($(`${id}-b`) as HTMLElement).style.width = `${ok.length > 1 ? (n.i / (ok.length - 1)) * 100 : 100}%`;
     }
