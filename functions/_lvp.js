@@ -53,8 +53,10 @@ export async function etatLvp(db) {
     await tableLvp(db);
     const { results } = await db.prepare('SELECT cle, actif, depuis, maj, vu FROM lvp').all();
     const n = Date.now();
-    const en = (cle) => (results || []).find((r) => r.cle === cle && r.actif && n < finAuto(r.vu || r.depuis));
-    const l = en('lvp') || en('prelvp');
+    // Seul compte le DERNIER mail reçu, LVP et Pré-LVP confondus (règle d'Hugo) :
+    // une activation affiche son type, une désactivation (LVP ou Pré-LVP) éteint tout.
+    const dernier = (results || []).reduce((a, r) => (!a || String(r.maj) > String(a.maj) ? r : a), null);
+    const l = dernier && dernier.actif && n < finAuto(dernier.vu || dernier.depuis) ? dernier : null;
     return l ? { actif: true, type: l.cle === 'lvp' ? 'LVP' : 'Pré-LVP', depuis: l.maj || l.depuis } : { actif: false }; // depuis = heure du dernier mail reçu
   } catch { return null; }
 }
