@@ -203,10 +203,6 @@ const outilsAdmin = [
 
         <div class="carte-metar carte-taf"><Taf /></div>
 
-        <a class="carte-aeroweb" href="https://aeroweb.meteo.fr/#/login" target="_blank" rel="noopener">
-          <span><b>TEMSI et WINTEM sur AEROWEB</b><small>Nouvelle version. Nouveau compte requis.</small></span>
-          <span class="fl" aria-hidden="true">↗</span>
-        </a>
 
         <div class="bloc-voisins">
           <h2 class="bt bt-suite">METAR voisins <span class="bt-nb" id="voisins-h"></span></h2>
@@ -564,11 +560,6 @@ const outilsAdmin = [
 
   .carte-metar { padding: 15px 16px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 14px; }
   .carte-taf { margin-top: 14px; }
-  .carte-aeroweb { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding: 13px 16px; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 14px; color: inherit; text-decoration: none; }
-  .carte-aeroweb b { display: block; font-size: 15px; }
-  .carte-aeroweb small { display: block; margin-top: 2px; color: var(--muted, #55607a); font-size: 13px; }
-  .carte-aeroweb .fl { font-size: 18px; color: var(--accent); }
-  .carte-aeroweb:hover { border-color: var(--accent); }
 
   /* Vent et pistes : même rose des vents et mêmes composantes que le tableau de bord TV */
   .bt-suite { margin-top: 22px; }
