@@ -308,7 +308,8 @@ const CARTE_IC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 // WINTEM animée : heure par heure (de maintenant à +8 h), puis niveau suivant (FL020, FL050, FL100).
 // Une image toutes les 1,1 s, la dernière heure tenue une image de plus ; l'écran dure le temps des trois niveaux.
 const PAS_ANIM = 1100;
-const LFOB_REPERE = '<div class="lfob"><i></i><span>LFOB</span></div>'; // même repère que satellite et radar, au centre de la carte
+// WINTEM : rond jaune au centre ; le fond de carte n'a pas les villes, donc on écrit « Beauvais » à côté
+const LFOB_REPERE = '<div class="lfob"><i></i><span class="nom">Beauvais</span></div>';
 let animFl = 0, animH = 0, animMinuterie = 0, frontsAffiches = '';
 function cartesAero() {
   const c = D?.cartes;
@@ -759,7 +760,7 @@ const anims: Record<string, Anim> = {};
 function decor(id: string, avecVilles: boolean) {
   const k = TAILLE_IMG / (2 * DEMI);
   const villes = avecVilles ? VILLES.map(([n, la, lo]) => { const [x, y] = merc(la, lo); return `<span class="pt" style="left:calc(50% + ${((x - CX) * k).toFixed(0)}px);top:calc(50% - ${((y - CY) * k).toFixed(0)}px)">${n}</span>`; }).join('') : '';
-  return `${villes}<div class="lfob"><i></i><span>LFOB</span></div><div class="msg" id="${id}-msg"></div>`;
+  return `${villes}<div class="lfob"><i></i></div><div class="msg" id="${id}-msg"></div>`;
 }
 
 // Fond de carte : version sombre (nuit) et claire (jour), l'une ou l'autre affichée selon le thème
@@ -840,7 +841,7 @@ function arome() {
     const c = $('aro');
     const k = TAILLE_IMG / 2;
     const villes = VILLES.map(([nm, la, lo]) => `<span class="pt" style="left:calc(50% + ${(((lo - LFOB.lon) / AR.dLon) * k).toFixed(0)}px);top:calc(50% - ${(((la - LFOB.lat) / AR.dLat) * k).toFixed(0)}px)">${nm}</span>`).join('');
-    c.innerHTML = `${fonds(fond)}<div class="cadres"></div>${villes}<div class="lfob"><i></i><span>LFOB</span></div><div class="msg" id="aro-msg"></div>`;
+    c.innerHTML = `${fonds(fond)}<div class="cadres"></div>${villes}<div class="lfob"><i></i></div><div class="msg" id="aro-msg"></div>`;
     aromePret = true;
   }
   const base = Math.floor(Date.now() / 1800000) * 1800000;
