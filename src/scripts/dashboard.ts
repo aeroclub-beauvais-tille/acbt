@@ -939,7 +939,7 @@ function alerteAAL() {
   const l = fermetures().slice(0, 2);
   const sc = $('scene'), band = $('aal');
   // LVP : bandeau rouge toujours en premier, au-dessus des fermetures
-  const lvp = D?.lvp?.actif ? `<div class="fz on lvp"><i class="lvp-logo">${D.lvp.type === 'Pré-LVP' ? 'Pré-LVP' : 'LVP'}</i><div><b>${D.lvp.type === 'Pré-LVP' ? 'Pré-LVP' : 'Procédures par faible visibilité'} activées${D.lvp.depuis ? ` depuis ${hLoc(utc(D.lvp.depuis)!)} LT` : ''}</b></div></div>` : '';
+  const lvp = D?.lvp?.actif ? `<div class="fz on lvp"><i class="lvp-logo">LVP</i><div><b>${D.lvp.type === 'Pré-LVP' ? 'Pré-LVP' : 'Procédures par faible visibilité'} activées${D.lvp.depuis ? ` depuis ${hLoc(utc(D.lvp.depuis)!)} LT` : ''}</b></div></div>` : '';
   if (!l.length && !lvp) { band.hidden = true; band.innerHTML = ''; sc.classList.remove('avec-aal'); return; }
   band.innerHTML = lvp + l.map((f) => {
     const titre = f.aal ? (f.enCours ? 'Aire de trafic nord fermée' : 'Fermeture prévue de l’aire de trafic nord')
