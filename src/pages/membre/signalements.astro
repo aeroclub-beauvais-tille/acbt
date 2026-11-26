@@ -27,17 +27,12 @@ const avions = (await getCollection('avions', (a) => a.data.actif))
       <p class="etat" id="etat">Chargement…</p>
       <ol class="liste" id="liste"></ol>
 
-      <section class="carte alertes" id="alertes">
+      <!-- Visible uniquement en mode admin (mot de passe admin gardé sur l'appareil) -->
+      <section class="carte alertes" id="alertes" hidden>
         <h2>Alertes pour les responsables</h2>
-        <p class="sous" id="al-etat">Recevez une notification sur ce téléphone à chaque nouveau signalement.</p>
-        <div id="al-form">
-          <label for="al-mdp">Mot de passe admin</label>
-          <input id="al-mdp" type="password" autocomplete="current-password" />
-          <label for="al-nom">Votre nom</label>
-          <input id="al-nom" type="text" autocomplete="name" maxlength="60" />
-        </div>
+        <p class="sous" id="al-etat">Une notification sur ce téléphone à chaque nouveau signalement, pour tous les avions.</p>
         <p class="erreur" id="al-erreur" role="alert" hidden></p>
-        <button class="pri" type="button" id="al-bouton">Recevoir les alertes sur ce téléphone</button>
+        <button class="pri" type="button" id="al-bouton">Recevoir une notification à chaque signalement</button>
         <button class="sec" type="button" id="al-test" hidden>Envoyer une notification de test</button>
         <p class="sous" id="al-resultat" role="status" hidden></p>
         <p class="note-ios" id="al-ios" hidden>Sur iPhone, ajoutez d'abord l'appli à l'écran d'accueil (Partager, puis « Sur l'écran d'accueil ») et ouvrez-la depuis son icône.</p>
@@ -49,6 +44,8 @@ const avions = (await getCollection('avions', (a) => a.data.actif))
 <script>
   const ecran = document.getElementById('ecran')!;
   const API = ecran.dataset.api!;
+  // Mode admin : mot de passe admin gardé sur l'appareil (boutons « Marquer traité » et alertes)
+  let admin = false; try { admin = !!localStorage.getItem('acbt-admin-alertes'); } catch { /* rien */ }
   const ALERTES = ecran.dataset.alertes!;
   const liste = document.getElementById('liste')!;
   const etat = document.getElementById('etat')!;
@@ -71,7 +68,7 @@ const avions = (await getCollection('avions', (a) => a.data.actif))
         <p class="sig-texte">${esc(s.probleme).replace(/\n/g, '<br>')}</p>
         ${s.photos.length ? `<div class="sig-photos">${s.photos.map((p) => `<a href="${API}/photo/${p}" target="_blank" rel="noopener"><img src="${API}/photo/${p}" alt="Photo jointe" loading="lazy"></a>`).join('')}</div>` : ''}
         <div class="sig-pied"><span>${s.nom ? esc(s.nom) + ' · ' : ''}${quand(s.date)}</span>
-          <button type="button" class="sig-statut" data-id="${s.id}" data-vers="${s.statut === 'traite' ? 'ouvert' : 'traite'}">${s.statut === 'traite' ? 'Rouvrir' : 'Marquer traité'}</button></div>
+          ${admin ? `<button type="button" class="sig-statut" data-id="${s.id}" data-vers="${s.statut === 'traite' ? 'ouvert' : 'traite'}">${s.statut === 'traite' ? 'Rouvrir' : 'Marquer traité'}</button>` : ''}</div>
       </li>`).join('');
     if (location.hash) document.querySelector(location.hash)?.scrollIntoView({ block: 'center' });
   }
@@ -99,14 +96,7 @@ const avions = (await getCollection('avions', (a) => a.data.actif))
     if (!b) return;
     let mdp = '';
     try { mdp = localStorage.getItem('acbt-admin-alertes') || ''; } catch { /* rien */ }
-    mdp = mdp || (document.getElementById('al-mdp') as HTMLInputElement).value.trim();
-    if (!mdp) {
-      const zone = document.getElementById('alertes')!;
-      zone.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      (document.getElementById('al-mdp') as HTMLInputElement).focus();
-      montrerErreur('Saisissez le mot de passe admin ici, puis touchez à nouveau « Marquer traité ».');
-      return;
-    }
+    if (!mdp) return;
     b.disabled = true;
     const r = await fetch(API, { method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: Number(b.dataset.id), statut: b.dataset.vers, motDePasse: mdp }) }).catch(() => null);
     if (r && r.ok) { try { localStorage.setItem('acbt-admin-alertes', mdp); } catch { /* rien */ } await charger(); }
@@ -116,7 +106,8 @@ const avions = (await getCollection('avions', (a) => a.data.actif))
   // ---- Alertes sur ce téléphone ----
   const bouton = document.getElementById('al-bouton') as HTMLButtonElement;
   const alEtat = document.getElementById('al-etat')!;
-  const alForm = document.getElementById('al-form')!;
+  const mdpAdmin = () => { try { return localStorage.getItem('acbt-admin-alertes') || ''; } catch { return ''; } };
+  if (mdpAdmin()) document.getElementById('alertes')!.hidden = false;
   const alErr = document.getElementById('al-erreur')!;
   const testBtn = document.getElementById('al-test') as HTMLButtonElement;
   const resultat = document.getElementById('al-resultat')!;
@@ -131,9 +122,8 @@ const avions = (await getCollection('avions', (a) => a.data.actif))
       navigator.serviceWorker.register(ecran.dataset.sw!, { scope: ecran.dataset.racine, updateViaCache: 'none' });
   }
   async function majEtat() {
-    try { (document.getElementById('al-nom') as HTMLInputElement).value = localStorage.getItem('acbt-nom') || ''; } catch { /* rien */ }
     if (!('PushManager' in window) || !('serviceWorker' in navigator)) {
-      bouton.hidden = true; alForm.hidden = true;
+      bouton.hidden = true;
       alEtat.textContent = "Ce navigateur ne peut pas recevoir de notifications.";
       document.getElementById('al-ios')!.hidden = !(ios && !installee);
       return;
@@ -143,10 +133,10 @@ const avions = (await getCollection('avions', (a) => a.data.actif))
     testBtn.hidden = !sub;
     if (sub) {
       alEtat.textContent = 'Ce téléphone reçoit les alertes à chaque nouveau signalement.';
-      alForm.hidden = true; bouton.textContent = 'Ne plus recevoir les alertes'; bouton.dataset.mode = 'stop';
+      bouton.textContent = 'Ne plus recevoir les notifications'; bouton.dataset.mode = 'stop';
     } else {
-      alEtat.textContent = 'Recevez une notification sur ce téléphone à chaque nouveau signalement.';
-      alForm.hidden = false; bouton.textContent = 'Recevoir les alertes sur ce téléphone'; bouton.dataset.mode = 'go';
+      alEtat.textContent = 'Une notification sur ce téléphone à chaque nouveau signalement, pour tous les avions.';
+      bouton.textContent = 'Recevoir une notification à chaque signalement'; bouton.dataset.mode = 'go';
     }
   }
   bouton.addEventListener('click', async () => {
@@ -163,9 +153,9 @@ const avions = (await getCollection('avions', (a) => a.data.actif))
           await sub.unsubscribe();
         }
       } else {
-        const mdp = (document.getElementById('al-mdp') as HTMLInputElement).value.trim();
-        const nom = (document.getElementById('al-nom') as HTMLInputElement).value.trim();
-        if (!mdp) { montrerErreur('Saisissez le mot de passe admin.'); return; }
+        const mdp = mdpAdmin();
+        let nom = ''; try { nom = localStorage.getItem('acbt-nom') || ''; } catch { /* rien */ }
+        if (!mdp) { montrerErreur('Passez en mode admin pour activer les notifications.'); return; }
         if ((await Notification.requestPermission()) !== 'granted') { montrerErreur('Les notifications sont refusées pour ce site. Autorisez-les dans les réglages du téléphone, puis réessayez.'); return; }
         const { cle } = await (await fetch(ALERTES, { credentials: 'same-origin', cache: 'no-store' })).json();
         let sub = await reg.pushManager.getSubscription();
@@ -173,10 +163,9 @@ const avions = (await getCollection('avions', (a) => a.data.actif))
         const r = await fetch(ALERTES, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ abonnement: sub.toJSON(), motDePasse: mdp, nom }) });
         if (!r.ok) {
           await sub.unsubscribe();
-          montrerErreur(r.status === 401 ? 'Mot de passe admin incorrect.' : "L'inscription n'a pas abouti.");
+          montrerErreur(r.status === 401 ? 'Mot de passe admin incorrect : repassez en mode admin.' : "L'inscription n'a pas abouti.");
           return;
         }
-        try { localStorage.setItem('acbt-admin-alertes', mdp); if (nom) localStorage.setItem('acbt-nom', nom); } catch { /* rien */ }
       }
     } catch {
       montrerErreur(ios && !installee ? "Sur iPhone, ouvrez l'appli depuis son icône sur l'écran d'accueil pour activer les alertes." : "L'activation n'a pas abouti.");
@@ -193,8 +182,7 @@ const avions = (await getCollection('avions', (a) => a.data.actif))
     alErr.hidden = true; resultat.hidden = true;
     let mdp = '';
     try { mdp = localStorage.getItem('acbt-admin-alertes') || ''; } catch { /* rien */ }
-    mdp = mdp || (document.getElementById('al-mdp') as HTMLInputElement).value.trim();
-    if (!mdp) { alForm.hidden = false; montrerErreur('Saisissez le mot de passe admin, puis touchez à nouveau « Envoyer une notification de test ».'); return; }
+    if (!mdp) { montrerErreur('Passez en mode admin pour envoyer un test.'); return; }
     testBtn.disabled = true;
     try {
       if (Notification.permission !== 'granted') { montrerErreur('Les notifications sont coupées pour cette appli dans les réglages du téléphone.'); return; }
