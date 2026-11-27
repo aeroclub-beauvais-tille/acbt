@@ -91,8 +91,8 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
   </section>
   <section class="section">
     <div class="container">
-      <span class="eyebrow">Infos utiles</span>
-      <h2>Liens pratiques</h2>
+      <span class="eyebrow">À découvrir</span>
+      <h2>Liens utiles</h2>
       <div class="liens">
         {liens.map((l) => <a href={url(l.href)}><i set:html={ico(l.svg)} /><span><b>{l.titre}</b>{l.texte}</span><em aria-hidden="true">→</em></a>)}
       </div>
