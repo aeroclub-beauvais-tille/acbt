@@ -36,7 +36,10 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
       <span class="eyebrow">Écrire au club</span>
       <h2>Envoyez-nous un message</h2>
       <form id="contact" class="card" data-reveal="left"><div class="card-body">
-        <label><span>Nom et prénom <span class="oblig" aria-hidden="true">*</span></span><input name="nom" required /></label>
+        <div class="duo">
+          <label><span>Nom <span class="oblig" aria-hidden="true">*</span></span><input name="nom" required autocomplete="family-name" autocapitalize="characters" /></label>
+          <label><span>Prénom <span class="oblig" aria-hidden="true">*</span></span><input name="prenom" required autocomplete="given-name" autocapitalize="words" /></label>
+        </div>
         <label><span>E-mail <span class="oblig" aria-hidden="true">*</span></span><input type="email" name="email" required /></label>
         <fieldset class="rappel">
           <legend>Comment préférez-vous être recontacté ?</legend>
@@ -134,13 +137,18 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
   };
   form.querySelectorAll('input[name=rappel]').forEach((r) => r.addEventListener('change', majRappel));
   majRappel();
+  // Nom tout en majuscules ; prénom avec seulement la première lettre en majuscule (Jean-Pierre, Marie Claire)
+  const garderCurseur = (el, v) => { const p = el.selectionStart; el.value = v; try { el.setSelectionRange(p, p); } catch {} };
+  const prenomPropre = (v) => v.toLocaleLowerCase('fr-FR').replace(/(^|[\s'’-])(\p{L})/gu, (_, sep, l) => sep + l.toLocaleUpperCase('fr-FR'));
+  form.nom.addEventListener('input', () => garderCurseur(form.nom, form.nom.value.toLocaleUpperCase('fr-FR')));
+  form.prenom.addEventListener('input', () => garderCurseur(form.prenom, prenomPropre(form.prenom.value)));
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = new FormData(form);
     const visible = (n) => !form[n].closest('label').hidden;
     const detail = () => [visible('formule') && `Formule : ${f.get('formule')}`, visible('creneau') && f.get('creneau') && `Créneaux souhaités : ${f.get('creneau')}`].filter(Boolean).map((x) => x + '\n').join('') + (visible('formule') ? '\n' : '');
     if (!cle) {
-      const body = `${detail()}${f.get('message')}\n\n${f.get('nom')}\n${f.get('email')}\n${f.get('tel') || ''}\nÀ recontacter : ${f.get('rappel')}`;
+      const body = `${detail()}${f.get('message')}\n\n${f.get('prenom')} ${f.get('nom')}\n${f.get('email')}\n${f.get('tel') || ''}\nÀ recontacter : ${f.get('rappel')}`;
       window.acbtStat?.('formulaire', String(f.get('objet') || ''));
       location.href = `mailto:${email}?subject=${encodeURIComponent('[Site] ' + f.get('objet'))}&body=${encodeURIComponent(body)}`;
       return;
@@ -155,10 +163,10 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({
           access_key: cle,
-          subject: `[Site ACBT] ${f.get('objet')} – ${f.get('nom')}`,
+          subject: `[Site ACBT] ${f.get('objet')} – ${f.get('prenom')} ${f.get('nom')}`,
           from_name: 'Site de l’ACBT',
           replyto: f.get('email'),
-          'Nom': f.get('nom'), 'E-mail': f.get('email'), 'Téléphone': f.get('tel') || '—', 'À recontacter': f.get('rappel'), 'Objet': f.get('objet'),
+          'Nom': f.get('nom'), 'Prénom': f.get('prenom'), 'E-mail': f.get('email'), 'Téléphone': f.get('tel') || '—', 'À recontacter': f.get('rappel'), 'Objet': f.get('objet'),
           ...(visible('formule') ? { 'Formule': f.get('formule') } : {}),
           ...(visible('creneau') ? { 'Créneaux souhaités': f.get('creneau') || '—' } : {}),
           'Message': f.get('message') || '—',
@@ -193,6 +201,10 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
   /* Choix du rappel : deux boutons côte à côte, pas de ronds natifs */
   .rappel { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
   .rappel legend { font-weight: 600; font-size: .92rem; margin-bottom: 6px; padding: 0; }
+  /* Nom et prénom côte à côte (l'un sous l'autre sur petit téléphone) */
+  .duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+  .duo label, .duo input { min-width: 0; }
+  @media (max-width: 379px) { .duo { grid-template-columns: 1fr; } }
   .choix { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .choix label { margin: 0; position: relative; }
   .choix input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
