@@ -36,8 +36,8 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
       <span class="eyebrow">Écrire au club</span>
       <h2>Envoyez-nous un message</h2>
       <form id="contact" class="card" data-reveal="left"><div class="card-body">
-        <label>Nom et prénom<input name="nom" required /></label>
-        <label>E-mail<input type="email" name="email" required /></label>
+        <label><span>Nom et prénom <span class="oblig" aria-hidden="true">*</span></span><input name="nom" required /></label>
+        <label><span>E-mail <span class="oblig" aria-hidden="true">*</span></span><input type="email" name="email" required /></label>
         <fieldset class="rappel">
           <legend>Comment préférez-vous être recontacté ?</legend>
           <div class="choix">
@@ -45,19 +45,20 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
             <label><input type="radio" name="rappel" value="Par téléphone" /><span>Par téléphone</span></label>
           </div>
         </fieldset>
-        <label><span>Téléphone <span class="tel-facultatif">(facultatif)</span></span><input type="tel" name="tel" autocomplete="tel" /></label>
-        <label>Objet
-          <select name="objet">
-            <option>Vol découverte</option><option>Vol d'initiation</option><option>Bon cadeau</option><option>Inscription</option><option>Autre question</option>
+        <label><span>Téléphone <span class="tel-facultatif">(facultatif)</span><span class="oblig tel-oblig" aria-hidden="true" hidden>*</span></span><input type="tel" name="tel" autocomplete="tel" /></label>
+        <label><span>Objet <span class="oblig" aria-hidden="true">*</span></span>
+          <select name="objet" required>
+            <option value="" disabled selected>Choisissez l'objet de votre message</option><option>Vol découverte</option><option>Vol d'initiation</option><option>Bon cadeau</option><option>Inscription</option><option>Autre question</option>
           </select>
         </label>
-        <label class="si-vol">Formule
-          <select name="formule">
+        <label class="si-vol"><span>Formule <span class="oblig" aria-hidden="true">*</span></span>
+          <select name="formule" required>
             {formules.map((f) => <option data-type={f.type} value={f.texte}>{f.texte}</option>)}
           </select>
         </label>
         <label class="si-vol">Créneaux souhaités (plusieurs possibles)<input name="creneau" placeholder="Ex. : samedi 14/03 après-midi, dimanche 02/04 matin…" /></label>
-        <label><span>Message <span class="facultatif">(facultatif)</span></span><textarea name="message" rows="5" required></textarea></label>
+        <label><span>Message <span class="facultatif">(facultatif)</span><span class="oblig msg-oblig" aria-hidden="true" hidden>*</span></span><textarea name="message" rows="5" required></textarea></label>
+        <p class="meta legende-oblig"><span class="oblig" aria-hidden="true">*</span> Champ obligatoire</p>
         <input type="checkbox" name="botcheck" class="piege" tabindex="-1" autocomplete="off" aria-hidden="true" />
         <button class="btn btn-primary" type="submit">Envoyer</button>
         <p class="meta envoi" role="status" aria-live="polite" style="margin-top:10px">{cleFormulaire(club.formulaire_cle) ? 'Votre message part directement au club, qui vous recontacte par e-mail ou par téléphone, comme vous le préférez.' : "Le message s'ouvre dans votre logiciel de messagerie."}</p>
@@ -117,8 +118,10 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
     const avant = form.formule.value;
     form.formule.replaceChildren(...options.filter((op) => !vol || op.dataset.type === o));
     if ([...form.formule.options].some((op) => op.value === avant)) form.formule.value = avant;
-    form.message.required = !(vol || cadeau);
-    form.querySelector('.facultatif').hidden = form.message.required;
+    // Message obligatoire pour Inscription et Autre question ; facultatif pour un vol ou un bon cadeau (et tant qu'aucun objet n'est choisi)
+    form.message.required = !!o && !(vol || cadeau);
+    form.querySelector('.facultatif').hidden = form.message.required || !o;
+    form.querySelector('.msg-oblig').hidden = !form.message.required;
   };
   form.objet.addEventListener('change', majObjet);
   majObjet();
@@ -127,6 +130,7 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
     const tel = form.rappel.value === 'Par téléphone';
     form.tel.required = tel;
     form.querySelector('.tel-facultatif').hidden = tel;
+    form.querySelector('.tel-oblig').hidden = !tel;
   };
   form.querySelectorAll('input[name=rappel]').forEach((r) => r.addEventListener('change', majRappel));
   majRappel();
@@ -180,8 +184,12 @@ const formules = t.formules.flatMap((f) => f.prix.map((p) => ({
   });
 </script>
 <style>
-  .formulaire label[hidden], .facultatif[hidden], .tel-facultatif[hidden] { display: none; }
+  #contact label[hidden], .facultatif[hidden], .tel-facultatif[hidden] { display: none; }
   .facultatif, .tel-facultatif { font-weight: 400; color: var(--muted); }
+  /* Étoile rouge (rouge du logo) sur les champs obligatoires */
+  .oblig { color: var(--rouge); font-weight: 700; }
+  .oblig[hidden] { display: none; }
+  .legende-oblig { margin: 0 0 12px; }
   /* Choix du rappel : deux boutons côte à côte, pas de ronds natifs */
   .rappel { border: 0; padding: 0; margin: 0 0 14px; min-width: 0; }
   .rappel legend { font-weight: 600; font-size: .92rem; margin-bottom: 6px; padding: 0; }
