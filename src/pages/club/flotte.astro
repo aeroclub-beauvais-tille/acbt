@@ -84,7 +84,8 @@ import pages from '../../data/pages.json';
   /* Téléphone : un avion par écran, le défilement s'arrête sur chacun */
   @media (max-width: 599px) {
     .avion { min-height: calc(100svh - 76px); padding: 20px 0 28px; scroll-margin-top: 76px; }
-    .immat, .avion:nth-child(even) .immat { position: relative; top: auto; left: auto; right: auto; font-size: 30vw; margin: 4px 0 -.42em; color: color-mix(in srgb, var(--ink) 7%, transparent); }
+    /* L'immatriculation tient en entier dans la largeur du téléphone et glisse d'un bord à l'autre (motion.ts) */
+    .immat, .avion:nth-child(even) .immat { position: relative; top: auto; left: auto; right: auto; font-size: 24vw; width: max-content; max-width: none; margin: 4px 0 -.42em; color: color-mix(in srgb, var(--ink) 7%, transparent); }
     .a-photo { aspect-ratio: 4 / 3; }
     .a-infos h2 { font-size: 1.7rem; margin-bottom: 14px; }
     .fiche div { padding: 9px 0; }
