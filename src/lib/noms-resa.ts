@@ -34,11 +34,19 @@ export function nomCourt(n: string | null | undefined, instructeurs: Instructeur
   return c ? court(c) + qualif(c, instructeurs) : '';
 }
 
+// Un instructeur (FI/FE) qui vole seul ne fait pas d'instruction : sa résa « Vol instruction » est un vol normal
+export function typeReel(r: { pilote?: string | null; instructeur?: string | null; type?: string | null }, instructeurs: InstructeurNom[] = []) {
+  if (!/instr|double|école|ecole|formation/i.test(r.type || '')) return r.type ?? null;
+  const p = nomComplet(r.pilote, instructeurs), i = nomComplet(r.instructeur, instructeurs);
+  const seul = !i || i === p;
+  return p && seul && qualif(p, instructeurs) ? null : r.type ?? null;
+}
+
 // Type de vol affiché, sauf le cas courant « Vol standard »
 export const typeVol = (t: string | null | undefined) => (t && !/^vol standard$/i.test(t) ? t : '');
 
 // Pilote et instructeur (jamais deux fois le même nom), puis le type de vol
 export function quiResa(r: { pilote?: string | null; instructeur?: string | null; type?: string | null }, instructeurs: InstructeurNom[] = []) {
   const noms = [...new Set([nomCourt(r.pilote, instructeurs), nomCourt(r.instructeur, instructeurs)].filter(Boolean))].join(' + ');
-  return [noms, typeVol(r.type)].filter(Boolean).join(' - ');
+  return [noms, typeVol(typeReel(r, instructeurs))].filter(Boolean).join(' - ');
 }
