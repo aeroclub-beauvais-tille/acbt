@@ -5,7 +5,7 @@ import { rendreVent, lireMesure, ligneTemperature, type Obs } from '../lib/vent'
 import { trierNotam, ligneNotam, notamIndispo, NOTAM_INFO, NOTAM_VIDE, type Notam } from '../lib/notam';
 import { rendreAltitude, rendreVoisins, legendeVoisins } from '../lib/aero';
 import { wintem, fronts, heureFronts, heureEch, NIVEAUX, CSS_CARTES, type Cartes } from '../lib/cartes';
-import { court, nomCourt, quiResa as quiResaNoms, typeReel, typeVol } from '../lib/noms-resa';
+import { court, nomCourt, quiResa as quiResaNoms, typeVol } from '../lib/noms-resa';
 
 /* ------------------------------------------------------------------ */
 /* Types des données renvoyées par /dashboard/api/donnees              */
@@ -410,9 +410,8 @@ function reservations() {
     }
     for (const r of (a.jour ?? []).filter((r) => r.debut.slice(0, 8) === auj)) {
       const pil = courtQ(r.pilote), ins = courtQ(r.instructeur);
-      const ty = typeReel(r, INS());
-      const typ = typeVol(ty);
-      b += barre(mins(r.debut, auj), mins(r.fin, auj), classeType(ty), pil || r.type || 'Réservé', `${agH(r.debut)} – ${agH(r.fin)}`, ins && ins !== pil ? `avec ${ins}` : typ);
+      const typ = typeVol(r.type);
+      b += barre(mins(r.debut, auj), mins(r.fin, auj), classeType(r.type), pil || r.type || 'Réservé', `${agH(r.debut)} – ${agH(r.fin)}`, ins && ins !== pil ? `avec ${ins}` : typ);
     }
     // Temps réellement volé (départ → arrivée enregistrés dans Aerogest) : bande verte en bas de la ligne
     for (const v of a.volsJour ?? []) {
@@ -429,7 +428,7 @@ function reservations() {
       let b = '';
       for (const c of i.creneaux) {
         const t = `${agH(c.debut)} – ${agH(c.fin)}`;
-        b += c.flottant ? barre(mins(c.debut, auj), mins(c.fin, auj), 'pres', 'Disponible', t) : barre(mins(c.debut, auj), mins(c.fin, auj), classeType(typeReel({ pilote: c.pilote, instructeur: i.nom, type: c.type }, INS())), court(c.pilote) || c.texte || 'Vol', t);
+        b += c.flottant ? barre(mins(c.debut, auj), mins(c.fin, auj), 'pres', 'Disponible', t) : barre(mins(c.debut, auj), mins(c.fin, auj), classeType(c.type), court(c.pilote) || c.texte || 'Vol', t);
       }
       html += `<div class="lab ins"><b>${esc(court(i.nom))}</b></div><div class="trk ins">${fond()}${b}</div>`;
     }
