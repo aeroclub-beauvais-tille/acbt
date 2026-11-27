@@ -173,9 +173,12 @@ function images() {
 
   document.querySelectorAll<HTMLElement>('[data-glisse]').forEach((el) => {
     // Grand texte en filigrane (immatriculations de la flotte) qui glisse pendant le défilement ; sens donné par data-glisse
+    // Téléphone : l'immatriculation tient en entier et glisse d'un bord à l'autre de la colonne, sans jamais être coupée
     const sens = Number(el.dataset.glisse) || -1;
-    gsap.fromTo(el, { x: 0 }, {
-      x: () => sens * innerWidth * 0.1, ease: 'none',
+    const telephone = matchMedia('(max-width: 599px)');
+    const ecart = () => Math.max(0, (el.parentElement?.clientWidth ?? 0) - el.getBoundingClientRect().width);
+    gsap.fromTo(el, { x: () => (telephone.matches && sens < 0 ? ecart() : 0) }, {
+      x: () => (telephone.matches ? (sens < 0 ? 0 : ecart()) : sens * innerWidth * 0.1), ease: 'none',
       scrollTrigger: { trigger: el.parentElement, start: 'top 70%', end: 'bottom top', scrub: 0.6, invalidateOnRefresh: true },
     });
   });
