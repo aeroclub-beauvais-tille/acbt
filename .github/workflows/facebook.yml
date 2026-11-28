@@ -9,18 +9,9 @@ name: Copier les publications Facebook en actus
 # Sans ces secrets, rien ne se passe. Si la clé cesse de fonctionner, cette tâche
 # échoue et GitHub envoie un mail d'alerte.
 #
-# GitHub planifie en heure UTC, sans heure d'été : on prévoit les deux séries d'horaires
-# et la tâche s'arrête tout de suite (quelques secondes) quand ce n'est pas la bonne saison.
-# GitHub saute souvent des lancements planifiés (constaté : environ un sur deux) : chaque horaire a
-# un second essai 30 minutes plus tard, qui s'arrête tout de suite si la copie a déjà été faite.
-# Les passages arrêtés sont « annulés » (gris dans GitHub) et ne comptent pas comme des copies.
-# Le lancement à la main (bouton « Run workflow ») marche toujours, à toute heure.
+# Lancée par Cloudflare (Worker acbt-maa-mail, workers/maa-mail/worker.js) à l'heure pile de Paris :
+# GitHub sautait la plupart de ses propres lancements planifiés. Lancement à la main toujours possible.
 on:
-  schedule:
-    # Heure d'hiver (Paris = UTC+1) : 9h, 13h, 16h, 19h, 23h (+ second essai à la demie)
-    - cron: '7,37 8,12,15,18,22 * * *'
-    # Heure d'été (Paris = UTC+2) : 9h, 13h, 16h, 19h, 23h (+ second essai à la demie)
-    - cron: '7,37 7,11,14,17,21 * * *'
   workflow_dispatch:
 
 permissions:
