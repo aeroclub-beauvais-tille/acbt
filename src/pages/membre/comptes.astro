@@ -57,8 +57,8 @@ import { url } from '../../lib/utils';
           </div>
           <div id="z-mdp-saisi">
             <label class="lbl" for="mdp-saisi">Mot de passe <i>(facultatif)</i></label>
-            <input id="mdp-saisi" type="password" autocomplete="new-password" minlength="8" />
-            <p class="aide-id">Saisi une fois, jamais affiché. Laissez vide pour que le membre le choisisse lui-même par le lien d'invitation.</p>
+            <input id="mdp-saisi" type="password" autocomplete="new-password" minlength="6" />
+            <p class="aide-id">Au moins 6 caractères, dont 1 symbole (ex. ! ? @ # - _ . *). Saisi une fois, jamais affiché. Laissez vide pour que le membre le choisisse lui-même par le lien d'invitation.</p>
           </div>
           <label class="case" id="z-inviter"><input type="checkbox" id="inviter" checked /> Envoyer l'invitation par mail maintenant</label>
           <p class="erreur" id="erreur" role="alert" hidden></p>
@@ -99,6 +99,8 @@ import { url } from '../../lib/utils';
   const jourFr = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' });
   try { mdp.value = localStorage.getItem('acbt-admin-alertes') || ''; } catch { /* privé */ }
 
+  // Règle du club : au moins 6 caractères, dont au moins 1 symbole
+  const mdpOk = (v: string) => v.length >= 6 && /[^\p{L}\p{N}\s]/u.test(v);
   let membres: Membre[] = [];
   let mailPret = true;
   let edition: string | null = null;
@@ -142,7 +144,7 @@ import { url } from '../../lib/utils';
           <button type="button" data-action="actif">${m.actif ? 'Désactiver' : 'Réactiver'}</button>
           <button type="button" class="b-suppr" data-action="supprimer">Supprimer</button>
         </div>
-        <form class="definir" hidden><input type="password" autocomplete="new-password" placeholder="Nouveau mot de passe (8 caractères min.)" aria-label="Nouveau mot de passe" />
+        <form class="definir" hidden><input type="password" autocomplete="new-password" placeholder="6 caractères min., dont 1 symbole" aria-label="Nouveau mot de passe" />
           <button type="submit">Enregistrer</button><button type="button" data-action="annuler-definir">Annuler</button></form>
         <div class="retour-lien" hidden></div></li>`;
     }).join('');
@@ -199,7 +201,7 @@ import { url } from '../../lib/utils';
     montrer(ok, '');
     const manque = !prenom.value.trim() && !nom.value.trim() ? 'Indiquez le nom et le prénom.' : !email.value.trim() || !email.checkValidity() ? 'Indiquez une adresse e-mail valide.' : '';
     if (manque) return montrer(erreur, manque);
-    if (!edition && mdpSaisi.value && mdpSaisi.value.length < 8) return montrer(erreur, 'Le mot de passe doit faire au moins 8 caractères.');
+    if (!edition && mdpSaisi.value && !mdpOk(mdpSaisi.value)) return montrer(erreur, 'Le mot de passe doit faire au moins 6 caractères, dont au moins 1 symbole (ex. ! ? @ # - _ . *).');
     montrer(erreur, '');
     envoyer.disabled = true;
     try {
@@ -242,7 +244,7 @@ import { url } from '../../lib/utils';
     const zone = li.querySelector<HTMLElement>('.retour-lien')!;
     const champ = f.querySelector('input')!;
     zone.classList.remove('err');
-    if (champ.value.length < 8) { zone.classList.add('err'); montrer(zone, 'Le mot de passe doit faire au moins 8 caractères.'); return; }
+    if (!mdpOk(champ.value)) { zone.classList.add('err'); montrer(zone, 'Le mot de passe doit faire au moins 6 caractères, dont au moins 1 symbole (ex. ! ? @ # - _ . *).'); return; }
     try {
       await poster({ action: 'definirMdp', id: li.dataset.id, nouveauMdp: champ.value });
       champ.value = '';

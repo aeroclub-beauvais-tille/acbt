@@ -22,10 +22,10 @@ import { url } from '../../lib/utils';
         <input type="text" id="user" autocomplete="username" hidden />
         <label for="mdp1">Nouveau mot de passe</label>
         <div class="champ">
-          <input id="mdp1" type="password" autocomplete="new-password" minlength="8" required />
+          <input id="mdp1" type="password" autocomplete="new-password" minlength="6" required />
           <button type="button" class="voir" id="voir" aria-label="Afficher le mot de passe">Voir</button>
         </div>
-        <p class="regle">Au moins 8 caractères.</p>
+        <p class="regle">Au moins 6 caractères, dont au moins 1 symbole (ex. ! ? @ # - _ . *).</p>
         <label for="mdp2">Confirmer le mot de passe</label>
         <div class="champ">
           <input id="mdp2" type="password" autocomplete="new-password" required />
@@ -83,7 +83,8 @@ import { url } from '../../lib/utils';
     e.preventDefault();
     const a = $<HTMLInputElement>('mdp1').value, b = $<HTMLInputElement>('mdp2').value;
     const erreur = $('erreur');
-    if (a.length < 8) return montrer(erreur, 'Le mot de passe doit faire au moins 8 caractères.');
+    const acceptable = (v: string) => v.length >= 6 && /[^\p{L}\p{N}\s]/u.test(v);
+    if (!acceptable(a)) return montrer(erreur, 'Le mot de passe doit faire au moins 6 caractères, dont au moins 1 symbole (ex. ! ? @ # - _ . *).');
     if (a !== b) return montrer(erreur, 'Les deux mots de passe ne sont pas identiques.');
     montrer(erreur, '');
     const btn = $<HTMLButtonElement>('envoyer');
