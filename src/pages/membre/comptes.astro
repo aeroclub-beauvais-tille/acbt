@@ -55,6 +55,11 @@ import { url } from '../../lib/utils';
             <label><input type="radio" name="role" value="membre" checked /><span><b>Membre</b><small>Espace membres</small></span></label>
             <label><input type="radio" name="role" value="admin" /><span><b>Administrateur</b><small>+ onglet Admin, sans le mot de passe admin</small></span></label>
           </div>
+          <div id="z-mdp-saisi">
+            <label class="lbl" for="mdp-saisi">Mot de passe <i>(facultatif)</i></label>
+            <input id="mdp-saisi" type="password" autocomplete="new-password" minlength="8" />
+            <p class="aide-id">Saisi une fois, jamais affiché. Laissez vide pour que le membre le choisisse lui-même par le lien d'invitation.</p>
+          </div>
           <label class="case" id="z-inviter"><input type="checkbox" id="inviter" checked /> Envoyer l'invitation par mail maintenant</label>
           <p class="erreur" id="erreur" role="alert" hidden></p>
           <div class="ok" id="ok" role="status" hidden></div>
@@ -86,7 +91,7 @@ import { url } from '../../lib/utils';
   type Membre = { id: string; identifiant: string; role: string; email: string; prenom: string; nom: string; actif: number; cree: string; derniere: string | null; invite: string | null; a_mdp: number; appareils: number };
   const API = document.getElementById('ecran')!.dataset.api!;
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-  const identifiant = $<HTMLInputElement>('identifiant'), mdp = $<HTMLInputElement>('mdp'), prenom = $<HTMLInputElement>('prenom'), nom = $<HTMLInputElement>('nom'), email = $<HTMLInputElement>('email');
+  const mdpSaisi = $<HTMLInputElement>('mdp-saisi'), identifiant = $<HTMLInputElement>('identifiant'), mdp = $<HTMLInputElement>('mdp'), prenom = $<HTMLInputElement>('prenom'), nom = $<HTMLInputElement>('nom'), email = $<HTMLInputElement>('email');
   const erreur = $('erreur'), ok = $('ok'), envoyer = $<HTMLButtonElement>('envoyer'), abandon = $<HTMLButtonElement>('abandon');
   const esc = (t: unknown) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
   const montrer = (el: HTMLElement, t: string) => { el.textContent = t; el.hidden = !t; };
@@ -114,6 +119,7 @@ import { url } from '../../lib/utils';
   const statut = (m: Membre) => !m.actif ? ['off', 'Désactivé'] : !m.a_mdp ? ['att', m.invite ? 'Invitation en attente' : 'Pas encore invité'] : ['on', 'Actif'];
   const detail = (m: Membre) => !m.actif ? `Désactivé · créé le ${jourFr(m.cree)}`
     : m.derniere ? `Dernière connexion le ${jourFr(m.derniere)}${m.appareils > 1 ? ` · ${m.appareils} appareils` : ''}`
+    : m.a_mdp ? 'Mot de passe défini · pas encore connecté'
     : m.invite ? `Invitation du ${jourFr(m.invite)} · lien valable 14 jours` : `Créé le ${jourFr(m.cree)}`;
 
   function afficher() {
@@ -130,10 +136,13 @@ import { url } from '../../lib/utils';
         <span class="info">${m.role === 'admin' ? '<i class="pastille p-adm">Administrateur</i>' : ''}<i class="pastille p-${c}">${t}</i> ${esc(detail(m))}</span></div>
         <div class="act">
           ${m.actif ? `<button type="button" data-action="lien">${m.a_mdp ? 'Réinitialiser le mot de passe' : (m.invite ? 'Renvoyer l’invitation' : 'Envoyer l’invitation')}</button>` : ''}
+          <button type="button" data-action="definir">Définir le mot de passe</button>
           <button type="button" data-action="modifier">Modifier</button>
           <button type="button" data-action="actif">${m.actif ? 'Désactiver' : 'Réactiver'}</button>
           <button type="button" class="b-suppr" data-action="supprimer">Supprimer</button>
         </div>
+        <form class="definir" hidden><input type="password" autocomplete="new-password" placeholder="Nouveau mot de passe (8 caractères min.)" aria-label="Nouveau mot de passe" />
+          <button type="submit">Enregistrer</button><button type="button" data-action="annuler-definir">Annuler</button></form>
         <div class="retour-lien" hidden></div></li>`;
     }).join('');
   }
@@ -167,7 +176,7 @@ import { url } from '../../lib/utils';
   mdp.addEventListener('change', charger);
 
   const viderForm = () => {
-    edition = null; prenom.value = ''; nom.value = ''; email.value = ''; identifiant.value = ''; idTouche = false; choisirRole('membre');
+    edition = null; mdpSaisi.value = ''; $('z-mdp-saisi').hidden = false; $('z-inviter').hidden = false; prenom.value = ''; nom.value = ''; email.value = ''; identifiant.value = ''; idTouche = false; choisirRole('membre');
     $('f-titre').textContent = 'Ajouter un membre'; envoyer.textContent = 'Créer le compte'; abandon.hidden = true; $('z-inviter').hidden = false;
     $('f-sous').textContent = 'Le membre reçoit un mail pour choisir son mot de passe. Il se connecte avec son identifiant ou son adresse e-mail.';
   };
@@ -180,6 +189,8 @@ import { url } from '../../lib/utils';
   prenom.addEventListener('input', majIdentifiant); nom.addEventListener('input', majIdentifiant);
   identifiant.addEventListener('input', () => { idTouche = !!identifiant.value.trim(); });
   identifiant.addEventListener('change', () => { identifiant.value = proposer(identifiant.value); });
+  // Mot de passe saisi : pas besoin d'invitation
+  mdpSaisi.addEventListener('input', () => { $('z-inviter').hidden = !!mdpSaisi.value; });
   abandon.addEventListener('click', () => { viderForm(); montrer(erreur, ''); });
 
   $('form').addEventListener('submit', async (ev) => {
@@ -187,6 +198,7 @@ import { url } from '../../lib/utils';
     montrer(ok, '');
     const manque = !prenom.value.trim() && !nom.value.trim() ? 'Indiquez le nom et le prénom.' : !email.value.trim() || !email.checkValidity() ? 'Indiquez une adresse e-mail valide.' : '';
     if (manque) return montrer(erreur, manque);
+    if (!edition && mdpSaisi.value && mdpSaisi.value.length < 8) return montrer(erreur, 'Le mot de passe doit faire au moins 8 caractères.');
     montrer(erreur, '');
     envoyer.disabled = true;
     try {
@@ -196,10 +208,12 @@ import { url } from '../../lib/utils';
         await poster({ action: 'modifier', id: edition, ...champs });
         montrerHtml(ok, `Compte de ${esc(qui)} modifié.`);
       } else {
-        const inviter = $<HTMLInputElement>('inviter').checked;
-        const d = await poster({ action: 'creer', inviter, ...champs });
+        const saisi = !!mdpSaisi.value;
+        const inviter = !saisi && $<HTMLInputElement>('inviter').checked;
+        const d = await poster({ action: 'creer', inviter, nouveauMdp: mdpSaisi.value, ...champs });
         const idf = `<br>Identifiant : <b>${esc(d.identifiant)}</b>`;
-        montrerHtml(ok, !inviter ? `Compte de ${esc(qui)} créé.${idf} Envoyez l’invitation depuis la liste quand vous voulez.`
+        montrerHtml(ok, saisi ? `Compte de ${esc(qui)} créé avec le mot de passe saisi. Il peut se connecter tout de suite.${idf}`
+          : !inviter ? `Compte de ${esc(qui)} créé.${idf} Envoyez l’invitation depuis la liste quand vous voulez.`
           : d.liens?.length ? `Compte de ${esc(qui)} créé. Le mail n’a pas pu partir : envoyez-lui ce lien vous-même.${blocLien(d.liens[0])}`
           : `Compte de ${esc(qui)} créé. Invitation envoyée à ${esc(email.value.trim().toLowerCase())}.${idf}`);
       }
@@ -217,6 +231,26 @@ import { url } from '../../lib/utils';
 
   $('cherche').addEventListener('input', afficher);
 
+  // Mot de passe saisi par l'admin pour un compte existant : envoyé une fois, jamais affiché ni relu
+  $('membres').addEventListener('submit', async (ev) => {
+    const f = (ev.target as HTMLElement).closest<HTMLFormElement>('form.definir');
+    if (!f) return;
+    ev.preventDefault();
+    const li = f.closest<HTMLElement>('li[data-id]')!;
+    const m = membres.find((x) => x.id === li.dataset.id);
+    const zone = li.querySelector<HTMLElement>('.retour-lien')!;
+    const champ = f.querySelector('input')!;
+    zone.classList.remove('err');
+    if (champ.value.length < 8) { zone.classList.add('err'); montrer(zone, 'Le mot de passe doit faire au moins 8 caractères.'); return; }
+    try {
+      await poster({ action: 'definirMdp', id: li.dataset.id, nouveauMdp: champ.value });
+      champ.value = '';
+      await charger();
+      const z = document.querySelector<HTMLElement>(`li[data-id="${CSS.escape(li.dataset.id!)}"] .retour-lien`);
+      if (z) montrer(z, `Mot de passe enregistré pour ${m ? `${m.prenom} ${m.nom}`.trim() : 'ce membre'}. Ses appareils ont été déconnectés.`);
+    } catch (err) { zone.classList.add('err'); montrer(zone, (err as Error).message); }
+  });
+
   document.querySelector('main')!.addEventListener('click', async (ev) => {
     const copie = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-copier]');
     if (copie) {
@@ -230,10 +264,17 @@ import { url } from '../../lib/utils';
     const qui = `${m.prenom} ${m.nom}`.trim() || m.email;
     const zone = li.querySelector<HTMLElement>('.retour-lien')!;
     try {
+      if (b.dataset.action === 'definir' || b.dataset.action === 'annuler-definir') {
+        const f = li.querySelector<HTMLFormElement>('form.definir')!;
+        f.hidden = b.dataset.action === 'annuler-definir';
+        f.querySelector('input')!.value = '';
+        if (!f.hidden) f.querySelector('input')!.focus();
+        return;
+      }
       if (b.dataset.action === 'modifier') {
         edition = m.id; prenom.value = m.prenom || ''; nom.value = m.nom || ''; email.value = m.email; identifiant.value = m.identifiant || ''; idTouche = true; choisirRole(m.role);
         $('f-titre').textContent = `Modifier le compte`; $('f-sous').textContent = 'Le mot de passe du membre ne change pas.';
-        envoyer.textContent = 'Enregistrer'; abandon.hidden = false; $('z-inviter').hidden = true;
+        envoyer.textContent = 'Enregistrer'; abandon.hidden = false; $('z-inviter').hidden = true; $('z-mdp-saisi').hidden = true;
         montrer(ok, ''); montrer(erreur, '');
         $('form').scrollIntoView({ behavior: 'smooth', block: 'start' });
         return;
@@ -322,6 +363,11 @@ import { url } from '../../lib/utils';
   .membres :global(.act) { display: flex; flex-wrap: wrap; gap: 6px; }
   .membres :global(.act button) { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: .8rem; border-radius: 8px; padding: 7px 11px; cursor: pointer; }
   .membres :global(.act .b-suppr) { border-color: var(--bad-line); background: var(--bad-bg); color: var(--bad); }
+  .membres :global(form.definir) { display: flex; flex-wrap: wrap; gap: 6px; }
+  .membres :global(form.definir[hidden]) { display: none; }
+  .membres :global(form.definir input) { flex: 1 1 200px; min-height: 40px; }
+  .membres :global(form.definir button) { border: 0; background: var(--navy); color: #fff; font: inherit; font-weight: 700; font-size: .8rem; border-radius: 8px; padding: 0 12px; min-height: 40px; cursor: pointer; }
+  .membres :global(form.definir button[data-action]) { background: var(--surface); color: var(--ink); border: 1px solid var(--line); }
   .membres :global(.retour-lien) { font-size: .85rem; color: var(--ok); background: var(--ok-bg); border-radius: 8px; padding: 8px 10px; font-weight: 650; }
   .membres :global(.retour-lien.err) { color: var(--bad); background: var(--bad-bg); }
   :global(.a-copier) { margin-top: 8px; display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; color: var(--ink); font-weight: 600; }
@@ -338,6 +384,6 @@ import { url } from '../../lib/utils';
     .col { position: sticky; top: 84px; }
     .membres :global(li) { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
     .membres :global(.act) { justify-content: flex-end; max-width: 560px; }
-    .membres :global(.retour-lien) { grid-column: 1 / -1; }
+    .membres :global(.retour-lien), .membres :global(form.definir) { grid-column: 1 / -1; }
   }
 </style>
