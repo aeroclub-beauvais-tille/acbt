@@ -3,6 +3,7 @@
 import { estAdmin } from '../_alertes.js';
 import { json } from '../_maa.js';
 import { tableVisites, jourParis } from '../_visites.js';
+import { tablesComptes } from '../_comptes.js';
 
 const SECTIONS = ['vitrine', 'membre', 'perfs'];
 
@@ -63,8 +64,34 @@ export async function onRequestPost({ request, env }) {
   const act = new Map((serieActions.results || []).map((r) => [r.k, r]));
   const parK = (res, n) => Array.from({ length: n }, (_, k) => (res.results || []).find((r) => r.k === k)?.visiteurs || 0);
 
+  // Espace membre : qui se connecte (comptes personnels)
+  let membres = null;
+  if (sec === 'membre') {
+    try {
+      await tablesComptes(db);
+      const aujourdhui = jourParis(new Date(auj));
+      const [comptes, derniers, assidus, actifs, actifsAvant, auj1, parJour] = await db.batch([
+        db.prepare(`SELECT COUNT(*) AS tous, SUM(actif = 1 AND hash IS NOT NULL) AS actifs, SUM(actif = 1 AND hash IS NOT NULL AND derniere IS NULL) AS jamais,
+          SUM(actif = 1 AND hash IS NULL) AS attente, SUM(actif = 0) AS desactives FROM membres`),
+        db.prepare(`SELECT prenom, nom, identifiant, derniere FROM membres WHERE derniere IS NOT NULL ORDER BY derniere DESC LIMIT 12`),
+        db.prepare(`SELECT m.prenom, m.nom, m.identifiant, COUNT(*) AS jours, MAX(p.jour) AS dernier FROM presence p JOIN membres m ON m.id = p.membre
+          WHERE p.jour >= ?1 GROUP BY p.membre ORDER BY jours DESC, dernier DESC LIMIT 12`).bind(debut),
+        db.prepare('SELECT COUNT(DISTINCT membre) AS n FROM presence WHERE jour >= ?1').bind(debut),
+        db.prepare('SELECT COUNT(DISTINCT membre) AS n FROM presence WHERE jour >= ?1 AND jour < ?2').bind(avant, debut),
+        db.prepare('SELECT COUNT(DISTINCT membre) AS n FROM presence WHERE jour = ?1').bind(aujourdhui),
+        db.prepare(`SELECT ${cle} AS k, COUNT(DISTINCT membre) AS n FROM presence WHERE jour >= ?1 GROUP BY k`).bind(debut),
+      ]);
+      const c = comptes.results?.[0] || {};
+      membres = {
+        comptes: { tous: c.tous || 0, actifs: c.actifs || 0, jamais: c.jamais || 0, attente: c.attente || 0, desactives: c.desactives || 0 },
+        actifs: actifs.results?.[0]?.n || 0, actifsAvant: actifsAvant.results?.[0]?.n || 0, aujourdhui: auj1.results?.[0]?.n || 0,
+        derniers: derniers.results || [], assidus: assidus.results || [], parJour: parJour.results || [],
+      };
+    } catch { membres = null; }
+  }
+
   return json({
-    ok: true, jours, section: sec, parMois, depuis: premier.results?.[0]?.j || null,
+    ok: true, jours, section: sec, membres, parMois, depuis: premier.results?.[0]?.j || null,
     enDirect: direct.results?.[0]?.n || 0,
     totaux: totaux.results || [], precedent: precedent.results || [],
     serie: cases.map((k) => ({ k, vues: vus.get(k)?.vues || 0, visiteurs: vus.get(k)?.visiteurs || 0,

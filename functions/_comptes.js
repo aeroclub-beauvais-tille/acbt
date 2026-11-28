@@ -6,6 +6,7 @@
 // Le mot de passe commun du club (MOT_DE_PASSE_MEMBRES) reste accepté tant que l'admin ne l'a pas coupé
 // (Admin > Comptes des membres) : personne n'est mis dehors pendant la création des comptes.
 import { jeton, lireCookie, egal } from './_session.js';
+import { jourParis } from './_visites.js';
 
 const enc = new TextEncoder();
 const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -42,6 +43,16 @@ export async function tablesComptes(db) {
     try { await db.prepare("ALTER TABLE membres ADD COLUMN role TEXT NOT NULL DEFAULT 'membre'").run(); } catch { /* ajoutée entre-temps */ }
   }
   await db.prepare('CREATE TABLE IF NOT EXISTS cles_admin (jeton TEXT PRIMARY KEY, membre TEXT NOT NULL, cree TEXT NOT NULL)').run();
+  // Présence : une ligne par membre et par jour (heure de Paris) où il a ouvert l'espace membres (statistiques)
+  await db.prepare('CREATE TABLE IF NOT EXISTS presence (membre TEXT NOT NULL, jour TEXT NOT NULL, PRIMARY KEY (membre, jour))').run();
+}
+
+/** Note qu'un membre est passé : dernière connexion + jour de présence. */
+export function noterPassage(db, membre, t = maintenant()) {
+  return db.batch([
+    db.prepare('UPDATE membres SET derniere = ?1 WHERE id = ?2').bind(t, membre),
+    db.prepare('INSERT OR IGNORE INTO presence (membre, jour) VALUES (?1, ?2)').bind(membre, jourParis(new Date(t))),
+  ]);
 }
 
 // --- Clé admin : remise à la connexion d'un compte « Administrateur », gardée sur son appareil (comme l'était le mot de passe admin)
@@ -142,13 +153,15 @@ export async function session(request, env, waitUntil) {
     if (r.membre === 'club' && !(await mdpCommunActif(env))) return null;
     if (r.membre === 'admin' && !env.MOT_DE_PASSE_ADMIN && !env.ARCHIVE_PASSWORD) return null;
     if (r.membre !== 'club' && r.membre !== 'admin' && r.actif !== 1) return null;
-    // On note le passage au plus une fois par jour (pour la colonne « dernière connexion »), sans ralentir la page
+    // On note le passage au plus tous les quarts d'heure (dernière connexion, jours de présence), sans ralentir la page
     const t = maintenant();
-    if (r.vu.slice(0, 10) !== t.slice(0, 10)) {
-      const maj = env.DB.batch([
-        env.DB.prepare('UPDATE sessions SET vu = ?1 WHERE jeton = ?2').bind(t, r.jeton),
-        env.DB.prepare('UPDATE membres SET derniere = ?1 WHERE id = ?2').bind(t, r.membre),
-      ]).catch(() => {});
+    if (Date.parse(t) - Date.parse(r.vu) > 15 * 60e3) {
+      const membreCompte = r.membre !== 'club' && r.membre !== 'admin';
+      const maj = (async () => {
+        await env.DB.prepare('UPDATE sessions SET vu = ?1 WHERE jeton = ?2').bind(t, r.jeton).run();
+        if (!membreCompte) return;
+        try { await noterPassage(env.DB, r.membre, t); } catch { await tablesComptes(env.DB); await noterPassage(env.DB, r.membre, t); }
+      })().catch(() => {});
       if (waitUntil) waitUntil(maj);
     }
     if (r.membre === 'club' || r.membre === 'admin') return { qui: r.membre };
