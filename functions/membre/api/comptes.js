@@ -1,16 +1,17 @@
 // Comptes des membres (appli > Admin > Comptes des membres). Toutes les actions demandent le mot de passe admin.
 //   POST { motDePasse, action, ... } :
 //     liste                                   → { membres, mdpCommun, mailPret }
-//     creer      { prenom, nom, email, identifiant?, role?, inviter } (identifiant « prenom.nom » proposé s'il est vide) → crée le compte et envoie l'invitation par mail
+//     creer      { prenom, nom, email, identifiant?, role?, nouveauMdp?, inviter } (identifiant « prenom.nom » proposé s'il est vide) → crée le compte et envoie l'invitation par mail
 //     importer   { lignes, inviter }          → plusieurs comptes d'un coup (une ligne par membre)
 //     modifier   { id, prenom, nom, email, identifiant, role }   (role : « membre » ou « admin »)
 //     actif      { id, actif }                → désactiver (déconnecte tous ses appareils) ou réactiver
 //     supprimer  { id }
 //     lien       { id }                       → envoie un lien pour choisir un nouveau mot de passe (invitation s'il n'en a jamais eu)
+//     definirMdp { id, nouveauMdp }            → l'admin saisit le mot de passe (jamais renvoyé ni affiché) ; déconnecte ses appareils
 //     mdpCommun  { actif }                    → accepter ou non le mot de passe commun du club
 // Quand le mail n'a pas pu partir, le lien est renvoyé à l'admin pour qu'il le transmette lui-même (SMS, WhatsApp…).
 import { estAdmin, json } from '../../_alertes.js';
-import { tablesComptes, normEmail, emailValide, envoyerLien, mdpCommunActif, mailPret, maintenant, normIdentifiant, identifiantValide, proposerIdentifiant, identifiantLibre, ROLES } from '../../_comptes.js';
+import { tablesComptes, normEmail, emailValide, envoyerLien, mdpCommunActif, mailPret, maintenant, normIdentifiant, identifiantValide, proposerIdentifiant, identifiantLibre, ROLES, nouveauHash, mdpAcceptable } from '../../_comptes.js';
 
 const propre = (v, n = 60) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
 const majPrenom = (p) => propre(p).toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
@@ -73,6 +74,9 @@ export async function onRequestPost({ request, env }) {
           if (!identifiantValide(identifiant)) return json({ ok: false, erreur: 'Identifiant invalide : au moins 2 caractères, lettres, chiffres, point ou tiret.' }, 400);
           if (await db.prepare('SELECT 1 FROM membres WHERE identifiant = ?1').bind(identifiant).first()) return json({ ok: false, erreur: `L'identifiant « ${identifiant} » est déjà pris.` }, 409);
         } else identifiant = await identifiantLibre(db, proposerIdentifiant(f));
+        // Mot de passe saisi par l'admin (facultatif) : seule son empreinte est gardée
+        const saisi = d.action === 'creer' && String(d.nouveauMdp || '') ? String(d.nouveauMdp) : '';
+        if (saisi && !mdpAcceptable(saisi)) return json({ ok: false, erreur: 'Le mot de passe doit faire au moins 8 caractères.' }, 400);
         const id = crypto.randomUUID();
         const r = await db.prepare('INSERT OR IGNORE INTO membres (id, identifiant, email, prenom, nom, role, actif, cree, maj) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, ?7, ?7)')
           .bind(id, identifiant, f.email, f.prenom, f.nom, d.action === 'creer' ? role : 'membre', t).run();
@@ -81,7 +85,11 @@ export async function onRequestPost({ request, env }) {
           refus.push({ ligne: f.email, raison: 'compte déjà existant' }); continue;
         }
         crees.push(identifiant);
-        if (d.inviter !== false) {
+        if (saisi) {
+          const { sel, hash } = await nouveauHash(saisi);
+          await db.prepare('UPDATE membres SET hash = ?1, sel = ?2 WHERE id = ?3').bind(hash, sel, id).run();
+        }
+        if (d.inviter !== false && !saisi) {
           const e = await envoyerLien(request, env, { id, identifiant, email: f.email, prenom: f.prenom }, 'invitation');
           if (!e.envoye) liens.push({ email: f.email, identifiant, nom: `${f.prenom} ${f.nom}`.trim(), lien: e.lien });
         }
@@ -136,6 +144,20 @@ export async function onRequestPost({ request, env }) {
       if (m.actif !== 1) return json({ ok: false, erreur: 'Ce compte est désactivé : réactivez-le d\'abord.' }, 400);
       const e = await envoyerLien(request, env, m, m.hash ? 'reinit' : 'invitation');
       return json({ ok: true, envoye: e.envoye, lien: e.envoye ? '' : e.lien, email: m.email, raison: e.raison, mailPret: mailPret(env) });
+    }
+
+    case 'definirMdp': {
+      const m = await un(d.id);
+      if (!m) return json({ ok: false, erreur: 'Compte introuvable.' }, 404);
+      if (!mdpAcceptable(d.nouveauMdp)) return json({ ok: false, erreur: 'Le mot de passe doit faire au moins 8 caractères.' }, 400);
+      const { sel, hash } = await nouveauHash(d.nouveauMdp);
+      await db.batch([
+        db.prepare('UPDATE membres SET hash = ?1, sel = ?2, maj = ?3 WHERE id = ?4').bind(hash, sel, t, m.id),
+        db.prepare('DELETE FROM sessions WHERE membre = ?1').bind(m.id),
+        db.prepare('DELETE FROM liens WHERE membre = ?1').bind(m.id),
+        db.prepare('DELETE FROM cles_admin WHERE membre = ?1').bind(m.id),
+      ]);
+      return json({ ok: true });
     }
 
     case 'mdpCommun': {
