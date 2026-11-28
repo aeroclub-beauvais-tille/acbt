@@ -56,7 +56,7 @@ import { url } from '../../lib/utils';
       const n = Date.now();
       liste.innerHTML = l.map((m) => {
         const on = m.debut && Date.parse(m.debut) <= n;
-        return `<li class="msg${on ? ' imp' : ''}"><div class="tags"><span class="tag">MAA n°${esc(m.numero || '—')}</span><span class="tag">${on ? 'En cours' : 'À venir'}</span></div><b>${esc(m.motif || 'Avertissement d’aérodrome')}</b>
+        return `<li class="msg${on ? ' imp' : ''}"><div class="tags"><span class="tag">MAA n°${esc(m.numero || '—')}</span><span class="tag">${on ? 'En cours' : 'À venir'}</span></div><b>${esc(m.motif || 'Alerte météo')}</b>
           <div class="pied"><span>${lt(m.debut)} → ${lt(m.fin)}</span><button type="button" data-id="${esc(m.id)}">Arrêter</button></div></li>`;
       }).join('');
       const lvp = d.lvp;
