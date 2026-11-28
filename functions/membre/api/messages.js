@@ -16,7 +16,7 @@ export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ ok: false, erreur: 'Base non reliée.' }, 503);
   const d = await lire(request);
   if (!d) return json({ ok: false, erreur: 'Demande illisible.' }, 400);
-  if (!estAdmin(env, d.motDePasse)) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
+  if (!(await estAdmin(env, d.motDePasse))) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
   // Première lettre en majuscule pour le titre et le texte
   const maj = (t) => t.replace(/^\p{L}/u, (c) => c.toUpperCase());
   const titre = maj(String(d.titre || '').trim().slice(0, 120));
@@ -45,7 +45,7 @@ export async function onRequestDelete({ request, env }) {
   if (!env.DB) return json({ ok: false }, 503);
   const d = await lire(request);
   if (!d) return json({ ok: false, erreur: 'Demande illisible.' }, 400);
-  if (!estAdmin(env, d.motDePasse)) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
+  if (!(await estAdmin(env, d.motDePasse))) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
   await tableMessages(env.DB);
   await env.DB.prepare('DELETE FROM messages_club WHERE id = ?1').bind(Number(d.id) || 0).run();
   return json({ ok: true });

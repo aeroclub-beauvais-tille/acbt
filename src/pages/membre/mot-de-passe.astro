@@ -90,7 +90,12 @@ import { url } from '../../lib/utils';
     btn.disabled = true; btn.textContent = 'Enregistrement…';
     const { r, d } = await poster({ action: 'choisir', motDePasse: a });
     if (r?.ok) {
-      try { localStorage.setItem('acbt-membre', 'serveur'); localStorage.removeItem('acbt-admin-alertes'); } catch { /* privé */ }
+      try {
+        localStorage.setItem('acbt-membre', 'serveur');
+        if (d.cleAdmin) localStorage.setItem('acbt-admin-alertes', d.cleAdmin); else localStorage.removeItem('acbt-admin-alertes');
+        const nom = `${d.prenom || ''} ${d.nom || ''}`.trim();
+        if (nom) { localStorage.setItem('acbt-membre-nom', nom); localStorage.setItem('acbt-pilot', nom); }
+      } catch { /* privé */ }
       location.replace(url('/membre/connexion/?retour=') + encodeURIComponent(url('/membre/')));
       return;
     }

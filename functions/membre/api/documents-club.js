@@ -45,7 +45,7 @@ export async function onRequestPost({ request, env }) {
   if (type.includes('application/json')) {
     let d = null;
     try { d = await request.json(); } catch { /* illisible */ }
-    if (!d || !estAdmin(env, d.motDePasse)) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
+    if (!d || !(await estAdmin(env, d.motDePasse))) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
 
     if (d.action === 'retirer') {
       const cle = texte(d.cle, 80);
@@ -86,7 +86,7 @@ export async function onRequestPost({ request, env }) {
   let f = null;
   try { f = await request.formData(); } catch { /* pas un formulaire */ }
   if (!f) return json({ ok: false, erreur: 'Envoi illisible.' }, 400);
-  if (!estAdmin(env, f.get('motDePasse'))) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
+  if (!(await estAdmin(env, f.get('motDePasse')))) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
 
   const cle = texte(f.get('cle'), 80) || crypto.randomUUID();
   const rubrique = String(f.get('rubrique') || '');

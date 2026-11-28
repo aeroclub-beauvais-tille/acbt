@@ -7,6 +7,7 @@
 // La notification envoyée est vide : le téléphone vient chercher la dernière alerte lui-même (avec son cookie membre),
 // ce qui évite de chiffrer le contenu et ne fait passer aucune information par les serveurs de Google ou d'Apple.
 import { egal } from './_session.js';
+import { cleAdminValide } from './_comptes.js';
 
 export const json = (data, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
@@ -34,10 +35,15 @@ export async function noterEnvoi(db, quoi) {
   await db.prepare("INSERT OR REPLACE INTO reglages (cle, valeur) VALUES ('dernier_push', ?1)").bind(JSON.stringify({ ...quoi, date: new Date().toISOString() })).run();
 }
 
-/** Mot de passe admin, un seul pour tout le site : MOT_DE_PASSE_ADMIN (l'ancien ARCHIVE_PASSWORD reste accepté tant qu'il n'est pas défini). */
-export function estAdmin(env, motDePasse) {
+/**
+ * Droits admin : le mot de passe admin du site (MOT_DE_PASSE_ADMIN ; l'ancien ARCHIVE_PASSWORD reste accepté tant qu'il n'est pas défini),
+ * ou la clé admin remise à la connexion d'un compte au rôle « Administrateur » (voir _comptes.js).
+ */
+export async function estAdmin(env, motDePasse) {
+  const v = String(motDePasse || '').trim();
+  if (v.startsWith('cle.')) return cleAdminValide(env, v);
   const attendu = String(env.MOT_DE_PASSE_ADMIN || env.ARCHIVE_PASSWORD || '').trim();
-  return !!attendu && egal(String(motDePasse || '').trim(), attendu);
+  return !!attendu && egal(v, attendu);
 }
 
 /** Paire de clés VAPID du site, créée et gardée dans la base au premier appel. */
