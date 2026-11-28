@@ -336,22 +336,18 @@ const outilsAdmin = [
     <!-- PRÉPARER -->
     <section class="panneau" id="preparer" hidden>
       <h1 class="titre">Préparer son vol</h1>
-      {outils.categories.map((c) => (
-        <div class="bloc">
-          <h5 class="sep">{c.titre}</h5>
-          <div class="outils">
-            {c.outils.map((o) => { const interne = (o as { membre?: string }).membre; return (
-              <a class="outil" href={interne ? url(interne) : o.lien} target={interne ? undefined : '_blank'} rel={interne ? undefined : 'noopener'} data-q={`${o.nom} ${o.description}`.toLowerCase()}>
-                <span class="o-logo" data-init={o.nom.replace(/[^A-Za-zÀ-ÿ0-9]/g, '').slice(0, 2).toUpperCase()}>
-                  <img src={(o as { logo?: string }).logo ? asset((o as { logo?: string }).logo!) : `https://www.google.com/s2/favicons?domain=${host(o.lien)}&sz=128`} alt="" width="34" height="34" loading="lazy" onerror="this.remove()" />
-                </span>
-                <span class="o-txt"><b>{o.nom}{interne ? '' : ' ↗'}</b><small>{o.description}</small></span>
-              </a>
-            ); })}
-          </div>
-        </div>
-      ))}
-      <h5 class="sep">Documents du club</h5>
+      <!-- Liens utiles : regroupés par type (Briefing, Météo, SIA, Cartes), sans titre de groupe -->
+      <div class="liens-outils v-b" id="liens-outils">
+        {outils.categories.flatMap((c) => c.outils).map((o) => { const interne = (o as { membre?: string }).membre; return (
+          <a class="lo" href={interne ? url(interne) : o.lien} target={interne ? undefined : '_blank'} rel={interne ? undefined : 'noopener'} data-q={`${o.nom} ${o.description}`.toLowerCase()} title={o.description}>
+            <span class="o-logo" data-init={o.nom.replace(/[^A-Za-zÀ-ÿ0-9]/g, '').slice(0, 2).toUpperCase()}>
+              <img src={(o as { logo?: string }).logo ? asset((o as { logo?: string }).logo!) : `https://www.google.com/s2/favicons?domain=${host(o.lien)}&sz=128`} alt="" width="34" height="34" loading="lazy" onerror="this.remove()" />
+            </span>
+            <span class="lo-txt"><b>{o.nom}{interne ? '' : ' ↗'}</b><small>{o.description}</small></span>
+          </a>
+        ); })}
+      </div>
+      <div class="sep sep-docs"><h5>Documents du club</h5><button type="button" class="tout-replier" id="tout-replier" hidden>Tout replier</button></div>
       <div class="rubriques" id="docs-club" data-api={url('/membre/api/documents-club')}></div>
       <script type="application/json" id="docs-club-base" set:html={JSON.stringify(docsClub)} />
     </section>
@@ -469,31 +465,92 @@ const outilsAdmin = [
 </script>
 
 <script>
-  // Documents du club (onglet Préparer) : documents du site + changements faits par l'admin (gardés aussi sur l'appareil pour le hors ligne)
-  import { RUBRIQUES_CLUB, fusion, type BaseClub, type LigneClub } from '../../lib/docs-club';
+  // Documents du club (onglet Préparer) : documents du site + changements faits par l'admin (gardés aussi sur l'appareil pour le hors ligne).
+  // Chaque rubrique se replie (choix gardé sur l'appareil). Les cartes sont réparties en colonnes selon la largeur de l'écran.
+  import { rubriquesDe, fusion, type BaseClub, type LigneClub, type Rubrique } from '../../lib/docs-club';
   const boite = document.getElementById('docs-club');
+  const toutBtn = document.getElementById('tout-replier') as HTMLButtonElement | null;
   if (boite) {
     const API = boite.dataset.api!;
     const base: BaseClub[] = JSON.parse(document.getElementById('docs-club-base')?.textContent || '[]');
-    const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
-    const afficher = (lignes: LigneClub[]) => {
+    const esc = (t: string) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+    const CLE = 'acbt-rubriques-repliees';
+    let repliees = new Set<string>();
+    try { repliees = new Set(JSON.parse(localStorage.getItem(CLE) || '[]')); } catch { /* rien */ }
+    const garderRepli = () => { try { localStorage.setItem(CLE, JSON.stringify([...repliees])); } catch { /* plein */ } };
+    let cartes: { el: HTMLElement; poids: number }[] = [];
+    let nbCols = 0;
+
+    const colonnes = () => {
+      const w = boite.getBoundingClientRect().width || (document.querySelector('main.content')?.clientWidth ?? innerWidth) - 56;
+      return Math.max(1, Math.min(5, cartes.length || 1, Math.floor((w + 16) / 340)));
+    };
+    // Chaque carte va dans la colonne la moins remplie (poids = nombre de documents : la place ne bouge pas quand on replie)
+    const ranger = (force = false) => {
+      const n = colonnes();
+      if (n === nbCols && !force) return;
+      nbCols = n;
+      const cols = Array.from({ length: n }, () => { const c = document.createElement('div'); c.className = 'rb-col'; return c; });
+      const charge = new Array(n).fill(0);
+      for (const c of cartes) { const i = charge.indexOf(Math.min(...charge)); cols[i].append(c.el); charge[i] += c.poids; }
+      boite.replaceChildren(...cols);
+    };
+    const majTout = () => {
+      if (!toutBtn) return;
+      toutBtn.hidden = !cartes.length;
+      const tout = cartes.length > 0 && cartes.every((c) => repliees.has(c.el.dataset.rb!));
+      toutBtn.textContent = tout ? 'Tout déplier' : 'Tout replier';
+    };
+    const plier = (el: HTMLElement, ferme: boolean) => {
+      el.classList.toggle('ferme', ferme);
+      el.querySelector('.rb-h')!.setAttribute('aria-expanded', String(!ferme));
+    };
+
+    const afficher = (lignes: LigneClub[], liste: Rubrique[]) => {
       const { docs } = fusion(base, lignes, API);
-      boite.innerHTML = RUBRIQUES_CLUB.map((r) => {
-        const ici = docs.filter((d) => d.rubrique === r.id);
-        if (!ici.length) return '';
-        return `<section class="rb"><header class="rb-h"><span class="rb-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${r.svg}"/></svg></span><h3>${esc(r.nom)}</h3><span class="rb-nb">${ici.length}</span></header>
+      const connues = new Set(liste.map((r) => r.id));
+      const autres = docs.filter((d) => !connues.has(d.rubrique));
+      const toutes: Rubrique[] = autres.length ? [...liste, { id: '_autres', nom: 'Autres documents' }] : liste;
+      cartes = toutes.map((r) => {
+        const ici = r.id === '_autres' ? autres : docs.filter((d) => d.rubrique === r.id);
+        if (!ici.length) return null;
+        const el = document.createElement('section');
+        el.className = 'rb';
+        el.dataset.rb = r.id;
+        el.innerHTML = `<button type="button" class="rb-h" aria-expanded="true">${r.svg ? `<span class="rb-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${r.svg}"/></svg></span>` : ''}<h3>${esc(r.nom)}</h3><span class="rb-nb">${ici.length}</span><svg class="rb-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
           <div class="rb-l">${ici.map((d) => `<a class="dc" href="${esc(d.href)}" target="_blank" rel="noopener" data-q="${esc(`${d.titre} ${d.descr} ${r.nom}`.toLowerCase())}">
             <span class="dc-t${d.genre === 'PDF' ? ' dc-pdf' : ''}">${esc(d.genre)}</span>
-            <span class="dc-x"><b>${esc(d.titre)}</b>${d.descr ? `<small>${esc(d.descr)}</small>` : ''}</span></a>`).join('')}</div></section>`;
-      }).join('');
+            <span class="dc-x"><b>${esc(d.titre)}</b>${d.descr ? `<small>${esc(d.descr)}</small>` : ''}</span></a>`).join('')}</div>`;
+        plier(el, repliees.has(r.id));
+        el.querySelector('.rb-h')!.addEventListener('click', () => {
+          const ferme = !el.classList.contains('ferme');
+          plier(el, ferme);
+          if (ferme) repliees.add(r.id); else repliees.delete(r.id);
+          garderRepli(); majTout();
+        });
+        return { el, poids: 2 + ici.length };
+      }).filter((c): c is { el: HTMLElement; poids: number } => !!c);
+      ranger(true);
+      majTout();
     };
-    let garde: LigneClub[] = [];
-    try { garde = JSON.parse(localStorage.getItem('acbt-docs-club') || '[]'); } catch { /* rien */ }
-    afficher(garde);
+    toutBtn?.addEventListener('click', () => {
+      const fermer = !cartes.every((c) => repliees.has(c.el.dataset.rb!));
+      for (const c of cartes) { plier(c.el, fermer); if (fermer) repliees.add(c.el.dataset.rb!); else repliees.delete(c.el.dataset.rb!); }
+      garderRepli(); majTout();
+    });
+    // Recherche : une rubrique repliée s'ouvre si elle contient un résultat
+    document.getElementById('q')?.addEventListener('input', (e) => boite.classList.toggle('cherche', !!(e.target as HTMLInputElement).value.trim()));
+    addEventListener('resize', () => ranger());
+    // L'onglet Préparer est caché au chargement : on recalcule les colonnes quand il s'affiche
+    new ResizeObserver(() => ranger()).observe(boite);
+
+    let garde: { lignes: LigneClub[]; rubriques: { id: string; nom: string }[] | null } = { lignes: [], rubriques: null };
+    try { const g = JSON.parse(localStorage.getItem('acbt-docs-club') || 'null'); if (g && !Array.isArray(g)) garde = g; else if (Array.isArray(g)) garde.lignes = g; } catch { /* rien */ }
+    afficher(garde.lignes, rubriquesDe(garde.rubriques));
     fetch(API, { credentials: 'same-origin', cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((d) => {
       if (!d || !Array.isArray(d.lignes)) return;
-      try { localStorage.setItem('acbt-docs-club', JSON.stringify(d.lignes)); } catch { /* plein */ }
-      afficher(d.lignes);
+      try { localStorage.setItem('acbt-docs-club', JSON.stringify({ lignes: d.lignes, rubriques: d.rubriques ?? null })); } catch { /* plein */ }
+      afficher(d.lignes, rubriquesDe(d.rubriques));
     }).catch(() => { /* hors ligne : on garde l'affichage */ });
   }
 </script>
@@ -1016,15 +1073,50 @@ const outilsAdmin = [
   .maa-chip { flex: none; font-size: .72rem; font-weight: 700; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); background: var(--surface-2); }
   .maa-row[data-etat='en-cours'] .maa-chip { color: var(--bad); background: var(--bad-bg); border-color: var(--bad-line); }
 
-  /* Documents du club : une carte par rubrique. Téléphone : une colonne ; tablette : deux ; PC : trois */
-  .rubriques { columns: 1; column-gap: 14px; }
-  .rubriques :global(.rb) { break-inside: avoid; margin: 0 0 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: inline-block; width: 100%; }
+  /* Préparer sur très grand écran : toute la largeur (les autres onglets gardent 1760 px) */
+  @media (min-width: 1100px) {
+    .content:has(#preparer:not([hidden])) { max-width: 2600px; }
+    :global(body:has(#preparer:not([hidden]))) .topbar { padding-inline: max(14px, calc((100% - 2600px) / 2 + 28px)); }
+  }
+  /* Liens utiles (Préparer) : tuiles logo + nom (choix B du club, 28/11), la description s'affiche au survol */
+  .liens-outils { display: grid; gap: 10px; margin-bottom: 6px; }
+  .lo { display: flex; gap: 12px; align-items: center; min-width: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 12px 13px; text-decoration: none; color: inherit; }
+  .lo:hover { border-color: var(--accent-line); }
+  .lo:active { transform: scale(.99); }
+  .lo-txt { min-width: 0; }
+  .lo-txt b { display: block; font-size: .95rem; font-weight: 650; }
+  .lo-txt small { display: block; color: var(--muted); font-size: .82rem; line-height: 1.3; }
+  /* B : tuiles (logo + nom), sans description */
+  .v-b { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+  .v-b .lo { flex-direction: column; justify-content: center; text-align: center; gap: 8px; padding: 14px 8px; }
+  .v-b .lo-txt small { display: none; }
+  .v-b .lo-txt b { font-size: .84rem; line-height: 1.2; }
+  @media (min-width: 1100px) {
+    .liens-outils { gap: 16px; }
+    .v-b { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    .v-b .lo { padding: 20px 10px; border-radius: 16px; }
+    .v-b .o-logo { width: 58px; height: 58px; }
+    .v-b .lo-txt b { font-size: .98rem; }
+  }
+
+  /* Documents du club : une carte par rubrique, repliable. Colonnes réparties par le script (1 sur téléphone, jusqu'à 5 sur grand écran) */
+  .sep-docs { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .sep-docs h5 { margin: 0; font: inherit; }
+  .tout-replier { border: 1px solid var(--line); background: var(--surface); color: var(--accent-text); font: inherit; font-size: .72rem; font-weight: 700; letter-spacing: 0; text-transform: none; border-radius: 999px; padding: 5px 12px; cursor: pointer; }
+  .rubriques { display: flex; gap: 14px; align-items: flex-start; }
+  .rubriques :global(.rb-col) { flex: 1 1 0; min-width: 0; display: grid; gap: 14px; }
+  .rubriques :global(.rb) { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
   .rubriques :global(.rb:not(:has(.dc:not([hidden])))) { display: none; }
-  .rubriques :global(.rb-h) { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1px solid var(--line); }
+  .rubriques :global(.rb-h) { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 14px; border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .rubriques :global(.rb-h:hover) { background: var(--surface-2); }
   .rubriques :global(.rb-ic) { flex: none; width: 32px; height: 32px; border-radius: 9px; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; }
   .rubriques :global(.rb-ic svg) { width: 18px; height: 18px; }
-  .rubriques :global(.rb-h h3) { flex: 1; margin: 0; font-size: .98rem; font-weight: 800; color: var(--ink); }
+  .rubriques :global(.rb-h h3) { flex: 1; min-width: 0; margin: 0; font-size: .98rem; font-weight: 800; color: var(--ink); }
   .rubriques :global(.rb-nb) { flex: none; font-size: .74rem; font-weight: 700; color: var(--muted); background: var(--surface-2); border-radius: 999px; padding: 2px 9px; }
+  .rubriques :global(.rb-chev) { flex: none; width: 20px; height: 20px; color: var(--muted); transition: transform .15s; }
+  .rubriques :global(.rb.ferme .rb-chev) { transform: rotate(-90deg); }
+  .rubriques :global(.rb.ferme .rb-h) { border-bottom: 0; }
+  .rubriques:not(.cherche) :global(.rb.ferme .rb-l) { display: none; }
   .rubriques :global(.rb-l > .dc + .dc) { border-top: 1px solid var(--line); }
   .rubriques :global(.dc) { display: flex; align-items: center; gap: 11px; padding: 10px 14px; text-decoration: none; color: inherit; }
   .rubriques :global(.dc[hidden]) { display: none; }
@@ -1035,10 +1127,9 @@ const outilsAdmin = [
   .rubriques :global(.dc-x) { min-width: 0; flex: 1; }
   .rubriques :global(.dc-x b) { display: block; font-weight: 650; font-size: .92rem; line-height: 1.25; }
   .rubriques :global(.dc-x small) { display: block; color: var(--muted); font-size: .78rem; line-height: 1.3; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  @media (min-width: 700px) { .rubriques { columns: 2; } }
   @media (min-width: 1100px) {
-    .rubriques { columns: 3; column-gap: 16px; }
-    .rubriques :global(.rb) { margin-bottom: 16px; border-radius: 16px; }
+    .rubriques, .rubriques :global(.rb-col) { gap: 16px; }
+    .rubriques :global(.rb) { border-radius: 16px; }
     .rubriques :global(.rb-h) { padding: 14px 18px; }
     .rubriques :global(.rb-ic) { width: 38px; height: 38px; border-radius: 10px; }
     .rubriques :global(.rb-ic svg) { width: 21px; height: 21px; }
@@ -1046,6 +1137,7 @@ const outilsAdmin = [
     .rubriques :global(.dc) { padding: 12px 18px; }
     .rubriques :global(.dc-x b) { font-size: 1rem; }
     .rubriques :global(.dc-x small) { font-size: .84rem; }
+    .tout-replier { font-size: .8rem; padding: 6px 14px; }
   }
 
   /* Outils */

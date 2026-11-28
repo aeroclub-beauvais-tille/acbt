@@ -17,6 +17,16 @@ export const RUBRIQUES_CLUB = [
   { id: 'licence', nom: 'Licence et règles', svg: 'M4 5h16v14H4zM8 10a2 2 0 1 0 4 0 2 2 0 0 0-4 0M7 16c.6-1.4 1.8-2 3-2s2.4.6 3 2M15 9h3M15 13h3' },
 ] as const;
 export type RubriqueClub = (typeof RUBRIQUES_CLUB)[number]['id'];
+// Rubriques modifiables par l'admin (créer, renommer, supprimer, ordonner) : la liste est gardée dans D1.
+// Une rubrique créée depuis l'appli n'a pas d'icône ; les icônes se règlent ici, par identifiant.
+export type Rubrique = { id: string; nom: string; svg?: string };
+const ICONES: Record<string, string> = Object.fromEntries(RUBRIQUES_CLUB.map((r) => [r.id, r.svg]));
+export const RUBRIQUES_DEFAUT: Rubrique[] = RUBRIQUES_CLUB.map((r) => ({ id: r.id, nom: r.nom }));
+/** Liste des rubriques à afficher : celle réglée par l'admin, sinon celle d'origine ; avec leur icône si elle existe. */
+export function rubriquesDe(liste?: { id: string; nom: string }[] | null): Rubrique[] {
+  const l = Array.isArray(liste) && liste.length ? liste : RUBRIQUES_DEFAUT;
+  return l.map((r) => ({ id: r.id, nom: r.nom, svg: ICONES[r.id] }));
+}
 
 // Rangement des documents du site (identifiant du fichier → rubrique)
 const RANGEMENT: Record<string, RubriqueClub> = {
