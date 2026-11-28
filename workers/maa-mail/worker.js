@@ -8,7 +8,7 @@
 //
 // Il lance aussi la copie des actus Facebook (tâche GitHub facebook.yml) à 9h, 13h, 16h, 19h et 23h,
 // heure de Paris : GitHub saute la plupart de ses propres lancements planifiés, Cloudflare est ponctuel.
-// Réglages : déclencheur Cron « 7 * * * * » (toutes les heures à la 7e minute, le programme ne garde
+// Réglages : déclencheur Cron « 0 * * * * » (toutes les heures pile, le programme ne garde
 // que les bonnes heures de Paris, été comme hiver) et variable secrète GITHUB_CLE (clé GitHub sans
 // expiration, droit Actions : lecture et écriture sur le dépôt acbt).
 
