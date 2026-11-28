@@ -1,16 +1,16 @@
 // Comptes des membres (appli > Admin > Comptes des membres). Toutes les actions demandent le mot de passe admin.
 //   POST { motDePasse, action, ... } :
 //     liste                                   → { membres, mdpCommun, mailPret }
-//     creer      { prenom, nom, email, inviter } → crée le compte et envoie l'invitation par mail
+//     creer      { prenom, nom, email, identifiant?, inviter } (identifiant « prenom.nom » proposé s'il est vide) → crée le compte et envoie l'invitation par mail
 //     importer   { lignes, inviter }          → plusieurs comptes d'un coup (une ligne par membre)
-//     modifier   { id, prenom, nom, email }
+//     modifier   { id, prenom, nom, email, identifiant }
 //     actif      { id, actif }                → désactiver (déconnecte tous ses appareils) ou réactiver
 //     supprimer  { id }
 //     lien       { id }                       → envoie un lien pour choisir un nouveau mot de passe (invitation s'il n'en a jamais eu)
 //     mdpCommun  { actif }                    → accepter ou non le mot de passe commun du club
 // Quand le mail n'a pas pu partir, le lien est renvoyé à l'admin pour qu'il le transmette lui-même (SMS, WhatsApp…).
 import { estAdmin, json } from '../../_alertes.js';
-import { tablesComptes, normEmail, emailValide, envoyerLien, mdpCommunActif, mailPret, maintenant } from '../../_comptes.js';
+import { tablesComptes, normEmail, emailValide, envoyerLien, mdpCommunActif, mailPret, maintenant, normIdentifiant, identifiantValide, proposerIdentifiant, identifiantLibre } from '../../_comptes.js';
 
 const propre = (v, n = 60) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
 const majPrenom = (p) => propre(p).toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
@@ -30,7 +30,7 @@ function lireLigne(ligne) {
   return { email, nom: propre(nom).toUpperCase(), prenom: majPrenom(prenom) };
 }
 
-const LISTE = `SELECT id, email, prenom, nom, actif, cree, derniere, invite, (hash IS NOT NULL) AS a_mdp,
+const LISTE = `SELECT id, identifiant, email, prenom, nom, actif, cree, derniere, invite, (hash IS NOT NULL) AS a_mdp,
   (SELECT COUNT(*) FROM sessions s WHERE s.membre = membres.id) AS appareils FROM membres ORDER BY nom COLLATE NOCASE, prenom COLLATE NOCASE`;
 
 export async function onRequestPost({ request, env }) {
@@ -42,7 +42,7 @@ export async function onRequestPost({ request, env }) {
   const db = env.DB;
   await tablesComptes(db);
   const t = maintenant();
-  const un = (id) => db.prepare('SELECT id, email, prenom, nom, actif, hash FROM membres WHERE id = ?1').bind(String(id || '')).first();
+  const un = (id) => db.prepare('SELECT id, identifiant, email, prenom, nom, actif, hash FROM membres WHERE id = ?1').bind(String(id || '')).first();
 
   switch (d.action) {
     case 'liste': {
@@ -61,20 +61,31 @@ export async function onRequestPost({ request, env }) {
         if (f.erreur) { refus.push({ ligne: f.erreur, raison: 'pas d\'adresse e-mail' }); continue; }
         if (!emailValide(f.email)) { refus.push({ ligne: f.email, raison: 'adresse invalide' }); continue; }
         if (d.action === 'creer' && !f.nom && !f.prenom) return json({ ok: false, erreur: 'Indiquez au moins le nom ou le prénom.' }, 400);
+        if (await db.prepare('SELECT 1 FROM membres WHERE email = ?1').bind(f.email).first()) {
+          if (d.action === 'creer') return json({ ok: false, erreur: `Un compte existe déjà pour ${f.email}.` }, 409);
+          refus.push({ ligne: f.email, raison: 'compte déjà existant' }); continue;
+        }
+        // Identifiant choisi par l'admin (refusé s'il est pris), sinon « prenom.nom » (avec un numéro s'il est pris)
+        let identifiant;
+        if (d.action === 'creer' && String(d.identifiant || '').trim()) {
+          identifiant = normIdentifiant(d.identifiant);
+          if (!identifiantValide(identifiant)) return json({ ok: false, erreur: 'Identifiant invalide : au moins 2 caractères, lettres, chiffres, point ou tiret.' }, 400);
+          if (await db.prepare('SELECT 1 FROM membres WHERE identifiant = ?1').bind(identifiant).first()) return json({ ok: false, erreur: `L'identifiant « ${identifiant} » est déjà pris.` }, 409);
+        } else identifiant = await identifiantLibre(db, proposerIdentifiant(f));
         const id = crypto.randomUUID();
-        const r = await db.prepare('INSERT OR IGNORE INTO membres (id, email, prenom, nom, actif, cree, maj) VALUES (?1, ?2, ?3, ?4, 1, ?5, ?5)')
-          .bind(id, f.email, f.prenom, f.nom, t).run();
+        const r = await db.prepare('INSERT OR IGNORE INTO membres (id, identifiant, email, prenom, nom, actif, cree, maj) VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6, ?6)')
+          .bind(id, identifiant, f.email, f.prenom, f.nom, t).run();
         if (!r.meta?.changes) {
           if (d.action === 'creer') return json({ ok: false, erreur: `Un compte existe déjà pour ${f.email}.` }, 409);
           refus.push({ ligne: f.email, raison: 'compte déjà existant' }); continue;
         }
-        crees.push(f.email);
+        crees.push(identifiant);
         if (d.inviter !== false) {
-          const e = await envoyerLien(request, env, { id, email: f.email, prenom: f.prenom }, 'invitation');
-          if (!e.envoye) liens.push({ email: f.email, nom: `${f.prenom} ${f.nom}`.trim(), lien: e.lien });
+          const e = await envoyerLien(request, env, { id, identifiant, email: f.email, prenom: f.prenom }, 'invitation');
+          if (!e.envoye) liens.push({ email: f.email, identifiant, nom: `${f.prenom} ${f.nom}`.trim(), lien: e.lien });
         }
       }
-      return json({ ok: true, crees, refus, liens, mailPret: mailPret(env) });
+      return json({ ok: true, crees, identifiant: crees[0] || '', refus, liens, mailPret: mailPret(env) });
     }
 
     case 'modifier': {
@@ -84,8 +95,11 @@ export async function onRequestPost({ request, env }) {
       if (!emailValide(email)) return json({ ok: false, erreur: 'Adresse e-mail invalide.' }, 400);
       const autre = await db.prepare('SELECT 1 FROM membres WHERE email = ?1 AND id != ?2').bind(email, m.id).first();
       if (autre) return json({ ok: false, erreur: `Un autre compte utilise déjà ${email}.` }, 409);
-      await db.prepare('UPDATE membres SET email = ?1, prenom = ?2, nom = ?3, maj = ?4 WHERE id = ?5')
-        .bind(email, majPrenom(d.prenom), propre(d.nom).toUpperCase(), t, m.id).run();
+      const identifiant = normIdentifiant(d.identifiant || m.identifiant);
+      if (!identifiantValide(identifiant)) return json({ ok: false, erreur: 'Identifiant invalide : au moins 2 caractères, lettres, chiffres, point ou tiret.' }, 400);
+      if (await db.prepare('SELECT 1 FROM membres WHERE identifiant = ?1 AND id != ?2').bind(identifiant, m.id).first()) return json({ ok: false, erreur: `L'identifiant « ${identifiant} » est déjà pris.` }, 409);
+      await db.prepare('UPDATE membres SET email = ?1, prenom = ?2, nom = ?3, identifiant = ?4, maj = ?5 WHERE id = ?6')
+        .bind(email, majPrenom(d.prenom), propre(d.nom).toUpperCase(), identifiant, t, m.id).run();
       return json({ ok: true });
     }
 

@@ -29,6 +29,38 @@ export async function tablesComptes(db) {
       jeton TEXT PRIMARY KEY, membre TEXT NOT NULL, type TEXT NOT NULL, expire TEXT NOT NULL, cree TEXT NOT NULL)`),
     db.prepare('CREATE TABLE IF NOT EXISTS reglages (cle TEXT PRIMARY KEY, valeur TEXT NOT NULL)'),
   ]);
+  // Identifiant (nom d'utilisateur), distinct de l'adresse e-mail : ajouté après coup, rempli pour les comptes existants
+  const { results } = await db.prepare("SELECT name FROM pragma_table_info('membres')").all();
+  if (!(results || []).some((r) => r.name === 'identifiant')) {
+    try { await db.prepare('ALTER TABLE membres ADD COLUMN identifiant TEXT').run(); } catch { /* ajoutée entre-temps */ }
+  }
+  const sans = (await db.prepare('SELECT id, prenom, nom, email FROM membres WHERE identifiant IS NULL').all()).results || [];
+  for (const m of sans) await db.prepare('UPDATE membres SET identifiant = ?1 WHERE id = ?2').bind(await identifiantLibre(db, proposerIdentifiant(m)), m.id).run();
+  await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS membres_identifiant ON membres (identifiant)').run();
+}
+
+// --- Identifiant : lettres minuscules sans accent, chiffres, point, tiret ; « prenom.nom » proposé par défaut
+export const normIdentifiant = (v) => String(v || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  .replace(/\s+/g, '.').replace(/[^a-z0-9._-]/g, '').replace(/\.{2,}/g, '.').replace(/^[._-]+|[._-]+$/g, '').slice(0, 40);
+export const identifiantValide = (v) => /^[a-z0-9][a-z0-9._-]{1,39}$/.test(v) && !v.includes('@');
+export function proposerIdentifiant({ prenom, nom, email }) {
+  const base = normIdentifiant([prenom, nom].filter(Boolean).join('.'));
+  return base.length >= 2 ? base : normIdentifiant(String(email || '').split('@')[0]) || 'membre';
+}
+/** L'identifiant voulu, ou le même suivi de 2, 3… s'il est déjà pris. */
+export async function identifiantLibre(db, voulu, sauf = '') {
+  for (let i = 1; i < 500; i++) {
+    const essai = i === 1 ? voulu : `${voulu}${i}`;
+    if (!(await db.prepare('SELECT 1 FROM membres WHERE identifiant = ?1 AND id != ?2').bind(essai, sauf).first())) return essai;
+  }
+  return `${voulu}.${crypto.randomUUID().slice(0, 6)}`;
+}
+/** Cherche un membre par son identifiant ou par son adresse e-mail. */
+export function chercherMembre(db, saisie, colonnes) {
+  const v = String(saisie || '').trim().toLowerCase();
+  return v.includes('@')
+    ? db.prepare(`SELECT ${colonnes} FROM membres WHERE email = ?1`).bind(v).first()
+    : db.prepare(`SELECT ${colonnes} FROM membres WHERE identifiant = ?1`).bind(normIdentifiant(v)).first();
 }
 
 export const normEmail = (v) => String(v || '').trim().toLowerCase();
@@ -117,7 +149,7 @@ export async function creerLien(env, membre, type) {
 
 export async function lireLien(env, brut) {
   if (!/^[0-9a-f]{48}$/.test(String(brut || ''))) return null;
-  const r = await env.DB.prepare(`SELECT l.jeton, l.type, l.expire, m.id, m.prenom, m.nom, m.email, m.actif
+  const r = await env.DB.prepare(`SELECT l.jeton, l.type, l.expire, m.id, m.prenom, m.nom, m.email, m.identifiant, m.actif
     FROM liens l JOIN membres m ON m.id = l.membre WHERE l.jeton = ?1`).bind(await sha(brut)).first();
   if (!r || r.expire < maintenant() || r.actif !== 1) return null;
   return r;
@@ -158,7 +190,7 @@ export async function envoyerMail(env, { a, sujet, texte, html }) {
 }
 
 /** Mail d'invitation (nouveau compte) ou de réinitialisation, avec le lien pour choisir son mot de passe. */
-export function mailLien({ type, prenom, email, lien }) {
+export function mailLien({ type, prenom, email, identifiant, lien }) {
   const bonjour = prenom ? `Bonjour ${prenom},` : 'Bonjour,';
   const invitation = type === 'invitation';
   const sujet = invitation ? 'Votre compte sur l\'espace membres de l\'ACBT' : 'Nouveau mot de passe pour l\'espace membres de l\'ACBT';
@@ -167,7 +199,8 @@ export function mailLien({ type, prenom, email, lien }) {
     : 'Une demande de nouveau mot de passe a été faite pour votre compte de l\'espace membres de l\'aéroclub de Beauvais-Tillé.';
   const action = invitation ? 'Choisir mon mot de passe' : 'Choisir un nouveau mot de passe';
   const duree = invitation ? 'Ce lien est valable 14 jours.' : 'Ce lien est valable 24 heures. Si vous n\'avez rien demandé, ignorez ce mail : votre mot de passe actuel reste valable.';
-  const texte = `${bonjour}\n\n${intro}\n\nVotre identifiant : ${email}\n\n${action} :\n${lien}\n\n${duree}\n\nAéroclub de Beauvais-Tillé`;
+  const ident = identifiant ? `Votre identifiant : ${identifiant} (vous pouvez aussi vous connecter avec votre adresse ${email})` : `Votre identifiant : ${email}`;
+  const texte = `${bonjour}\n\n${intro}\n\n${ident}\n\n${action} :\n${lien}\n\n${duree}\n\nAéroclub de Beauvais-Tillé`;
   const html = `<!doctype html><html lang="fr"><body style="margin:0;background:#f2f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f1d33">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2f5f9;padding:24px 12px"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:12px;overflow:hidden">
@@ -175,7 +208,7 @@ export function mailLien({ type, prenom, email, lien }) {
 <tr><td style="padding:22px;font-size:15px;line-height:1.5">
 <p style="margin:0 0 12px">${esc(bonjour)}</p>
 <p style="margin:0 0 12px">${esc(intro)}</p>
-<p style="margin:0 0 18px">Votre identifiant : <b>${esc(email)}</b></p>
+<p style="margin:0 0 18px">Votre identifiant : <b>${esc(identifiant || email)}</b>${identifiant ? `<br><span style="color:#5b6b82;font-size:13px">Vous pouvez aussi vous connecter avec votre adresse ${esc(email)}.</span>` : ''}</p>
 <p style="margin:0 0 18px"><a href="${esc(lien)}" style="display:inline-block;background:#0b2a5b;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px">${esc(action)}</a></p>
 <p style="margin:0 0 12px;color:#5b6b82;font-size:13px">${esc(duree)}</p>
 <p style="margin:0;color:#5b6b82;font-size:12px;word-break:break-all">Si le bouton ne marche pas, copiez ce lien dans le navigateur : ${esc(lien)}</p>
@@ -187,7 +220,7 @@ export function mailLien({ type, prenom, email, lien }) {
 export async function envoyerLien(request, env, m, type) {
   const brut = await creerLien(env, m.id, type);
   const lien = `${adresseSite(request, env)}/membre/mot-de-passe/?jeton=${brut}`;
-  const r = await envoyerMail(env, { a: m.email, ...mailLien({ type, prenom: m.prenom, email: m.email, lien }) });
+  const r = await envoyerMail(env, { a: m.email, ...mailLien({ type, prenom: m.prenom, email: m.email, identifiant: m.identifiant, lien }) });
   if (type === 'invitation') await env.DB.prepare('UPDATE membres SET invite = ?1 WHERE id = ?2').bind(maintenant(), m.id).run();
   return { envoye: r.ok, lien, raison: r.ok ? '' : r.raison };
 }

@@ -1,10 +1,10 @@
 // Mot de passe oublié et choix du mot de passe (lien reçu par mail), sans être connecté.
-//   POST { action: 'oublie', identifiant }        → envoie un lien de réinitialisation (réponse identique que l'adresse existe ou non)
+//   POST { action: 'oublie', identifiant }        → (identifiant ou e-mail) envoie un lien de réinitialisation (réponse identique que l'adresse existe ou non)
 //   POST { action: 'verifier', jeton }            → { ok, prenom, email, type } si le lien est encore valable
 //   POST { action: 'choisir', jeton, motDePasse } → enregistre le mot de passe, déconnecte les autres appareils, ouvre la session ici
 import { poserCookie } from '../_session.js';
 import { json } from '../_alertes.js';
-import { tablesComptes, normEmail, emailValide, envoyerLien, lireLien, nouveauHash, mdpAcceptable, ouvrirSession, maintenant, mailPret } from '../_comptes.js';
+import { tablesComptes, chercherMembre, envoyerLien, lireLien, nouveauHash, mdpAcceptable, ouvrirSession, maintenant, mailPret } from '../_comptes.js';
 
 export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ ok: false, erreur: 'Base non reliée.' }, 503);
@@ -14,10 +14,9 @@ export async function onRequestPost({ request, env }) {
   await tablesComptes(env.DB);
 
   if (d.action === 'oublie') {
-    const email = normEmail(d.identifiant);
-    if (!emailValide(email)) return json({ ok: false, erreur: 'Adresse e-mail invalide.' }, 400);
+    if (!String(d.identifiant || '').trim()) return json({ ok: false, erreur: 'Indiquez votre identifiant ou votre adresse e-mail.' }, 400);
     if (!mailPret(env)) return json({ ok: false, erreur: 'L\'envoi des mails n\'est pas encore en service. Demandez un nouveau mot de passe à un responsable du club.' }, 503);
-    const m = await env.DB.prepare('SELECT id, prenom, email, actif FROM membres WHERE email = ?1').bind(email).first();
+    const m = await chercherMembre(env.DB, d.identifiant, 'id, prenom, email, identifiant, actif');
     if (m && m.actif === 1) {
       // Pas plus d'un mail toutes les 2 minutes pour la même adresse
       const recent = await env.DB.prepare('SELECT 1 FROM liens WHERE membre = ?1 AND cree > ?2').bind(m.id, new Date(Date.now() - 120e3).toISOString()).first();
@@ -31,7 +30,7 @@ export async function onRequestPost({ request, env }) {
   const l = await lireLien(env, d.jeton);
   if (!l) return json({ ok: false, erreur: 'Ce lien n\'est plus valable. Demandez-en un nouveau depuis l\'écran de connexion (« Mot de passe oublié ? »).' }, 410);
 
-  if (d.action === 'verifier') return json({ ok: true, prenom: l.prenom || '', email: l.email, type: l.type });
+  if (d.action === 'verifier') return json({ ok: true, prenom: l.prenom || '', email: l.email, identifiant: l.identifiant || '', type: l.type });
 
   if (d.action === 'choisir') {
     if (!mdpAcceptable(d.motDePasse)) return json({ ok: false, erreur: 'Le mot de passe doit faire au moins 8 caractères.' }, 400);
@@ -42,7 +41,7 @@ export async function onRequestPost({ request, env }) {
       env.DB.prepare('DELETE FROM liens WHERE membre = ?1').bind(l.id),
     ]);
     const cookie = poserCookie(await ouvrirSession(env, l.id));
-    return new Response(JSON.stringify({ ok: true, email: l.email }), {
+    return new Response(JSON.stringify({ ok: true, email: l.email, identifiant: l.identifiant || '' }), {
       headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': cookie },
     });
   }

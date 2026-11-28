@@ -16,9 +16,9 @@ const essai = !process.env.CF_PAGES;
       <!-- Étape 1 : identifiant et mot de passe -->
       <form class="carte" id="form" novalidate>
         <h1>Connexion</h1>
-        <label for="email">Adresse e-mail</label>
+        <label for="email">Identifiant ou adresse e-mail</label>
         <div class="champ">
-          <input id="email" name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="off" spellcheck="false" placeholder="prenom.nom@exemple.fr" />
+          <input id="email" name="username" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="prenom.nom" />
         </div>
         <label for="mdp" class="l2">Mot de passe</label>
         <div class="champ">
@@ -28,17 +28,17 @@ const essai = !process.env.CF_PAGES;
         <p class="erreur" id="erreur" role="alert" hidden></p>
         <button class="pri" type="submit" id="envoyer">Se connecter</button>
         <button type="button" class="lien oublie" id="oublie">Mot de passe oublié ?</button>
-        <p class="aide" id="aide-commun">Pas encore de compte personnel ? Laissez l'adresse vide et saisissez le mot de passe du club.</p>
+        <p class="aide" id="aide-commun">Pas encore de compte personnel ? Laissez l'identifiant vide et saisissez le mot de passe du club.</p>
         {essai && <p class="maquette">Version d'essai : n'importe quel mot suffit.</p>}
       </form>
 
       <!-- Mot de passe oublié : un lien est envoyé par mail -->
       <form class="carte" id="form-oublie" novalidate hidden>
         <h1>Mot de passe oublié</h1>
-        <p class="sous">Indiquez l'adresse e-mail de votre compte : vous recevrez un lien pour choisir un nouveau mot de passe.</p>
-        <label for="email-oublie" class="l2">Adresse e-mail</label>
+        <p class="sous">Indiquez votre identifiant ou votre adresse e-mail : vous recevrez par mail un lien pour choisir un nouveau mot de passe.</p>
+        <label for="email-oublie" class="l2">Identifiant ou adresse e-mail</label>
         <div class="champ">
-          <input id="email-oublie" type="email" inputmode="email" autocomplete="username" autocapitalize="off" spellcheck="false" />
+          <input id="email-oublie" type="text" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false" />
         </div>
         <p class="erreur" id="erreur-oublie" role="alert" hidden></p>
         <p class="ok" id="ok-oublie" role="status" hidden></p>
@@ -132,7 +132,7 @@ const essai = !process.env.CF_PAGES;
     if (!d) return;
     commun = !!d.mdpCommun;
     $('aide-commun').textContent = commun
-      ? (d.comptes ? 'Pas encore de compte personnel ? Laissez l\'adresse vide et saisissez le mot de passe du club.' : 'Laissez l\'adresse vide et saisissez le mot de passe du club.')
+      ? (d.comptes ? 'Pas encore de compte personnel ? Laissez l\'identifiant vide et saisissez le mot de passe du club.' : 'Laissez l\'identifiant vide et saisissez le mot de passe du club.')
       : 'Votre compte est créé par le bureau du club. Vous recevez un mail pour choisir votre mot de passe.';
     if (!d.comptes) $('oublie').hidden = true;
   }).catch(() => { /* maquette */ });
@@ -146,7 +146,6 @@ const essai = !process.env.CF_PAGES;
     e.preventDefault();
     erreur.hidden = true;
     if (!mdp.value.trim()) { montrer(erreur, 'Saisissez votre mot de passe.'); mdp.focus(); return; }
-    if (email.value.trim() && !email.checkValidity()) { montrer(erreur, 'Adresse e-mail invalide.'); email.focus(); return; }
     envoyer.disabled = true;
     envoyer.textContent = 'Connexion…';
     const r = await seConnecter(email.value, mdp.value);
@@ -155,8 +154,8 @@ const essai = !process.env.CF_PAGES;
       suite(); return;
     }
     montrer(erreur, r === 'desactive' ? 'Ce compte est désactivé. Contactez le bureau du club.'
-      : r === 'identifiant' ? 'Indiquez l\'adresse e-mail de votre compte personnel.'
-      : r === 'refuse' ? (email.value.trim() ? 'Adresse ou mot de passe incorrect.' : (commun ? 'Mot de passe incorrect. Vérifiez auprès du bureau du club.' : 'Indiquez l\'adresse e-mail de votre compte personnel.'))
+      : r === 'identifiant' ? 'Indiquez votre identifiant (ou votre adresse e-mail).'
+      : r === 'refuse' ? (email.value.trim() ? 'Identifiant ou mot de passe incorrect.' : (commun ? 'Mot de passe incorrect. Vérifiez auprès du bureau du club.' : 'Indiquez votre identifiant (ou votre adresse e-mail).'))
       : 'Connexion impossible pour le moment. Réessayez dans un instant.');
     envoyer.disabled = false;
     envoyer.textContent = 'Se connecter';
@@ -174,14 +173,14 @@ const essai = !process.env.CF_PAGES;
   formOublie.addEventListener('submit', async (e) => {
     e.preventDefault();
     montrer($('erreur-oublie'), ''); montrer($('ok-oublie'), '');
-    if (!emailOublie.value.trim() || !emailOublie.checkValidity()) { montrer($('erreur-oublie'), 'Indiquez une adresse e-mail valide.'); emailOublie.focus(); return; }
+    if (!emailOublie.value.trim()) { montrer($('erreur-oublie'), 'Indiquez votre identifiant ou votre adresse e-mail.'); emailOublie.focus(); return; }
     const b = $('envoyer-oublie') as HTMLButtonElement;
     b.disabled = true;
     const r = await fetch(url('/api/mot-de-passe'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'oublie', identifiant: emailOublie.value }) }).catch(() => null);
     const d = r ? await r.json().catch(() => ({})) : {};
     b.disabled = false;
     if (!r || !r.ok) { montrer($('erreur-oublie'), d.erreur || 'Envoi impossible pour le moment (pas de réseau ?).'); return; }
-    montrer($('ok-oublie'), `Si un compte existe pour ${emailOublie.value.trim().toLowerCase()}, un mail vient de partir. Pensez à regarder dans les indésirables.`);
+    montrer($('ok-oublie'), `Si un compte existe pour « ${emailOublie.value.trim()} », un mail vient de partir vers son adresse. Pensez à regarder dans les indésirables.`);
   });
 </script>
 

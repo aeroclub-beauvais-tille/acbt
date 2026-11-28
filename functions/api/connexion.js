@@ -1,13 +1,13 @@
 // Écran de connexion de l'espace membre.
 //   GET  → { comptes, mdpCommun } : l'écran sait s'il doit encore parler du mot de passe commun du club
 //   POST { identifiant?, motDePasse } :
-//     - identifiant (adresse e-mail) + mot de passe personnel → compte du membre ;
+//     - identifiant (nom d'utilisateur ou adresse e-mail) + mot de passe personnel → compte du membre ;
 //     - sans identifiant : mot de passe admin (fait apparaître l'onglet Admin sur l'appareil)
 //       ou mot de passe commun du club, tant que l'admin ne l'a pas coupé.
 // La session est rangée dans la base (cookie valable un an) : désactiver un membre le déconnecte partout.
 import { jeton, poserCookie, egal } from '../_session.js';
 import { estAdmin } from '../_alertes.js';
-import { tablesComptes, mdpCommunActif, ouvrirSession, hacher, normEmail, maintenant } from '../_comptes.js';
+import { tablesComptes, mdpCommunActif, ouvrirSession, hacher, chercherMembre, maintenant } from '../_comptes.js';
 
 const json = (corps, status = 200, cookie) => new Response(JSON.stringify(corps), {
   status,
@@ -28,15 +28,15 @@ export async function onRequestPost({ request, env }) {
   let identifiant = '', motDePasse = '';
   try { ({ identifiant = '', motDePasse = '' } = await request.json()); } catch { /* formulaire vide */ }
   motDePasse = String(motDePasse);
-  const email = normEmail(identifiant);
+  const saisie = String(identifiant || '').trim();
   if (env.DB) await tablesComptes(env.DB);
 
   // Sans base (cas de secours) : l'ancien fonctionnement, cookie = empreinte du mot de passe commun
   const ouvrir = async (membre) => (env.DB ? ouvrirSession(env, membre) : jeton(env.MOT_DE_PASSE_MEMBRES));
 
-  if (email) {
+  if (saisie) {
     if (!env.DB) return json({ ok: false }, 401);
-    const m = await env.DB.prepare('SELECT id, prenom, nom, hash, sel, actif FROM membres WHERE email = ?1').bind(email).first();
+    const m = await chercherMembre(env.DB, saisie, 'id, prenom, nom, hash, sel, actif');
     const bon = m && m.hash && m.sel && egal(await hacher(motDePasse, m.sel), m.hash);
     if (!bon) { await freiner(); return json({ ok: false }, 401); }
     if (m.actif !== 1) return json({ ok: false, desactive: true }, 403);
