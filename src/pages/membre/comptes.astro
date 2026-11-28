@@ -28,7 +28,7 @@ import { url } from '../../lib/utils';
 
         <form class="carte" id="form" novalidate>
           <h1 id="f-titre">Ajouter un membre</h1>
-          <p class="sous" id="f-sous">Le membre reçoit un mail pour choisir son mot de passe. Son identifiant est son adresse e-mail.</p>
+          <p class="sous" id="f-sous">Le membre reçoit un mail pour choisir son mot de passe. Il se connecte avec son identifiant ou son adresse e-mail.</p>
           <div class="deux">
             <div>
               <label class="lbl" for="prenom">Prénom</label>
@@ -39,8 +39,17 @@ import { url } from '../../lib/utils';
               <input id="nom" type="text" autocomplete="off" autocapitalize="characters" />
             </div>
           </div>
-          <label class="lbl" for="email">Adresse e-mail</label>
-          <input id="email" type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <div class="deux">
+            <div>
+              <label class="lbl" for="identifiant">Identifiant</label>
+              <input id="identifiant" type="text" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="prenom.nom" />
+            </div>
+            <div>
+              <label class="lbl" for="email">Adresse e-mail</label>
+              <input id="email" type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" />
+            </div>
+          </div>
+          <p class="aide-id" id="aide-id">Proposé tout seul à partir du prénom et du nom. Vous pouvez le changer.</p>
           <label class="case" id="z-inviter"><input type="checkbox" id="inviter" checked /> Envoyer l'invitation par mail maintenant</label>
           <p class="erreur" id="erreur" role="alert" hidden></p>
           <div class="ok" id="ok" role="status" hidden></div>
@@ -50,7 +59,7 @@ import { url } from '../../lib/utils';
 
         <details class="carte plusieurs" id="z-import">
           <summary>Ajouter plusieurs membres d'un coup</summary>
-          <p class="sous">Une ligne par membre, avec son adresse e-mail. Le NOM en majuscules, le prénom ensuite. Par exemple :</p>
+          <p class="sous">Une ligne par membre, avec son adresse e-mail. Le NOM en majuscules, le prénom ensuite. L'identifiant « prenom.nom » est créé tout seul. Par exemple :</p>
           <pre class="ex">DUPONT Jean jean.dupont@gmail.com
 MARTIN Claire claire.martin@orange.fr</pre>
           <textarea id="lignes" rows="6" spellcheck="false" placeholder="DUPONT Jean jean.dupont@gmail.com"></textarea>
@@ -70,7 +79,7 @@ MARTIN Claire claire.martin@orange.fr</pre>
       <section class="carte liste">
         <div class="l-tete">
           <h2 id="l-titre">Membres</h2>
-          <input id="cherche" type="search" placeholder="Rechercher un nom ou une adresse" aria-label="Rechercher un membre" />
+          <input id="cherche" type="search" placeholder="Rechercher un nom, un identifiant, une adresse" aria-label="Rechercher un membre" />
         </div>
         <p class="resume" id="resume"></p>
         <p class="sous" id="etat">Saisissez le mot de passe admin pour voir les comptes.</p>
@@ -81,10 +90,10 @@ MARTIN Claire claire.martin@orange.fr</pre>
 </MembreApp>
 
 <script>
-  type Membre = { id: string; email: string; prenom: string; nom: string; actif: number; cree: string; derniere: string | null; invite: string | null; a_mdp: number; appareils: number };
+  type Membre = { id: string; identifiant: string; email: string; prenom: string; nom: string; actif: number; cree: string; derniere: string | null; invite: string | null; a_mdp: number; appareils: number };
   const API = document.getElementById('ecran')!.dataset.api!;
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
-  const mdp = $<HTMLInputElement>('mdp'), prenom = $<HTMLInputElement>('prenom'), nom = $<HTMLInputElement>('nom'), email = $<HTMLInputElement>('email');
+  const identifiant = $<HTMLInputElement>('identifiant'), mdp = $<HTMLInputElement>('mdp'), prenom = $<HTMLInputElement>('prenom'), nom = $<HTMLInputElement>('nom'), email = $<HTMLInputElement>('email');
   const erreur = $('erreur'), ok = $('ok'), envoyer = $<HTMLButtonElement>('envoyer'), abandon = $<HTMLButtonElement>('abandon');
   const esc = (t: unknown) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
   const montrer = (el: HTMLElement, t: string) => { el.textContent = t; el.hidden = !t; };
@@ -106,7 +115,7 @@ MARTIN Claire claire.martin@orange.fr</pre>
   }
 
   // Lien à transmettre soi-même quand le mail n'est pas parti
-  const blocLien = (l: { email: string; nom?: string; lien: string }) => `<div class="a-copier"><span>${esc(l.nom || l.email)}</span>
+  const blocLien = (l: { email: string; identifiant?: string; nom?: string; lien: string }) => `<div class="a-copier"><span>${esc(l.nom || l.email)}${l.identifiant ? ` · identifiant <b>${esc(l.identifiant)}</b>` : ''}</span>
     <code>${esc(l.lien)}</code><button type="button" data-copier="${esc(l.lien)}">Copier le lien</button></div>`;
 
   const statut = (m: Membre) => !m.actif ? ['off', 'Désactivé'] : !m.a_mdp ? ['att', m.invite ? 'Invitation en attente' : 'Pas encore invité'] : ['on', 'Actif'];
@@ -116,7 +125,7 @@ MARTIN Claire claire.martin@orange.fr</pre>
 
   function afficher() {
     const q = $<HTMLInputElement>('cherche').value.trim().toLowerCase();
-    const vus = membres.filter((m) => !q || `${m.prenom} ${m.nom} ${m.email}`.toLowerCase().includes(q));
+    const vus = membres.filter((m) => !q || `${m.prenom} ${m.nom} ${m.email} ${m.identifiant}`.toLowerCase().includes(q));
     const actifs = membres.filter((m) => m.actif && m.a_mdp).length, attente = membres.filter((m) => m.actif && !m.a_mdp).length, off = membres.filter((m) => !m.actif).length;
     $('l-titre').textContent = `Membres (${membres.length})`;
     montrer($('resume'), membres.length ? `${actifs} actif${actifs > 1 ? 's' : ''} · ${attente} en attente de mot de passe · ${off} désactivé${off > 1 ? 's' : ''}` : '');
@@ -124,7 +133,7 @@ MARTIN Claire claire.martin@orange.fr</pre>
     $('membres').innerHTML = vus.map((m) => {
       const [c, t] = statut(m);
       return `<li class="m-${c}" data-id="${esc(m.id)}">
-        <div class="txt"><b>${esc(m.nom)} ${esc(m.prenom)}</b><span class="mail">${esc(m.email)}</span>
+        <div class="txt"><b>${esc(m.nom)} ${esc(m.prenom)}</b><span class="mail"><span class="id">${esc(m.identifiant)}</span> · ${esc(m.email)}</span>
         <span class="info"><i class="pastille p-${c}">${t}</i> ${esc(detail(m))}</span></div>
         <div class="act">
           ${m.actif ? `<button type="button" data-action="lien">${m.a_mdp ? 'Réinitialiser le mot de passe' : (m.invite ? 'Renvoyer l’invitation' : 'Envoyer l’invitation')}</button>` : ''}
@@ -165,10 +174,17 @@ MARTIN Claire claire.martin@orange.fr</pre>
   mdp.addEventListener('change', charger);
 
   const viderForm = () => {
-    edition = null; prenom.value = ''; nom.value = ''; email.value = '';
+    edition = null; prenom.value = ''; nom.value = ''; email.value = ''; identifiant.value = ''; idTouche = false;
     $('f-titre').textContent = 'Ajouter un membre'; envoyer.textContent = 'Créer le compte'; abandon.hidden = true; $('z-inviter').hidden = false;
-    $('f-sous').textContent = 'Le membre reçoit un mail pour choisir son mot de passe. Son identifiant est son adresse e-mail.';
+    $('f-sous').textContent = 'Le membre reçoit un mail pour choisir son mot de passe. Il se connecte avec son identifiant ou son adresse e-mail.';
   };
+  // Identifiant proposé « prenom.nom » tant que l'admin ne l'a pas changé lui-même
+  let idTouche = false;
+  const proposer = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, '.').replace(/[^a-z0-9._-]/g, '').replace(/\.{2,}/g, '.').replace(/^[._-]+|[._-]+$/g, '').slice(0, 40);
+  const majIdentifiant = () => { if (!idTouche) identifiant.value = proposer([prenom.value, nom.value].filter((x) => x.trim()).join('.')); };
+  prenom.addEventListener('input', majIdentifiant); nom.addEventListener('input', majIdentifiant);
+  identifiant.addEventListener('input', () => { idTouche = !!identifiant.value.trim(); });
+  identifiant.addEventListener('change', () => { identifiant.value = proposer(identifiant.value); });
   abandon.addEventListener('click', () => { viderForm(); montrer(erreur, ''); });
 
   $('form').addEventListener('submit', async (ev) => {
@@ -179,7 +195,7 @@ MARTIN Claire claire.martin@orange.fr</pre>
     montrer(erreur, '');
     envoyer.disabled = true;
     try {
-      const champs = { prenom: prenom.value, nom: nom.value, email: email.value };
+      const champs = { prenom: prenom.value, nom: nom.value, email: email.value, identifiant: identifiant.value };
       const qui = `${prenom.value.trim()} ${nom.value.trim().toUpperCase()}`.trim();
       if (edition) {
         await poster({ action: 'modifier', id: edition, ...champs });
@@ -187,9 +203,10 @@ MARTIN Claire claire.martin@orange.fr</pre>
       } else {
         const inviter = $<HTMLInputElement>('inviter').checked;
         const d = await poster({ action: 'creer', inviter, ...champs });
-        montrerHtml(ok, !inviter ? `Compte de ${esc(qui)} créé. Envoyez l’invitation depuis la liste quand vous voulez.`
+        const idf = `<br>Identifiant : <b>${esc(d.identifiant)}</b>`;
+        montrerHtml(ok, !inviter ? `Compte de ${esc(qui)} créé.${idf} Envoyez l’invitation depuis la liste quand vous voulez.`
           : d.liens?.length ? `Compte de ${esc(qui)} créé. Le mail n’a pas pu partir : envoyez-lui ce lien vous-même.${blocLien(d.liens[0])}`
-          : `Compte de ${esc(qui)} créé. Invitation envoyée à ${esc(email.value.trim().toLowerCase())}.`);
+          : `Compte de ${esc(qui)} créé. Invitation envoyée à ${esc(email.value.trim().toLowerCase())}.${idf}`);
       }
       viderForm();
       charger();
@@ -239,7 +256,7 @@ MARTIN Claire claire.martin@orange.fr</pre>
     const zone = li.querySelector<HTMLElement>('.retour-lien')!;
     try {
       if (b.dataset.action === 'modifier') {
-        edition = m.id; prenom.value = m.prenom || ''; nom.value = m.nom || ''; email.value = m.email;
+        edition = m.id; prenom.value = m.prenom || ''; nom.value = m.nom || ''; email.value = m.email; identifiant.value = m.identifiant || ''; idTouche = true;
         $('f-titre').textContent = `Modifier le compte`; $('f-sous').textContent = 'Le mot de passe du membre ne change pas.';
         envoyer.textContent = 'Enregistrer'; abandon.hidden = false; $('z-inviter').hidden = true;
         montrer(ok, ''); montrer(erreur, '');
@@ -251,7 +268,7 @@ MARTIN Claire claire.martin@orange.fr</pre>
         const d = await poster({ action: 'lien', id: m.id });
         b.disabled = false;
         montrerHtml(zone, d.envoye ? `Mail envoyé à ${esc(d.email)} : le lien est valable ${m.a_mdp ? '24 heures' : '14 jours'}.`
-          : `Le mail n’a pas pu partir. Envoyez ce lien à ${esc(qui)} vous-même :${blocLien({ email: m.email, nom: qui, lien: d.lien })}`);
+          : `Le mail n’a pas pu partir. Envoyez ce lien à ${esc(qui)} vous-même :${blocLien({ email: m.email, identifiant: m.identifiant, nom: qui, lien: d.lien })}`);
         charger().then(() => { const z = document.querySelector<HTMLElement>(`li[data-id="${CSS.escape(m.id)}"] .retour-lien`); if (z) montrerHtml(z, zone.innerHTML); });
         return;
       }
@@ -295,6 +312,7 @@ MARTIN Claire claire.martin@orange.fr</pre>
   textarea { margin-top: 10px; font-family: ui-monospace, Menlo, monospace; font-size: .88rem; resize: vertical; }
   .case { display: flex; align-items: center; gap: 9px; margin: 14px 0 0; font-size: .92rem; cursor: pointer; }
   .case input { width: 19px; height: 19px; accent-color: var(--navy); }
+  .aide-id { margin: 6px 0 0; font-size: .8rem; color: var(--muted); }
   .ex { margin: 8px 0 0; background: var(--surface-2); border-radius: 8px; padding: 8px 12px; font-size: .82rem; white-space: pre-wrap; overflow-wrap: anywhere; }
   .plusieurs summary { cursor: pointer; font-weight: 800; font-size: 1.02rem; }
   .plusieurs[open] summary { margin-bottom: 8px; }
@@ -316,6 +334,7 @@ MARTIN Claire claire.martin@orange.fr</pre>
   .membres :global(.txt) { min-width: 0; }
   .membres :global(b) { display: block; font-size: .98rem; }
   .membres :global(.mail) { display: block; font-size: .86rem; color: var(--muted); overflow-wrap: anywhere; }
+  .membres :global(.mail .id) { color: var(--ink); font-weight: 700; }
   .membres :global(.info) { display: block; font-size: .8rem; color: var(--muted); margin-top: 4px; }
   .membres :global(.pastille) { font-style: normal; font-weight: 800; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; border-radius: 99px; padding: 2px 8px; margin-right: 4px; }
   .membres :global(.p-on) { background: var(--ok-bg); color: var(--ok); }

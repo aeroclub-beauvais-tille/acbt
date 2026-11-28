@@ -18,8 +18,8 @@ import { url } from '../../lib/utils';
       <form class="carte" id="form" novalidate hidden>
         <h1 id="titre">Choisir votre mot de passe</h1>
         <p class="sous" id="bonjour"></p>
-        <p class="ident">Identifiant : <b id="ident"></b></p>
-        <input type="email" id="user" autocomplete="username" hidden />
+        <p class="ident">Identifiant : <b id="ident"></b><small id="ident-mail"></small></p>
+        <input type="text" id="user" autocomplete="username" hidden />
         <label for="mdp1">Nouveau mot de passe</label>
         <div class="champ">
           <input id="mdp1" type="password" autocomplete="new-password" minlength="8" required />
@@ -66,9 +66,10 @@ import { url } from '../../lib/utils';
     $('titre').textContent = d.type === 'invitation' ? 'Bienvenue ! Choisissez votre mot de passe' : 'Choisir un nouveau mot de passe';
     $('bonjour').textContent = d.prenom ? `Bonjour ${d.prenom}.` : '';
     $('bonjour').hidden = !d.prenom;
-    $('ident').textContent = d.email;
-    $<HTMLInputElement>('user').value = d.email;
-    try { localStorage.setItem('acbt-membre-email', d.email); } catch { /* privé */ }
+    $('ident').textContent = d.identifiant || d.email;
+    $('ident-mail').textContent = d.identifiant ? `ou votre adresse ${d.email}` : '';
+    $<HTMLInputElement>('user').value = d.identifiant || d.email;
+    try { localStorage.setItem('acbt-membre-email', d.identifiant || d.email); } catch { /* privé */ }
     $('mdp1').focus();
   })();
 
@@ -115,6 +116,7 @@ import { url } from '../../lib/utils';
   .champ:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
   .champ input { flex: 1; min-width: 0; border: 0; padding: 0 14px; font: inherit; font-size: 1.05rem; outline: none; background: transparent; color: var(--ink); }
   .voir { border: 0; background: transparent; color: var(--accent); font: inherit; font-weight: 700; font-size: .88rem; padding: 0 14px; cursor: pointer; }
+  .ident small { display: block; color: var(--muted); font-size: .82rem; margin-top: 2px; }
   .regle { font-size: .8rem; color: var(--muted); margin: 6px 0 0; }
   .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; }
   .pri { display: grid; place-items: center; width: 100%; height: 50px; margin-top: 16px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; text-decoration: none; box-sizing: border-box; }
