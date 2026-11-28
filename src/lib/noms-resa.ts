@@ -40,5 +40,7 @@ export const typeVol = (t: string | null | undefined) => (t && !/^vol standard$/
 // Pilote et instructeur (jamais deux fois le même nom), puis le type de vol
 export function quiResa(r: { pilote?: string | null; instructeur?: string | null; type?: string | null }, instructeurs: InstructeurNom[] = []) {
   const noms = [...new Set([nomCourt(r.pilote, instructeurs), nomCourt(r.instructeur, instructeurs)].filter(Boolean))].join(' + ');
-  return [noms, typeVol(r.type)].filter(Boolean).join(' - ');
+  // Avec un instructeur (FI), c'est forcément de l'instruction : inutile de l'écrire
+  const type = /\(FI/.test(noms) && /instruction/i.test(r.type || '') ? '' : typeVol(r.type);
+  return [noms, type].filter(Boolean).join(' - ');
 }
