@@ -49,7 +49,12 @@ import { url } from '../../lib/utils';
               <input id="email" type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" />
             </div>
           </div>
-          <p class="aide-id" id="aide-id">Proposé tout seul à partir du prénom et du nom. Vous pouvez le changer.</p>
+          <p class="aide-id" id="aide-id">L'identifiant est proposé tout seul à partir du prénom et du nom. Vous pouvez le changer.</p>
+          <span class="lbl">Rôle</span>
+          <div class="roles" role="radiogroup" aria-label="Rôle">
+            <label><input type="radio" name="role" value="membre" checked /><span><b>Membre</b><small>Espace membres</small></span></label>
+            <label><input type="radio" name="role" value="admin" /><span><b>Administrateur</b><small>+ onglet Admin, sans le mot de passe admin</small></span></label>
+          </div>
           <label class="case" id="z-inviter"><input type="checkbox" id="inviter" checked /> Envoyer l'invitation par mail maintenant</label>
           <p class="erreur" id="erreur" role="alert" hidden></p>
           <div class="ok" id="ok" role="status" hidden></div>
@@ -78,7 +83,7 @@ import { url } from '../../lib/utils';
 </MembreApp>
 
 <script>
-  type Membre = { id: string; identifiant: string; email: string; prenom: string; nom: string; actif: number; cree: string; derniere: string | null; invite: string | null; a_mdp: number; appareils: number };
+  type Membre = { id: string; identifiant: string; role: string; email: string; prenom: string; nom: string; actif: number; cree: string; derniere: string | null; invite: string | null; a_mdp: number; appareils: number };
   const API = document.getElementById('ecran')!.dataset.api!;
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
   const identifiant = $<HTMLInputElement>('identifiant'), mdp = $<HTMLInputElement>('mdp'), prenom = $<HTMLInputElement>('prenom'), nom = $<HTMLInputElement>('nom'), email = $<HTMLInputElement>('email');
@@ -122,7 +127,7 @@ import { url } from '../../lib/utils';
       const [c, t] = statut(m);
       return `<li class="m-${c}" data-id="${esc(m.id)}">
         <div class="txt"><b>${esc(m.nom)} ${esc(m.prenom)}</b><span class="mail"><span class="id">${esc(m.identifiant)}</span> · ${esc(m.email)}</span>
-        <span class="info"><i class="pastille p-${c}">${t}</i> ${esc(detail(m))}</span></div>
+        <span class="info">${m.role === 'admin' ? '<i class="pastille p-adm">Administrateur</i>' : ''}<i class="pastille p-${c}">${t}</i> ${esc(detail(m))}</span></div>
         <div class="act">
           ${m.actif ? `<button type="button" data-action="lien">${m.a_mdp ? 'Réinitialiser le mot de passe' : (m.invite ? 'Renvoyer l’invitation' : 'Envoyer l’invitation')}</button>` : ''}
           <button type="button" data-action="modifier">Modifier</button>
@@ -162,12 +167,14 @@ import { url } from '../../lib/utils';
   mdp.addEventListener('change', charger);
 
   const viderForm = () => {
-    edition = null; prenom.value = ''; nom.value = ''; email.value = ''; identifiant.value = ''; idTouche = false;
+    edition = null; prenom.value = ''; nom.value = ''; email.value = ''; identifiant.value = ''; idTouche = false; choisirRole('membre');
     $('f-titre').textContent = 'Ajouter un membre'; envoyer.textContent = 'Créer le compte'; abandon.hidden = true; $('z-inviter').hidden = false;
     $('f-sous').textContent = 'Le membre reçoit un mail pour choisir son mot de passe. Il se connecte avec son identifiant ou son adresse e-mail.';
   };
   // Identifiant proposé « prenom.nom » tant que l'admin ne l'a pas changé lui-même
   let idTouche = false;
+  const roleChoisi = () => document.querySelector<HTMLInputElement>('input[name=role]:checked')?.value || 'membre';
+  const choisirRole = (r: string) => { const el = document.querySelector<HTMLInputElement>(`input[name=role][value="${r === 'admin' ? 'admin' : 'membre'}"]`); if (el) el.checked = true; };
   const proposer = (v: string) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, '.').replace(/[^a-z0-9._-]/g, '').replace(/\.{2,}/g, '.').replace(/^[._-]+|[._-]+$/g, '').slice(0, 40);
   const majIdentifiant = () => { if (!idTouche) identifiant.value = proposer([prenom.value, nom.value].filter((x) => x.trim()).join('.')); };
   prenom.addEventListener('input', majIdentifiant); nom.addEventListener('input', majIdentifiant);
@@ -183,7 +190,7 @@ import { url } from '../../lib/utils';
     montrer(erreur, '');
     envoyer.disabled = true;
     try {
-      const champs = { prenom: prenom.value, nom: nom.value, email: email.value, identifiant: identifiant.value };
+      const champs = { prenom: prenom.value, nom: nom.value, email: email.value, identifiant: identifiant.value, role: roleChoisi() };
       const qui = `${prenom.value.trim()} ${nom.value.trim().toUpperCase()}`.trim();
       if (edition) {
         await poster({ action: 'modifier', id: edition, ...champs });
@@ -224,7 +231,7 @@ import { url } from '../../lib/utils';
     const zone = li.querySelector<HTMLElement>('.retour-lien')!;
     try {
       if (b.dataset.action === 'modifier') {
-        edition = m.id; prenom.value = m.prenom || ''; nom.value = m.nom || ''; email.value = m.email; identifiant.value = m.identifiant || ''; idTouche = true;
+        edition = m.id; prenom.value = m.prenom || ''; nom.value = m.nom || ''; email.value = m.email; identifiant.value = m.identifiant || ''; idTouche = true; choisirRole(m.role);
         $('f-titre').textContent = `Modifier le compte`; $('f-sous').textContent = 'Le mot de passe du membre ne change pas.';
         envoyer.textContent = 'Enregistrer'; abandon.hidden = false; $('z-inviter').hidden = true;
         montrer(ok, ''); montrer(erreur, '');
@@ -279,6 +286,13 @@ import { url } from '../../lib/utils';
   input:not([type=checkbox]) { width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; font: inherit; background: var(--surface-2, var(--surface)); color: var(--ink); box-sizing: border-box; }
   .case { display: flex; align-items: center; gap: 9px; margin: 14px 0 0; font-size: .92rem; cursor: pointer; }
   .case input { width: 19px; height: 19px; accent-color: var(--navy); }
+  .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 420px) { .roles { grid-template-columns: 1fr; } }
+  .roles label { display: flex; gap: 10px; align-items: flex-start; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+  .roles label:has(input:checked) { border-color: var(--navy); background: var(--surface-2); outline: 1px solid var(--navy); }
+  .roles input { width: 18px; height: 18px; margin: 2px 0 0; accent-color: var(--navy); flex: none; }
+  .roles b { display: block; font-size: .92rem; }
+  .roles small { display: block; font-size: .78rem; color: var(--muted); }
   .aide-id { margin: 6px 0 0; font-size: .8rem; color: var(--muted); }
   .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; }
   .ok { color: var(--ok); background: var(--ok-bg); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; font-weight: 650; }
@@ -303,6 +317,7 @@ import { url } from '../../lib/utils';
   .membres :global(.pastille) { font-style: normal; font-weight: 800; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; border-radius: 99px; padding: 2px 8px; margin-right: 4px; }
   .membres :global(.p-on) { background: var(--ok-bg); color: var(--ok); }
   .membres :global(.p-att) { background: var(--warn-bg, #fff4dc); color: var(--warn, #9a6400); }
+  .membres :global(.p-adm) { background: var(--navy); color: #fff; }
   .membres :global(.p-off) { background: var(--line); color: var(--muted); }
   .membres :global(.act) { display: flex; flex-wrap: wrap; gap: 6px; }
   .membres :global(.act button) { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: .8rem; border-radius: 8px; padding: 7px 11px; cursor: pointer; }

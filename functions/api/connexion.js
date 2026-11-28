@@ -7,7 +7,7 @@
 // La session est rangée dans la base (cookie valable un an) : désactiver un membre le déconnecte partout.
 import { jeton, poserCookie, egal } from '../_session.js';
 import { estAdmin } from '../_alertes.js';
-import { tablesComptes, mdpCommunActif, ouvrirSession, hacher, chercherMembre, maintenant } from '../_comptes.js';
+import { tablesComptes, mdpCommunActif, ouvrirSession, hacher, chercherMembre, maintenant, creerCleAdmin } from '../_comptes.js';
 
 const json = (corps, status = 200, cookie) => new Response(JSON.stringify(corps), {
   status,
@@ -36,15 +36,17 @@ export async function onRequestPost({ request, env }) {
 
   if (saisie) {
     if (!env.DB) return json({ ok: false }, 401);
-    const m = await chercherMembre(env.DB, saisie, 'id, prenom, nom, hash, sel, actif');
+    const m = await chercherMembre(env.DB, saisie, 'id, prenom, nom, hash, sel, actif, role');
     const bon = m && m.hash && m.sel && egal(await hacher(motDePasse, m.sel), m.hash);
     if (!bon) { await freiner(); return json({ ok: false }, 401); }
     if (m.actif !== 1) return json({ ok: false, desactive: true }, 403);
     await env.DB.prepare('UPDATE membres SET derniere = ?1 WHERE id = ?2').bind(maintenant(), m.id).run();
-    return json({ ok: true, prenom: m.prenom || '', nom: m.nom || '' }, 200, poserCookie(await ouvrir(m.id)));
+    // Compte « Administrateur » : l'onglet Admin apparaît, avec une clé propre au compte à la place du mot de passe admin
+    const admin = m.role === 'admin' ? { admin: true, cleAdmin: await creerCleAdmin(env, m.id) } : {};
+    return json({ ok: true, prenom: m.prenom || '', nom: m.nom || '', ...admin }, 200, poserCookie(await ouvrir(m.id)));
   }
   // Le mot de passe admin ouvre aussi l'espace membre, et fait apparaître l'onglet Admin sur l'appareil
-  if (estAdmin(env, motDePasse)) {
+  if (await estAdmin(env, motDePasse)) {
     if (!env.DB && !env.MOT_DE_PASSE_MEMBRES) return json({ ok: false }, 503);
     return json({ ok: true, admin: true }, 200, poserCookie(await ouvrir('admin')));
   }

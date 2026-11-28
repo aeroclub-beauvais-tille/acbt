@@ -37,6 +37,28 @@ export async function tablesComptes(db) {
   const sans = (await db.prepare('SELECT id, prenom, nom, email FROM membres WHERE identifiant IS NULL').all()).results || [];
   for (const m of sans) await db.prepare('UPDATE membres SET identifiant = ?1 WHERE id = ?2').bind(await identifiantLibre(db, proposerIdentifiant(m)), m.id).run();
   await db.prepare('CREATE UNIQUE INDEX IF NOT EXISTS membres_identifiant ON membres (identifiant)').run();
+  // Rôle : « membre » ou « admin » (l'onglet Admin et ses outils, sans connaître le mot de passe admin du site)
+  if (!(results || []).some((r) => r.name === 'role')) {
+    try { await db.prepare("ALTER TABLE membres ADD COLUMN role TEXT NOT NULL DEFAULT 'membre'").run(); } catch { /* ajoutée entre-temps */ }
+  }
+  await db.prepare('CREATE TABLE IF NOT EXISTS cles_admin (jeton TEXT PRIMARY KEY, membre TEXT NOT NULL, cree TEXT NOT NULL)').run();
+}
+
+// --- Clé admin : remise à la connexion d'un compte « Administrateur », gardée sur son appareil (comme l'était le mot de passe admin)
+// et envoyée avec chaque action admin. Désactiver le compte ou lui retirer le rôle la rend inutilisable.
+export const ROLES = ['membre', 'admin'];
+export async function creerCleAdmin(env, membre) {
+  const brut = hasard(32);
+  await env.DB.prepare('INSERT INTO cles_admin (jeton, membre, cree) VALUES (?1, ?2, ?3)').bind(await sha(brut), membre, maintenant()).run();
+  return `cle.${brut}`;
+}
+export async function cleAdminValide(env, cle) {
+  if (!env.DB || !/^cle\.[0-9a-f]{64}$/.test(cle)) return false;
+  try {
+    const r = await env.DB.prepare(`SELECT 1 FROM cles_admin c JOIN membres m ON m.id = c.membre
+      WHERE c.jeton = ?1 AND m.actif = 1 AND m.role = 'admin'`).bind(await sha(cle.slice(4))).first();
+    return !!r;
+  } catch { return false; } // tables pas encore créées
 }
 
 // --- Identifiant : lettres minuscules sans accent, chiffres, point, tiret ; « prenom.nom » proposé par défaut
@@ -149,7 +171,7 @@ export async function creerLien(env, membre, type) {
 
 export async function lireLien(env, brut) {
   if (!/^[0-9a-f]{48}$/.test(String(brut || ''))) return null;
-  const r = await env.DB.prepare(`SELECT l.jeton, l.type, l.expire, m.id, m.prenom, m.nom, m.email, m.identifiant, m.actif
+  const r = await env.DB.prepare(`SELECT l.jeton, l.type, l.expire, m.id, m.prenom, m.nom, m.email, m.identifiant, m.role, m.actif
     FROM liens l JOIN membres m ON m.id = l.membre WHERE l.jeton = ?1`).bind(await sha(brut)).first();
   if (!r || r.expire < maintenant() || r.actif !== 1) return null;
   return r;

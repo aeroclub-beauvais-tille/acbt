@@ -7,7 +7,7 @@ export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ ok: false, erreur: 'Base non reliée.' }, 503);
   let d;
   try { d = await request.json(); } catch { return json({ ok: false, erreur: 'Demande illisible.' }, 400); }
-  if (!estAdmin(env, d.motDePasse)) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
+  if (!(await estAdmin(env, d.motDePasse))) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
   await tablesAlertes(env.DB);
   const endpoint = d.abonnement && d.abonnement.endpoint;
   if (endpoint && /^https:\/\//.test(endpoint) && endpoint.length <= 1000) {

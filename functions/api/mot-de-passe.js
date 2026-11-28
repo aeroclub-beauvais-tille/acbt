@@ -4,7 +4,7 @@
 //   POST { action: 'choisir', jeton, motDePasse } → enregistre le mot de passe, déconnecte les autres appareils, ouvre la session ici
 import { poserCookie } from '../_session.js';
 import { json } from '../_alertes.js';
-import { tablesComptes, chercherMembre, envoyerLien, lireLien, nouveauHash, mdpAcceptable, ouvrirSession, maintenant, mailPret } from '../_comptes.js';
+import { tablesComptes, chercherMembre, envoyerLien, lireLien, nouveauHash, mdpAcceptable, ouvrirSession, maintenant, mailPret, creerCleAdmin } from '../_comptes.js';
 
 export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ ok: false, erreur: 'Base non reliée.' }, 503);
@@ -39,9 +39,11 @@ export async function onRequestPost({ request, env }) {
       env.DB.prepare('UPDATE membres SET hash = ?1, sel = ?2, maj = ?3, derniere = ?3 WHERE id = ?4').bind(hash, sel, maintenant(), l.id),
       env.DB.prepare('DELETE FROM sessions WHERE membre = ?1').bind(l.id),
       env.DB.prepare('DELETE FROM liens WHERE membre = ?1').bind(l.id),
+      env.DB.prepare('DELETE FROM cles_admin WHERE membre = ?1').bind(l.id),
     ]);
     const cookie = poserCookie(await ouvrirSession(env, l.id));
-    return new Response(JSON.stringify({ ok: true, email: l.email, identifiant: l.identifiant || '' }), {
+    const cleAdmin = l.role === 'admin' ? await creerCleAdmin(env, l.id) : '';
+    return new Response(JSON.stringify({ ok: true, email: l.email, identifiant: l.identifiant || '', prenom: l.prenom || '', nom: l.nom || '', cleAdmin }), {
       headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Set-Cookie': cookie },
     });
   }

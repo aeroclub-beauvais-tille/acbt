@@ -1,16 +1,16 @@
 // Comptes des membres (appli > Admin > Comptes des membres). Toutes les actions demandent le mot de passe admin.
 //   POST { motDePasse, action, ... } :
 //     liste                                   → { membres, mdpCommun, mailPret }
-//     creer      { prenom, nom, email, identifiant?, inviter } (identifiant « prenom.nom » proposé s'il est vide) → crée le compte et envoie l'invitation par mail
+//     creer      { prenom, nom, email, identifiant?, role?, inviter } (identifiant « prenom.nom » proposé s'il est vide) → crée le compte et envoie l'invitation par mail
 //     importer   { lignes, inviter }          → plusieurs comptes d'un coup (une ligne par membre)
-//     modifier   { id, prenom, nom, email, identifiant }
+//     modifier   { id, prenom, nom, email, identifiant, role }   (role : « membre » ou « admin »)
 //     actif      { id, actif }                → désactiver (déconnecte tous ses appareils) ou réactiver
 //     supprimer  { id }
 //     lien       { id }                       → envoie un lien pour choisir un nouveau mot de passe (invitation s'il n'en a jamais eu)
 //     mdpCommun  { actif }                    → accepter ou non le mot de passe commun du club
 // Quand le mail n'a pas pu partir, le lien est renvoyé à l'admin pour qu'il le transmette lui-même (SMS, WhatsApp…).
 import { estAdmin, json } from '../../_alertes.js';
-import { tablesComptes, normEmail, emailValide, envoyerLien, mdpCommunActif, mailPret, maintenant, normIdentifiant, identifiantValide, proposerIdentifiant, identifiantLibre } from '../../_comptes.js';
+import { tablesComptes, normEmail, emailValide, envoyerLien, mdpCommunActif, mailPret, maintenant, normIdentifiant, identifiantValide, proposerIdentifiant, identifiantLibre, ROLES } from '../../_comptes.js';
 
 const propre = (v, n = 60) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
 const majPrenom = (p) => propre(p).toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
@@ -30,7 +30,7 @@ function lireLigne(ligne) {
   return { email, nom: propre(nom).toUpperCase(), prenom: majPrenom(prenom) };
 }
 
-const LISTE = `SELECT id, identifiant, email, prenom, nom, actif, cree, derniere, invite, (hash IS NOT NULL) AS a_mdp,
+const LISTE = `SELECT id, identifiant, email, role, prenom, nom, actif, cree, derniere, invite, (hash IS NOT NULL) AS a_mdp,
   (SELECT COUNT(*) FROM sessions s WHERE s.membre = membres.id) AS appareils FROM membres ORDER BY nom COLLATE NOCASE, prenom COLLATE NOCASE`;
 
 export async function onRequestPost({ request, env }) {
@@ -38,11 +38,12 @@ export async function onRequestPost({ request, env }) {
   let d = null;
   try { d = await request.json(); } catch { /* illisible */ }
   if (!d) return json({ ok: false, erreur: 'Demande illisible.' }, 400);
-  if (!estAdmin(env, d.motDePasse)) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
+  if (!(await estAdmin(env, d.motDePasse))) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
   const db = env.DB;
   await tablesComptes(db);
   const t = maintenant();
-  const un = (id) => db.prepare('SELECT id, identifiant, email, prenom, nom, actif, hash FROM membres WHERE id = ?1').bind(String(id || '')).first();
+  const role = ROLES.includes(d.role) ? d.role : 'membre';
+  const un = (id) => db.prepare('SELECT id, identifiant, email, prenom, nom, role, actif, hash FROM membres WHERE id = ?1').bind(String(id || '')).first();
 
   switch (d.action) {
     case 'liste': {
@@ -73,8 +74,8 @@ export async function onRequestPost({ request, env }) {
           if (await db.prepare('SELECT 1 FROM membres WHERE identifiant = ?1').bind(identifiant).first()) return json({ ok: false, erreur: `L'identifiant « ${identifiant} » est déjà pris.` }, 409);
         } else identifiant = await identifiantLibre(db, proposerIdentifiant(f));
         const id = crypto.randomUUID();
-        const r = await db.prepare('INSERT OR IGNORE INTO membres (id, identifiant, email, prenom, nom, actif, cree, maj) VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6, ?6)')
-          .bind(id, identifiant, f.email, f.prenom, f.nom, t).run();
+        const r = await db.prepare('INSERT OR IGNORE INTO membres (id, identifiant, email, prenom, nom, role, actif, cree, maj) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, ?7, ?7)')
+          .bind(id, identifiant, f.email, f.prenom, f.nom, d.action === 'creer' ? role : 'membre', t).run();
         if (!r.meta?.changes) {
           if (d.action === 'creer') return json({ ok: false, erreur: `Un compte existe déjà pour ${f.email}.` }, 409);
           refus.push({ ligne: f.email, raison: 'compte déjà existant' }); continue;
@@ -98,8 +99,13 @@ export async function onRequestPost({ request, env }) {
       const identifiant = normIdentifiant(d.identifiant || m.identifiant);
       if (!identifiantValide(identifiant)) return json({ ok: false, erreur: 'Identifiant invalide : au moins 2 caractères, lettres, chiffres, point ou tiret.' }, 400);
       if (await db.prepare('SELECT 1 FROM membres WHERE identifiant = ?1 AND id != ?2').bind(identifiant, m.id).first()) return json({ ok: false, erreur: `L'identifiant « ${identifiant} » est déjà pris.` }, 409);
-      await db.prepare('UPDATE membres SET email = ?1, prenom = ?2, nom = ?3, identifiant = ?4, maj = ?5 WHERE id = ?6')
-        .bind(email, majPrenom(d.prenom), propre(d.nom).toUpperCase(), identifiant, t, m.id).run();
+      const nouveauRole = ROLES.includes(d.role) ? d.role : m.role;
+      await db.batch([
+        db.prepare('UPDATE membres SET email = ?1, prenom = ?2, nom = ?3, identifiant = ?4, role = ?5, maj = ?6 WHERE id = ?7')
+          .bind(email, majPrenom(d.prenom), propre(d.nom).toUpperCase(), identifiant, nouveauRole, t, m.id),
+        // Plus administrateur : ses clés admin ne servent plus (il se reconnecte pour perdre l'onglet Admin)
+        ...(nouveauRole !== 'admin' ? [db.prepare('DELETE FROM cles_admin WHERE membre = ?1').bind(m.id)] : []),
+      ]);
       return json({ ok: true });
     }
 
@@ -109,7 +115,7 @@ export async function onRequestPost({ request, env }) {
       const actif = d.actif ? 1 : 0;
       await db.batch([
         db.prepare('UPDATE membres SET actif = ?1, maj = ?2 WHERE id = ?3').bind(actif, t, m.id),
-        ...(actif ? [] : [db.prepare('DELETE FROM sessions WHERE membre = ?1').bind(m.id), db.prepare('DELETE FROM liens WHERE membre = ?1').bind(m.id)]),
+        ...(actif ? [] : [db.prepare('DELETE FROM sessions WHERE membre = ?1').bind(m.id), db.prepare('DELETE FROM liens WHERE membre = ?1').bind(m.id), db.prepare('DELETE FROM cles_admin WHERE membre = ?1').bind(m.id)]),
       ]);
       return json({ ok: true });
     }
@@ -118,6 +124,7 @@ export async function onRequestPost({ request, env }) {
       await db.batch([
         db.prepare('DELETE FROM sessions WHERE membre = ?1').bind(String(d.id || '')),
         db.prepare('DELETE FROM liens WHERE membre = ?1').bind(String(d.id || '')),
+        db.prepare('DELETE FROM cles_admin WHERE membre = ?1').bind(String(d.id || '')),
         db.prepare('DELETE FROM membres WHERE id = ?1').bind(String(d.id || '')),
       ]);
       return json({ ok: true });

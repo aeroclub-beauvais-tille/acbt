@@ -35,9 +35,15 @@ export async function seConnecter(identifiant: string, motDePasse: string): Prom
     if (rep.ok && corps) {
       ecrire('serveur');
       try {
-        if (corps.admin) localStorage.setItem('acbt-admin-alertes', motDePasse.trim());
-        if (corps.prenom || corps.nom) localStorage.setItem('acbt-membre-nom', `${corps.prenom || ''} ${corps.nom || ''}`.trim());
-        else localStorage.removeItem('acbt-membre-nom');
+        // Admin : mot de passe admin du site, ou clé propre à un compte « Administrateur »
+        if (corps.admin) localStorage.setItem('acbt-admin-alertes', corps.cleAdmin || motDePasse.trim());
+        else if (identifiant.trim()) localStorage.removeItem('acbt-admin-alertes');
+        if (corps.prenom || corps.nom) {
+          const nom = `${corps.prenom || ''} ${corps.nom || ''}`.trim();
+          localStorage.setItem('acbt-membre-nom', nom);
+          // Perfs : le nom du pilote est déjà rempli (« Prénom NOM »), il reste modifiable dans Perfs
+          localStorage.setItem('acbt-pilot', nom);
+        } else localStorage.removeItem('acbt-membre-nom');
       } catch { /* navigation privée */ }
       return 'ok';
     }

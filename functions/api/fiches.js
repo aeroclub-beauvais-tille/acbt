@@ -1,3 +1,4 @@
+import { estAdmin } from '../_alertes.js';
 /**
  * Archive des fiches de préparation — Cloudflare Pages Function
  * Route : /api/fiches
@@ -74,7 +75,9 @@ function corsHeaders(request) {
   };
 }
 
-function checkPassword(request, env) {
+async function checkPassword(request, env) {
+  const auth0 = (request.headers.get('Authorization') || '').replace(/^Bearer /, '').trim();
+  if (auth0.startsWith('cle.')) return estAdmin(env, auth0); // compte au rôle Administrateur
   const expected = String(env.MOT_DE_PASSE_ADMIN || env.ARCHIVE_PASSWORD || '').trim();
   const auth = request.headers.get('Authorization') || '';
   const given = (auth.startsWith('Bearer ') ? auth.slice(7) : '').trim();
@@ -129,7 +132,7 @@ async function recevoir({ request, env }) {
 async function consulter({ request, env }) {
   if (!env.DB) return json({ ok: false, error: 'Base D1 non reliée (liaison DB manquante).' }, 503);
   if (!env.MOT_DE_PASSE_ADMIN && !env.ARCHIVE_PASSWORD) return json({ ok: false, error: 'Mot de passe admin non défini (MOT_DE_PASSE_ADMIN).' }, 503);
-  if (!checkPassword(request, env)) return json({ ok: false, error: 'Mot de passe incorrect.' }, 401);
+  if (!(await checkPassword(request, env))) return json({ ok: false, error: 'Mot de passe incorrect.' }, 401);
   await ensureTable(env.DB);
 
   const url = new URL(request.url);
@@ -162,7 +165,7 @@ async function consulter({ request, env }) {
 async function supprimer({ request, env }) {
   if (!env.DB) return json({ ok: false, error: 'Base D1 non reliée (liaison DB manquante).' }, 503);
   if (!env.MOT_DE_PASSE_ADMIN && !env.ARCHIVE_PASSWORD) return json({ ok: false, error: 'Mot de passe admin non défini (MOT_DE_PASSE_ADMIN).' }, 503);
-  if (!checkPassword(request, env)) return json({ ok: false, error: 'Mot de passe incorrect.' }, 401);
+  if (!(await checkPassword(request, env))) return json({ ok: false, error: 'Mot de passe incorrect.' }, 401);
   const id = new URL(request.url).searchParams.get('id') || '';
   if (!ID_RE.test(id)) return json({ ok: false, error: 'Numéro de fiche invalide.' }, 400);
   await ensureTable(env.DB);

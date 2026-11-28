@@ -26,7 +26,7 @@ export async function onRequestPost({ request, env }) {
   if (type.includes('application/json')) {
     let d = null;
     try { d = await request.json(); } catch { /* illisible */ }
-    if (!d || !estAdmin(env, d.motDePasse)) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
+    if (!d || !(await estAdmin(env, d.motDePasse))) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
     if (d.action === 'supprimer') {
       const id = String(d.id || '');
       const doc = await env.DB.prepare('SELECT avion, type, colonne, archive FROM docs WHERE id = ?1').bind(id).first();
@@ -64,7 +64,7 @@ export async function onRequestPost({ request, env }) {
   let f = null;
   try { f = await request.formData(); } catch { /* pas un formulaire */ }
   if (!f) return json({ ok: false, erreur: 'Envoi illisible.' }, 400);
-  if (!estAdmin(env, f.get('motDePasse'))) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
+  if (!(await estAdmin(env, f.get('motDePasse')))) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
   const fichier = f.get('fichier');
   const avion = String(f.get('avion') || '').trim().toUpperCase();
   const t = String(f.get('type') || '');

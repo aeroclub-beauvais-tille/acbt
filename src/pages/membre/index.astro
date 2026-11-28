@@ -440,7 +440,7 @@ const outilsAdmin = [
   import('../../scripts/membre-messages').then((m) => m.messagesClub());
   // Quitter le mode admin = se déconnecter : un membre classique se reconnecte avec le mot de passe du club
   document.getElementById('adm-sortir')?.addEventListener('click', () => {
-    if (!confirm('Quitter le mode admin ? Vous serez déconnecté ; reconnectez-vous ensuite avec le mot de passe du club.')) return;
+    if (!confirm('Quitter le mode admin ? Vous serez déconnecté ; reconnectez-vous ensuite avec votre compte.')) return;
     try { localStorage.removeItem('acbt-admin-alertes'); localStorage.removeItem('acbt-admin-jeton'); localStorage.removeItem('acbt-admin-stats'); } catch { /* privé */ }
     seDeconnecter();
   });

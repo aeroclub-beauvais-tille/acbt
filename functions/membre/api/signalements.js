@@ -69,7 +69,7 @@ export async function onRequestPatch({ request, env }) {
   if (!env.DB) return json({ ok: false }, 503);
   let d;
   try { d = await request.json(); } catch { return json({ ok: false, erreur: 'Demande illisible.' }, 400); }
-  if (!estAdmin(env, d.motDePasse)) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
+  if (!(await estAdmin(env, d.motDePasse))) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
   const statut = d.statut === 'traite' ? 'traite' : 'ouvert';
   await tables(env.DB);
   await env.DB.prepare('UPDATE signalements SET statut = ?1 WHERE id = ?2').bind(statut, Number(d.id) || 0).run();

@@ -10,7 +10,7 @@ export async function onRequestPost({ request, env }) {
   let d = null;
   try { d = await request.json(); } catch { /* illisible */ }
   if (!d) return json({ ok: false, erreur: 'Demande illisible.' }, 400);
-  if (!estAdmin(env, d.motDePasse)) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
+  if (!(await estAdmin(env, d.motDePasse))) return json({ ok: false, erreur: 'Mot de passe admin incorrect.' }, 401);
   if (!env.DB) return json({ ok: false, erreur: 'Base non reliée.' }, 503);
   const db = env.DB;
   await tableVisites(db);
