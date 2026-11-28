@@ -66,7 +66,7 @@ function jourTxt(j: string) {
 }
 const INS = () => D?.flotte?.instructeurs ?? [];
 const courtQ = (n: string | null | undefined) => nomCourt(n, INS());
-const quiResa = (r: { pilote?: string | null; instructeur?: string | null; type?: string | null }) => quiResaNoms(r, INS());
+const quiResa = (r: { pilote?: string | null; instructeur?: string | null; type?: string | null }) => quiResaNoms(r, INS(), false);
 const utc = (iso: string | null) => (iso ? new Date(iso) : null);
 const hUtc = (d: Date) => `${p2(d.getUTCHours())}:${p2(d.getUTCMinutes())}`;
 const jmLoc = (d: Date) => d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Paris' });
@@ -410,7 +410,7 @@ function reservations() {
     }
     for (const r of (a.jour ?? []).filter((r) => r.debut.slice(0, 8) === auj)) {
       const pil = courtQ(r.pilote), ins = courtQ(r.instructeur);
-      const typ = /\(FI/.test(pil + ins) && /instruction/i.test(r.type || '') ? '' : typeVol(r.type);
+      const typ = typeVol(r.type);
       b += barre(mins(r.debut, auj), mins(r.fin, auj), classeType(r.type), pil || r.type || 'Réservé', `${agH(r.debut)} – ${agH(r.fin)}`, ins && ins !== pil ? `avec ${ins}` : typ);
     }
     // Temps réellement volé (départ → arrivée enregistrés dans Aerogest) : bande verte en bas de la ligne
