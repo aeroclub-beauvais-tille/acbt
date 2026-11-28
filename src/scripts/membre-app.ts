@@ -15,23 +15,30 @@ const ecrire = (v: string | null) => { try { v ? localStorage.setItem(CLE, v) : 
 export const estConnecte = () => !!lire();
 
 /**
- * Vérifie le mot de passe du club.
- * - Sur Cloudflare, la fonction /api/connexion compare au mot de passe secret et dépose le cookie de session.
+ * Connexion à l'espace membre.
+ * - Sur Cloudflare, /api/connexion vérifie l'identifiant (adresse e-mail) et le mot de passe personnel,
+ *   ou, sans identifiant, le mot de passe admin ou le mot de passe commun du club (tant qu'il est accepté).
  * - Tant qu'elle n'existe pas (maquette sur GitHub Pages), tout mot de passe est accepté.
  */
-export async function seConnecter(motDePasse: string): Promise<'ok' | 'refuse' | 'maquette' | 'erreur'> {
+export async function seConnecter(identifiant: string, motDePasse: string): Promise<'ok' | 'refuse' | 'desactive' | 'identifiant' | 'maquette' | 'erreur'> {
   // Le mot de passe admin ouvre aussi l'appli : l'onglet Admin apparaît alors sur cet appareil
   try {
     const rep = await fetch(url('/api/connexion'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ motDePasse }),
+      body: JSON.stringify({ identifiant: identifiant.trim(), motDePasse }),
       credentials: 'same-origin',
     });
-    if (rep.status === 401) return 'refuse';
-    if (rep.ok && (rep.headers.get('content-type') || '').includes('json')) {
+    const corps = (rep.headers.get('content-type') || '').includes('json') ? await rep.json().catch(() => ({})) : null;
+    if (rep.status === 403 && corps?.desactive) return 'desactive';
+    if (rep.status === 401) return corps?.identifiantRequis && !identifiant.trim() ? 'identifiant' : 'refuse';
+    if (rep.ok && corps) {
       ecrire('serveur');
-      try { if ((await rep.json()).admin) localStorage.setItem('acbt-admin-alertes', motDePasse.trim()); } catch { /* réponse sans détail */ }
+      try {
+        if (corps.admin) localStorage.setItem('acbt-admin-alertes', motDePasse.trim());
+        if (corps.prenom || corps.nom) localStorage.setItem('acbt-membre-nom', `${corps.prenom || ''} ${corps.nom || ''}`.trim());
+        else localStorage.removeItem('acbt-membre-nom');
+      } catch { /* navigation privée */ }
       return 'ok';
     }
     if (rep.status >= 500) return 'erreur';
@@ -39,6 +46,9 @@ export async function seConnecter(motDePasse: string): Promise<'ok' | 'refuse' |
   ecrire('maquette');
   return 'maquette';
 }
+
+/** Le serveur a fermé la session (compte désactivé, mot de passe changé…) : l'appareil l'oublie aussi. */
+export const oublierSession = () => ecrire(null);
 
 export async function seDeconnecter() {
   ecrire(null);

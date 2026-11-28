@@ -3986,7 +3986,7 @@ function applyMetar(side, data) {
 }
 
 async function fetchRunways(icao) {
-  const r = await fetch(`https://prepa-vols-acbt.pages.dev/openaip?icao=${encodeURIComponent(icao)}`);
+  const r = await fetch(`/openaip?icao=${encodeURIComponent(icao)}`);
   if (!r.ok) {
     const err = await r.json().catch(() => ({}));
     throw new Error(err.error || 'HTTP ' + r.status);
