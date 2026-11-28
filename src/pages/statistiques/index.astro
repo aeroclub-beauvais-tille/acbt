@@ -43,6 +43,19 @@ import { url } from '../../lib/utils';
         <section class="tuiles" id="tuiles"></section>
         <p class="sous parties" id="parties"></p>
 
+        <div class="membre-seul membres-bloc" hidden>
+          <section class="tuiles" id="m-tuiles"></section>
+          <section class="carte large">
+            <div class="tete"><h2 id="gm-titre">Membres connectés par jour</h2></div>
+            <div class="graphe petit" id="g-membres" data-c="rouge"></div>
+          </section>
+          <div class="grille">
+            <section class="carte"><h2>Derniers connectés</h2><ol class="derniers" id="l-derniers"></ol></section>
+            <section class="carte"><h2>Les plus assidus</h2><ol class="barres" id="l-assidus" data-c="rouge"></ol>
+              <p class="sous note">Nombre de jours où le membre a ouvert l’espace membres sur la période.</p></section>
+          </div>
+        </div>
+
         <section class="carte large">
           <div class="tete"><h2 id="g-titre">Visiteurs par jour</h2>
             <span class="legende" id="g-legende"><span><i class="sw"></i>Visiteurs</span><span><i class="sw ligne"></i>Tendance (moyenne sur 7 jours)</span></span></div>
@@ -92,6 +105,11 @@ import { url } from '../../lib/utils';
     rebond: { seuls: number; tous: number }; entrees: Ligne[];
     actions: Ligne[]; actionsAvant: Ligne[]; details: Ligne[]; pagesReserver: Ligne[]; tempsTotal: number; tempsPages: Ligne[];
     pages: Ligne[]; sources: Ligne[]; appareils: Ligne[]; villes: Ligne[];
+    membres: null | {
+      comptes: { tous: number; actifs: number; jamais: number; attente: number; desactives: number };
+      actifs: number; actifsAvant: number; aujourdhui: number;
+      derniers: Ligne[]; assidus: Ligne[]; parJour: { k: string; n: number }[];
+    };
   };
   type Point = { v: number; x?: string; bulle: string };
   const etat = { section: 'vitrine', jours: 30, mdp: '' };
@@ -171,6 +189,10 @@ import { url } from '../../lib/utils';
     sortie: '<path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4"/><path d="M15 16l4-4-4-4M19 12H9"/>',
     clic: '<path d="M9 9l11 4-4.5 1.5L14 19z"/><path d="M5 3v3M3 5h3M5.5 9.5 3.5 11.5M9.5 5.5l2-2"/>',
     envoi: '<path d="M21 3 10 14"/><path d="M21 3 14 21l-4-7-7-4z"/>',
+    pilote: '<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',
+    soleil: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+    cle: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/>',
+    sommeil: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
   };
   const COUL_APP: Record<string, string> = { telephone: 'bleu', ordinateur: 'ciel', tablette: 'marine', tv: 'rouge' };
 
@@ -204,6 +226,46 @@ import { url } from '../../lib/utils';
       };
       requestAnimationFrame(pas);
     });
+  }
+
+  // Espace membre : qui se connecte avec son compte personnel
+  const quand = (iso: string) => {
+    const t = new Date(iso), maintenant = Date.now(), min = Math.round((maintenant - t.getTime()) / 60e3);
+    if (min < 2) return 'à l’instant';
+    if (min < 60) return `il y a ${min} min`;
+    const jourDe = (x: Date) => x.toLocaleDateString('fr-CA', { timeZone: 'Europe/Paris' });
+    const h = t.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Paris' });
+    if (jourDe(t) === jourDe(new Date())) return `aujourd’hui à ${h}`;
+    if (jourDe(t) === jourDe(new Date(maintenant - 864e5))) return `hier à ${h}`;
+    return t.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' }) + ` à ${h}`;
+  };
+  const nomMembre = (l: Ligne) => `${l.prenom || ''} ${l.nom || ''}`.trim() || String(l.identifiant || '');
+  function membresStats(d: Stats, lab: { x?: string; nom: string }[], comparer: boolean) {
+    const bloc = document.querySelector<HTMLElement>('.membres-bloc')!;
+    const m = d.membres;
+    bloc.hidden = d.section !== 'membre' || !m;
+    if (bloc.hidden || !m) return;
+    const tuile = (l: string, v: number, sous: string, c: string, ic: string) =>
+      `<div class="tuile" data-c="${c}"><span class="ic" aria-hidden="true"><svg viewBox="0 0 24 24">${ICONES[ic]}</svg></span><span class="l">${l}</span><b data-compte="${v}" data-fmt="nb">${nb(v)}</b>${sous}</div>`;
+    const per = d.jours === 7 ? 'sur 7 jours' : d.jours === 30 ? 'sur 30 jours' : d.jours === 90 ? 'sur 3 mois' : 'sur 12 mois';
+    $('m-tuiles').innerHTML = [
+      tuile(`Membres connectés ${per}`, m.actifs, ecart(m.actifs, m.actifsAvant, comparer), 'rouge', 'pilote'),
+      tuile('Connectés aujourd’hui', m.aujourdhui, '', 'bleu', 'soleil'),
+      tuile('Comptes actifs', m.comptes.actifs, m.comptes.attente ? `<span class="ev">+ ${nb(m.comptes.attente)} en attente de mot de passe</span>` : '', 'marine', 'cle'),
+      tuile('Jamais connectés', m.comptes.jamais, '<span class="ev">compte actif, aucune connexion</span>', 'ciel', 'sommeil'),
+    ].join('');
+    const parK = new Map(m.parJour.map((x) => [x.k, Number(x.n) || 0]));
+    graphe($('g-membres'), d.serie.map((x, i) => {
+      const n = parK.get(x.k) || 0;
+      return { v: n, x: lab[i].x, bulle: `<b>${esc(lab[i].nom)}</b>${nb(n)} membre${n > 1 ? 's' : ''} connecté${n > 1 ? 's' : ''}` };
+    }));
+    $('gm-titre').textContent = d.parMois ? 'Membres connectés par mois' : 'Membres connectés par jour';
+    $('l-derniers').innerHTML = m.derniers.length ? m.derniers.map((l, i) => {
+      const nom = nomMembre(l);
+      const ini = nom.split(/\s+/).map((w) => w[0] || '').join('').slice(0, 2).toUpperCase();
+      return `<li style="--i:${i}"><span class="av">${esc(ini)}</span><span class="t"><b>${esc(nom)}</b><small>${esc(l.identifiant)}</small></span><span class="q">${esc(quand(String(l.derniere)))}</span></li>`;
+    }).join('') : '<li class="vide">Aucun membre ne s’est encore connecté avec son compte.</li>';
+    barres($('l-assidus'), m.assidus, nomMembre, 'jours', 'jours de connexion');
   }
 
   function afficher(d: Stats) {
@@ -245,6 +307,7 @@ import { url } from '../../lib/utils';
     }).join(' · ');
 
     const lab = etiquettes($('graphe'), d.serie, d.parMois);
+    membresStats(d, lab, comparer);
     graphe($('graphe'), d.serie.map((x, i) => ({ v: x.visiteurs, x: lab[i].x, bulle: `<b>${esc(lab[i].nom)}</b>${nb(x.visiteurs)} visiteurs<br>${nb(x.vues)} pages vues` })),
       d.parMois ? undefined : moyenne7(d.serie.map((x) => x.visiteurs)).map((y, i) => (d.depuis && d.serie[i].k < d.depuis ? null : y)));
     $('g-titre').textContent = d.parMois ? 'Visiteurs par mois' : 'Visiteurs par jour';
@@ -406,6 +469,17 @@ import { url } from '../../lib/utils';
   .barres :global(.t) { position: relative; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
   .barres :global(.n) { position: relative; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--ink); }
   .barres :global(.vide) { color: var(--muted); }
+  .membres-bloc { display: grid; gap: 14px; }
+  .membres-bloc[hidden] { display: none; }
+  .derniers { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .derniers :global(li) { display: flex; align-items: center; gap: 10px; padding: 7px 4px; border-top: 1px solid var(--line); }
+  .derniers :global(li:first-child) { border-top: 0; }
+  .derniers :global(.av) { flex: none; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--navy); color: #fff; font-weight: 800; font-size: .8rem; }
+  .derniers :global(.t) { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .derniers :global(.t b) { font-size: .92rem; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .derniers :global(.t small) { font-size: .78rem; color: var(--muted); }
+  .derniers :global(.q) { flex: none; font-size: .82rem; font-weight: 700; color: var(--muted); text-align: right; }
+  .derniers :global(.vide) { color: var(--muted); border: 0; }
   .pied-note::after { content: ' ' attr(data-depuis); }
   .lien { justify-self: start; background: none; border: 0; padding: 0; color: var(--muted); font: inherit; font-size: .84rem; text-decoration: underline; cursor: pointer; }
   .donut { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
