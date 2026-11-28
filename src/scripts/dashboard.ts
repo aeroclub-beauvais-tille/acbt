@@ -695,7 +695,7 @@ function maaBloc() {
     const d = utc(m.debut), f = utc(m.fin);
     const fin = f && d && jmLoc(f) === jmLoc(d) ? hLoc(f) : t(m.fin);
     const ev = maaEvolution(m.phen);
-    return `<div class="m${on ? ' on' : ''}"><span class="no">${esc((m.numero || '').split('/')[0])}</span><b>${esc(maaPhen(m.phen) || maaMotif(m.motif) || 'Avertissement d’aérodrome')}${ev ? `<small class="ev">${esc(ev)}</small>` : ''}</b><span class="v"><small>${on ? 'EN COURS' : 'À VENIR'}</small>${t(m.debut)} → ${fin}</span></div>`;
+    return `<div class="m${on ? ' on' : ''}"><span class="no">${esc((m.numero || '').split('/')[0])}</span><b>${esc(maaPhen(m.phen) || maaMotif(m.motif) || 'Alerte météo')}${ev ? `<small class="ev">${esc(ev)}</small>` : ''}</b><span class="v"><small>${on ? 'EN COURS' : 'À VENIR'}</small>${t(m.debut)} → ${fin}</span></div>`;
   }).join('');
   if (boite.dataset.html === html && boite.dataset.ok) return;
   boite.dataset.html = html;
