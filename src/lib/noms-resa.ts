@@ -38,9 +38,10 @@ export function nomCourt(n: string | null | undefined, instructeurs: Instructeur
 export const typeVol = (t: string | null | undefined) => (t && !/^vol standard$/i.test(t) ? t : '');
 
 // Pilote et instructeur (jamais deux fois le même nom), puis le type de vol
-export function quiResa(r: { pilote?: string | null; instructeur?: string | null; type?: string | null }, instructeurs: InstructeurNom[] = []) {
+// cacherInstruction : l'appli n'écrit pas « Vol d'instruction » à côté d'un (FI) ; la TV le garde (choix d'Hugo)
+export function quiResa(r: { pilote?: string | null; instructeur?: string | null; type?: string | null }, instructeurs: InstructeurNom[] = [], cacherInstruction = true) {
   const noms = [...new Set([nomCourt(r.pilote, instructeurs), nomCourt(r.instructeur, instructeurs)].filter(Boolean))].join(' + ');
   // Avec un instructeur (FI), c'est forcément de l'instruction : inutile de l'écrire
-  const type = /\(FI/.test(noms) && /instruction/i.test(r.type || '') ? '' : typeVol(r.type);
+  const type = cacherInstruction && /\(FI/.test(noms) && /instruction/i.test(r.type || '') ? '' : typeVol(r.type);
   return [noms, type].filter(Boolean).join(' - ');
 }
