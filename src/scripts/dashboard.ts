@@ -410,7 +410,7 @@ function reservations() {
     }
     for (const r of (a.jour ?? []).filter((r) => r.debut.slice(0, 8) === auj)) {
       const pil = courtQ(r.pilote), ins = courtQ(r.instructeur);
-      const typ = typeVol(r.type);
+      const typ = /\(FI/.test(pil + ins) && /instruction/i.test(r.type || '') ? '' : typeVol(r.type);
       b += barre(mins(r.debut, auj), mins(r.fin, auj), classeType(r.type), pil || r.type || 'Réservé', `${agH(r.debut)} – ${agH(r.fin)}`, ins && ins !== pil ? `avec ${ins}` : typ);
     }
     // Temps réellement volé (départ → arrivée enregistrés dans Aerogest) : bande verte en bas de la ligne
