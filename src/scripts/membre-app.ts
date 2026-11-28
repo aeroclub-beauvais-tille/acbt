@@ -71,8 +71,23 @@ export async function seDeconnecter() {
 export function enregistrer() {
   if (!('serviceWorker' in navigator)) return;
   const dejaActif = !!navigator.serviceWorker.controller;
+  // Filet de sécurité : si la page affichée n'est pas la version en ligne (appli restée ouverte, ancien service worker…),
+  // on la recharge, une seule fois par version.
+  const aJour = async () => {
+    const ici = document.documentElement.dataset.version;
+    if (!ici || !navigator.onLine) return;
+    try {
+      const r = await fetch(url('/membre/api/version.txt'), { cache: 'no-store', credentials: 'same-origin' });
+      const enLigne = r.ok && !r.redirected ? (await r.text()).trim() : '';
+      if (!enLigne || enLigne === ici || sessionStorage.getItem('acbt-version-rechargee') === enLigne) return;
+      if (document.activeElement?.matches('input, textarea') || document.body.dataset.telechargement === 'oui') return;
+      sessionStorage.setItem('acbt-version-rechargee', enLigne);
+      location.reload();
+    } catch { /* hors ligne */ }
+  };
+  aJour();
   navigator.serviceWorker.register(url('/sw-membre.js'), { scope: url('/'), updateViaCache: 'none' }).then((reg) => {
-    const verifier = () => reg.update().catch(() => {});
+    const verifier = () => { reg.update().catch(() => {}); aJour(); };
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') verifier(); });
     window.addEventListener('online', verifier);
     setInterval(verifier, 30 * 60 * 1000);

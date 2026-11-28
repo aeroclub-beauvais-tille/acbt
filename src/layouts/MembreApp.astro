@@ -7,11 +7,13 @@ import monoUrl from '../fonts/membre/jetbrains-mono-500.woff2?url';
 import { url } from '../lib/utils';
 interface Props { title: string; description?: string }
 const { title, description = "Espace réservé aux membres de l'aéroclub de Beauvais-Tillé." } = Astro.props;
+// Version publiée (commit) : l'appli la compare à /membre/api/version.txt pour se recharger d'elle-même après une mise en ligne
+const version = process.env.GITHUB_SHA || process.env.CF_PAGES_COMMIT_SHA || '';
 const policesFaces = `@font-face{font-family:'Manrope';font-style:normal;font-weight:300 800;font-display:swap;src:url(${manropeUrl}) format('woff2')}` +
   `@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:500;font-display:swap;src:url(${monoUrl}) format('woff2')}`;
 ---
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-version={version}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
