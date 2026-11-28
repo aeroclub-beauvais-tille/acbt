@@ -98,7 +98,9 @@ export async function nouveauHash(motDePasse) {
   const sel = hasard(16);
   return { sel, hash: await hacher(motDePasse, sel) };
 }
-export const mdpAcceptable = (m) => String(m || '').length >= 8;
+// Règle du club (Hugo, 28/11/2026) : au moins 6 caractères, dont au moins 1 symbole (ni lettre, ni chiffre, ni espace)
+export const MDP_REGLE = 'Le mot de passe doit faire au moins 6 caractères, dont au moins 1 symbole (ex. ! ? @ # - _ . *).';
+export const mdpAcceptable = (m) => { const v = String(m || ''); return v.length >= 6 && /[^\p{L}\p{N}\s]/u.test(v); };
 
 // --- Mot de passe commun du club : accepté tant que l'admin ne l'a pas coupé
 export async function mdpCommunActif(env) {

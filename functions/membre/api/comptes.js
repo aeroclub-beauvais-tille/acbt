@@ -11,7 +11,7 @@
 //     mdpCommun  { actif }                    → accepter ou non le mot de passe commun du club
 // Quand le mail n'a pas pu partir, le lien est renvoyé à l'admin pour qu'il le transmette lui-même (SMS, WhatsApp…).
 import { estAdmin, json } from '../../_alertes.js';
-import { tablesComptes, normEmail, emailValide, envoyerLien, mdpCommunActif, mailPret, maintenant, normIdentifiant, identifiantValide, proposerIdentifiant, identifiantLibre, ROLES, nouveauHash, mdpAcceptable } from '../../_comptes.js';
+import { tablesComptes, normEmail, emailValide, envoyerLien, mdpCommunActif, mailPret, maintenant, normIdentifiant, identifiantValide, proposerIdentifiant, identifiantLibre, ROLES, nouveauHash, mdpAcceptable, MDP_REGLE } from '../../_comptes.js';
 
 const propre = (v, n = 60) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
 const majPrenom = (p) => propre(p).toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase());
@@ -76,7 +76,7 @@ export async function onRequestPost({ request, env }) {
         } else identifiant = await identifiantLibre(db, proposerIdentifiant(f));
         // Mot de passe saisi par l'admin (facultatif) : seule son empreinte est gardée
         const saisi = d.action === 'creer' && String(d.nouveauMdp || '') ? String(d.nouveauMdp) : '';
-        if (saisi && !mdpAcceptable(saisi)) return json({ ok: false, erreur: 'Le mot de passe doit faire au moins 8 caractères.' }, 400);
+        if (saisi && !mdpAcceptable(saisi)) return json({ ok: false, erreur: MDP_REGLE }, 400);
         const id = crypto.randomUUID();
         const r = await db.prepare('INSERT OR IGNORE INTO membres (id, identifiant, email, prenom, nom, role, actif, cree, maj) VALUES (?1, ?2, ?3, ?4, ?5, ?6, 1, ?7, ?7)')
           .bind(id, identifiant, f.email, f.prenom, f.nom, d.action === 'creer' ? role : 'membre', t).run();
@@ -149,7 +149,7 @@ export async function onRequestPost({ request, env }) {
     case 'definirMdp': {
       const m = await un(d.id);
       if (!m) return json({ ok: false, erreur: 'Compte introuvable.' }, 404);
-      if (!mdpAcceptable(d.nouveauMdp)) return json({ ok: false, erreur: 'Le mot de passe doit faire au moins 8 caractères.' }, 400);
+      if (!mdpAcceptable(d.nouveauMdp)) return json({ ok: false, erreur: MDP_REGLE }, 400);
       const { sel, hash } = await nouveauHash(d.nouveauMdp);
       await db.batch([
         db.prepare('UPDATE membres SET hash = ?1, sel = ?2, maj = ?3 WHERE id = ?4').bind(hash, sel, t, m.id),

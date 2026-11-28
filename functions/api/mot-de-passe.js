@@ -4,7 +4,7 @@
 //   POST { action: 'choisir', jeton, motDePasse } → enregistre le mot de passe, déconnecte les autres appareils, ouvre la session ici
 import { poserCookie } from '../_session.js';
 import { json } from '../_alertes.js';
-import { tablesComptes, chercherMembre, envoyerLien, lireLien, nouveauHash, mdpAcceptable, ouvrirSession, maintenant, mailPret, creerCleAdmin } from '../_comptes.js';
+import { tablesComptes, chercherMembre, envoyerLien, lireLien, nouveauHash, mdpAcceptable, ouvrirSession, maintenant, mailPret, creerCleAdmin, MDP_REGLE } from '../_comptes.js';
 
 export async function onRequestPost({ request, env }) {
   if (!env.DB) return json({ ok: false, erreur: 'Base non reliée.' }, 503);
@@ -33,7 +33,7 @@ export async function onRequestPost({ request, env }) {
   if (d.action === 'verifier') return json({ ok: true, prenom: l.prenom || '', email: l.email, identifiant: l.identifiant || '', type: l.type });
 
   if (d.action === 'choisir') {
-    if (!mdpAcceptable(d.motDePasse)) return json({ ok: false, erreur: 'Le mot de passe doit faire au moins 8 caractères.' }, 400);
+    if (!mdpAcceptable(d.motDePasse)) return json({ ok: false, erreur: MDP_REGLE }, 400);
     const { sel, hash } = await nouveauHash(d.motDePasse);
     await env.DB.batch([
       env.DB.prepare('UPDATE membres SET hash = ?1, sel = ?2, maj = ?3, derniere = ?3 WHERE id = ?4').bind(hash, sel, maintenant(), l.id),
