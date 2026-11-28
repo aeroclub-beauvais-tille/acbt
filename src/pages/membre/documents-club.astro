@@ -6,7 +6,7 @@ import { getCollection } from 'astro:content';
 import MembreApp from '../../layouts/MembreApp.astro';
 import Logo from '../../components/Logo.astro';
 import { url, asset } from '../../lib/utils';
-import { RUBRIQUES_CLUB, baseClub } from '../../lib/docs-club';
+import { baseClub } from '../../lib/docs-club';
 const docs = (await getCollection('documents')).map((d) => ({ id: d.id, ...d.data }));
 const base = baseClub(docs, (d) => (d.fichier ? asset(d.fichier) : d.lien || ''));
 ---
@@ -21,6 +21,7 @@ const base = baseClub(docs, (d) => (d.fichier ? asset(d.fichier) : d.lien || '')
     </header>
 
     <main class="corps">
+      <div class="gauche">
       <form class="carte" id="form" novalidate>
         <div class="f-tete">
           <h1 id="f-titre">Ajouter un document</h1>
@@ -30,7 +31,6 @@ const base = baseClub(docs, (d) => (d.fichier ? asset(d.fichier) : d.lien || '')
         <label class="lbl" for="rubrique">Rubrique</label>
         <select id="rubrique" required>
           <option value="">Choisir…</option>
-          {RUBRIQUES_CLUB.map((r) => <option value={r.id}>{r.nom}</option>)}
         </select>
 
         <label class="lbl" for="titre">Nom du document</label>
@@ -63,6 +63,20 @@ const base = baseClub(docs, (d) => (d.fichier ? asset(d.fichier) : d.lien || '')
         <button class="pri" type="submit" id="envoyer">Mettre en ligne</button>
       </form>
 
+      <section class="carte" id="c-rub">
+        <h2>Rubriques</h2>
+        <p class="sous">Renommer, ranger avec les flèches, supprimer une rubrique vide ou en créer une.</p>
+        <ul class="rubs" id="rubs"></ul>
+        <div class="ajout-rub">
+          <input id="nouvelle" type="text" maxlength="40" placeholder="Nouvelle rubrique" />
+          <button type="button" id="ajouter-rub">Ajouter</button>
+        </div>
+        <p class="erreur" id="rub-erreur" role="alert" hidden></p>
+        <p class="ok" id="rub-ok" role="status" hidden></p>
+        <button class="pri" type="button" id="enregistrer-rub" disabled>Enregistrer les rubriques</button>
+      </section>
+      </div>
+
       <div class="droite">
         <section class="carte">
           <h2>Documents en ligne</h2>
@@ -81,7 +95,7 @@ const base = baseClub(docs, (d) => (d.fichier ? asset(d.fichier) : d.lien || '')
 </MembreApp>
 
 <script>
-  import { RUBRIQUES_CLUB, fusion, type BaseClub, type DocClub, type LigneClub } from '../../lib/docs-club';
+  import { rubriquesDe, fusion, type BaseClub, type DocClub, type LigneClub, type Rubrique } from '../../lib/docs-club';
   const API = document.getElementById('ecran')!.dataset.api!;
   const BASE: BaseClub[] = JSON.parse(document.getElementById('base')!.textContent || '[]');
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -90,11 +104,17 @@ const base = baseClub(docs, (d) => (d.fichier ? asset(d.fichier) : d.lien || '')
   const erreur = $('erreur'), ok = $('ok'), envoyer = $<HTMLButtonElement>('envoyer'), depot = $('depot');
   const esc = (t: string) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
   const montrer = (el: HTMLElement, t: string) => { el.textContent = t; el.hidden = !t; };
-  const nomRub = (id: string) => RUBRIQUES_CLUB.find((r) => r.id === id)?.nom || id;
+  let rubriques: Rubrique[] = rubriquesDe(null);
+  const nomRub = (id: string) => rubriques.find((r) => r.id === id)?.nom || 'Autres documents';
   const jour = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Europe/Paris' });
   try { mdp.value = localStorage.getItem('acbt-admin-alertes') || ''; } catch { /* privé */ }
 
   let docs: DocClub[] = [];
+  const remplirSelect = () => {
+    const v = rubrique.value;
+    rubrique.innerHTML = '<option value="">Choisir…</option>' + rubriques.map((r) => `<option value="${esc(r.id)}">${esc(r.nom)}</option>`).join('');
+    rubrique.value = rubriques.some((r) => r.id === v) ? v : '';
+  };
   let choisi: File | null = null;
   let mode: 'fichier' | 'lien' = 'fichier';
   let edite: DocClub | null = null;
@@ -192,13 +212,17 @@ const base = baseClub(docs, (d) => (d.fichier ? asset(d.fichier) : d.lien || '')
     try {
       const rep = await (await fetch(API, { credentials: 'same-origin', cache: 'no-store' })).json();
       const lignes: LigneClub[] = rep.lignes || [];
+      rubriques = rubriquesDe(rep.rubriques);
+      if (!rubModifie) { brouillon = rubriques.map((r) => ({ ...r })); afficherRubs(); }
+      remplirSelect();
       const f = fusion(BASE, lignes, API);
       docs = f.docs;
       montrer($('etat'), docs.length ? '' : 'Aucun document.');
-      $('liste').innerHTML = RUBRIQUES_CLUB.map((r) => {
-        const ici = docs.filter((d) => d.rubrique === r.id);
-        return ici.length ? `<h3>${esc(r.nom)} <span>${ici.length}</span></h3><ul class="docs">${ici.map((d) => ligne(d)).join('')}</ul>` : '';
-      }).join('');
+      const connues = new Set(rubriques.map((r) => r.id));
+      const groupes = [...rubriques.map((r) => ({ nom: r.nom, ici: docs.filter((d) => d.rubrique === r.id) })),
+        { nom: 'Autres documents (rubrique supprimée)', ici: docs.filter((d) => !connues.has(d.rubrique)) }];
+      $('liste').innerHTML = groupes.map((g) => g.ici.length ? `<h3>${esc(g.nom)} <span>${g.ici.length}</span></h3><ul class="docs">${g.ici.map((d) => ligne(d)).join('')}</ul>` : '').join('');
+      afficherRubs();
       $('c-histo').hidden = !f.historique.length;
       $('histo').innerHTML = f.historique.map((d) => ligne(d, true)).join('');
     } catch { montrer($('etat'), 'Impossible de charger la liste (pas de réseau ?).'); }
@@ -228,6 +252,75 @@ const base = baseClub(docs, (d) => (d.fichier ? asset(d.fichier) : d.lien || '')
     charger();
   });
 
+  // Rubriques : modifiées ici, enregistrées d'un coup
+  let brouillon: Rubrique[] = rubriques.map((r) => ({ ...r }));
+  let rubModifie = false;
+  const rubErreur = $('rub-erreur'), rubOk = $('rub-ok'), btnRub = $<HTMLButtonElement>('enregistrer-rub');
+  const nbDocs = (id: string) => docs.filter((d) => d.rubrique === id).length;
+  const modifie = () => { rubModifie = true; btnRub.disabled = false; montrer(rubOk, ''); };
+  function afficherRubs() {
+    $('rubs').innerHTML = brouillon.map((r, i) => {
+      const n = nbDocs(r.id);
+      return `<li data-i="${i}">
+        <input type="text" maxlength="40" value="${esc(r.nom)}" aria-label="Nom de la rubrique" />
+        <span class="r-nb">${n} doc${n > 1 ? 's' : ''}</span>
+        <button type="button" data-r="haut" aria-label="Monter" ${i === 0 ? 'disabled' : ''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg></button>
+        <button type="button" data-r="bas" aria-label="Descendre" ${i === brouillon.length - 1 ? 'disabled' : ''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+        <button type="button" data-r="suppr" class="b-suppr" ${n ? `disabled title="Déplacez ou supprimez d’abord ses documents"` : ''}>Supprimer</button>
+      </li>`;
+    }).join('');
+  }
+  $('rubs').addEventListener('input', (e) => {
+    const li = (e.target as HTMLElement).closest<HTMLElement>('li[data-i]');
+    if (!li) return;
+    brouillon[+li.dataset.i!].nom = (e.target as HTMLInputElement).value;
+    modifie();
+  });
+  $('rubs').addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-r]');
+    const li = b?.closest<HTMLElement>('li[data-i]');
+    if (!b || !li) return;
+    const i = +li.dataset.i!;
+    if (b.dataset.r === 'haut' && i > 0) [brouillon[i - 1], brouillon[i]] = [brouillon[i], brouillon[i - 1]];
+    else if (b.dataset.r === 'bas' && i < brouillon.length - 1) [brouillon[i + 1], brouillon[i]] = [brouillon[i], brouillon[i + 1]];
+    else if (b.dataset.r === 'suppr') {
+      if (nbDocs(brouillon[i].id)) return;
+      if (brouillon.length === 1) { montrer(rubErreur, 'Gardez au moins une rubrique.'); return; }
+      brouillon.splice(i, 1);
+    }
+    modifie(); afficherRubs();
+  });
+  $('ajouter-rub').addEventListener('click', () => {
+    const champ = $<HTMLInputElement>('nouvelle');
+    const nom = champ.value.trim();
+    if (!nom) { champ.focus(); return; }
+    const racine = nom.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'rubrique';
+    let id = racine, k = 2;
+    while (brouillon.some((r) => r.id === id) || rubriques.some((r) => r.id === id)) id = `${racine}-${k++}`;
+    brouillon.push({ id, nom });
+    champ.value = '';
+    modifie(); afficherRubs();
+  });
+  $<HTMLInputElement>('nouvelle').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('ajouter-rub').click(); } });
+  btnRub.addEventListener('click', async () => {
+    montrer(rubOk, '');
+    if (brouillon.some((r) => !r.nom.trim())) { montrer(rubErreur, 'Chaque rubrique doit avoir un nom.'); return; }
+    if (!mdp.value) { montrer(rubErreur, 'Indiquez le mot de passe admin (dans le formulaire).'); mdp.focus(); return; }
+    montrer(rubErreur, '');
+    btnRub.disabled = true; btnRub.textContent = 'Envoi…';
+    const liste = brouillon.map((r) => ({ id: r.id, nom: r.nom.trim() }));
+    const r = await fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'rubriques', liste, motDePasse: mdp.value }) }).catch(() => null);
+    const d = r ? await r.json().catch(() => ({})) : {};
+    btnRub.textContent = 'Enregistrer les rubriques';
+    if (!r || !r.ok) { btnRub.disabled = false; montrer(rubErreur, d.erreur || 'Envoi impossible (pas de réseau ?).'); return; }
+    try { localStorage.setItem('acbt-admin-alertes', mdp.value); } catch { /* privé */ }
+    rubModifie = false;
+    montrer(rubOk, 'Rubriques enregistrées.');
+    charger();
+  });
+
+  remplirSelect();
+  afficherRubs();
   editer(null);
   charger();
 </script>
@@ -240,6 +333,20 @@ const base = baseClub(docs, (d) => (d.fichier ? asset(d.fichier) : d.lien || '')
   .haut :global(.logo) { --logo-h: 40px; --logo-rouge: var(--bar-rouge); color: var(--bar-ink); }
   .haut span { font-weight: 800; font-size: 1.05rem; }
   .corps { flex: 1; width: 100%; max-width: 680px; margin: 0 auto; padding: 18px 16px 40px; display: grid; gap: 14px; align-content: start; }
+  .gauche { display: grid; gap: 14px; align-content: start; min-width: 0; }
+  .rubs { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+  .rubs :global(li) { display: flex; align-items: center; gap: 6px; }
+  .rubs :global(input) { flex: 1; min-width: 0; min-height: 42px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font: inherit; background: var(--surface-2, var(--surface)); color: var(--ink); box-sizing: border-box; }
+  .rubs :global(.r-nb) { flex: none; font-size: .74rem; color: var(--muted); font-weight: 700; min-width: 44px; text-align: right; }
+  .rubs :global(button) { flex: none; height: 42px; min-width: 42px; display: grid; place-items: center; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: .8rem; border-radius: 8px; padding: 0 10px; cursor: pointer; }
+  .rubs :global(button svg) { width: 18px; height: 18px; }
+  .rubs :global(button:disabled) { opacity: .4; cursor: default; }
+  .rubs :global(.b-suppr) { border-color: var(--bad-line); background: var(--bad-bg); color: var(--bad); }
+  @media (max-width: 560px) { .rubs :global(li) { flex-wrap: wrap; } .rubs :global(input) { flex-basis: 100%; } .rubs :global(.r-nb) { margin-right: auto; text-align: left; } }
+  .ajout-rub { display: flex; gap: 8px; margin-top: 12px; }
+  .ajout-rub input { flex: 1; min-width: 0; }
+  .ajout-rub button { flex: none; border: 1px solid var(--accent-line); background: var(--accent-soft); color: var(--accent-text); font: inherit; font-weight: 800; border-radius: 10px; padding: 0 16px; cursor: pointer; }
+  .pri:disabled:not(:has(*)) { opacity: .45; cursor: default; }
   .droite { display: grid; gap: 14px; align-content: start; min-width: 0; }
   .carte { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; min-width: 0; }
   .f-tete { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -288,6 +395,5 @@ const base = baseClub(docs, (d) => (d.fichier ? asset(d.fichier) : d.lien || '')
     .haut span { font-size: 1.2rem; }
     .corps { max-width: 1400px; padding: 26px 28px 48px; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: start; }
     .carte { padding: 26px 26px; }
-    #form { position: sticky; top: 84px; }
   }
 </style>
