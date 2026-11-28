@@ -134,6 +134,7 @@ import { url } from '../../lib/utils';
       return `<li class="m-${c}" data-id="${esc(m.id)}">
         <div class="txt"><b>${esc(m.nom)} ${esc(m.prenom)}</b><span class="mail"><span class="id">${esc(m.identifiant)}</span> · ${esc(m.email)}</span>
         <span class="info">${m.role === 'admin' ? '<i class="pastille p-adm">Administrateur</i>' : ''}<i class="pastille p-${c}">${t}</i> ${esc(detail(m))}</span></div>
+        <button type="button" class="gerer" data-action="gerer" aria-expanded="false">Gérer<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9" /></svg></button>
         <div class="act">
           ${m.actif ? `<button type="button" data-action="lien">${m.a_mdp ? 'Réinitialiser le mot de passe' : (m.invite ? 'Renvoyer l’invitation' : 'Envoyer l’invitation')}</button>` : ''}
           <button type="button" data-action="definir">Définir le mot de passe</button>
@@ -264,9 +265,15 @@ import { url } from '../../lib/utils';
     const qui = `${m.prenom} ${m.nom}`.trim() || m.email;
     const zone = li.querySelector<HTMLElement>('.retour-lien')!;
     try {
+      if (b.dataset.action === 'gerer') {
+        const ouvert = li.classList.toggle('ouvert');
+        b.setAttribute('aria-expanded', String(ouvert));
+        return;
+      }
       if (b.dataset.action === 'definir' || b.dataset.action === 'annuler-definir') {
         const f = li.querySelector<HTMLFormElement>('form.definir')!;
         f.hidden = b.dataset.action === 'annuler-definir';
+        li.classList.remove('ouvert');
         f.querySelector('input')!.value = '';
         if (!f.hidden) f.querySelector('input')!.focus();
         return;
@@ -360,9 +367,18 @@ import { url } from '../../lib/utils';
   .membres :global(.p-att) { background: var(--warn-bg, #fff4dc); color: var(--warn, #9a6400); }
   .membres :global(.p-adm) { background: var(--navy); color: #fff; }
   .membres :global(.p-off) { background: var(--line); color: var(--muted); }
-  .membres :global(.act) { display: flex; flex-wrap: wrap; gap: 6px; }
-  .membres :global(.act button) { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: .8rem; border-radius: 8px; padding: 7px 11px; cursor: pointer; }
-  .membres :global(.act .b-suppr) { border-color: var(--bad-line); background: var(--bad-bg); color: var(--bad); }
+  /* Le nom à gauche, « Gérer » à droite ; les actions s'ouvrent en liste dessous */
+  .membres :global(li) { grid-template-columns: minmax(0, 1fr) auto; align-items: start; }
+  .membres :global(li > :not(.txt):not(.gerer)) { grid-column: 1 / -1; }
+  .membres :global(.gerer) { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: .85rem; border-radius: 8px; padding: 8px 10px 8px 12px; cursor: pointer; }
+  .membres :global(.gerer svg) { width: 16px; height: 16px; transition: transform .15s; }
+  .membres :global(li.ouvert .gerer) { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .membres :global(li.ouvert .gerer svg) { transform: rotate(180deg); }
+  .membres :global(.act) { display: none; }
+  .membres :global(li.ouvert .act) { display: grid; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .membres :global(.act button) { border: 0; border-top: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 650; font-size: .95rem; text-align: left; padding: 13px 14px; cursor: pointer; }
+  .membres :global(.act button:first-child) { border-top: 0; }
+  .membres :global(.act .b-suppr) { color: var(--bad); }
   .membres :global(form.definir) { display: flex; flex-wrap: wrap; gap: 6px; }
   .membres :global(form.definir[hidden]) { display: none; }
   .membres :global(form.definir input) { flex: 1 1 200px; min-height: 40px; }
@@ -382,8 +398,6 @@ import { url } from '../../lib/utils';
     .corps { max-width: 1400px; padding: 26px 28px 48px; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: start; }
     .carte { padding: 24px 24px; }
     .col { position: sticky; top: 84px; }
-    .membres :global(li) { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
-    .membres :global(.act) { justify-content: flex-end; max-width: 560px; }
     .membres :global(.retour-lien), .membres :global(form.definir) { grid-column: 1 / -1; }
   }
 </style>
