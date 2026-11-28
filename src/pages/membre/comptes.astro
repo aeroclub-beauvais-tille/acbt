@@ -1,6 +1,6 @@
 ---
 // Comptes des membres (admin) : un identifiant (adresse e-mail) et un mot de passe par membre.
-// L'admin crée les comptes (un par un ou par liste), les désactive, les supprime et envoie un lien pour choisir
+// L'admin crée les comptes, les désactive, les supprime et envoie un lien pour choisir
 // un nouveau mot de passe. Le mot de passe commun du club reste accepté jusqu'à ce que l'admin le coupe ici.
 // Tout est rangé sur Cloudflare (base D1, /membre/api/comptes).
 import MembreApp from '../../layouts/MembreApp.astro';
@@ -56,18 +56,6 @@ import { url } from '../../lib/utils';
           <button class="pri" type="submit" id="envoyer">Créer le compte</button>
           <button class="sec" type="button" id="abandon" hidden>Ne pas modifier</button>
         </form>
-
-        <details class="carte plusieurs" id="z-import">
-          <summary>Ajouter plusieurs membres d'un coup</summary>
-          <p class="sous">Une ligne par membre, avec son adresse e-mail. Le NOM en majuscules, le prénom ensuite. L'identifiant « prenom.nom » est créé tout seul. Par exemple :</p>
-          <pre class="ex">DUPONT Jean jean.dupont@gmail.com
-MARTIN Claire claire.martin@orange.fr</pre>
-          <textarea id="lignes" rows="6" spellcheck="false" placeholder="DUPONT Jean jean.dupont@gmail.com"></textarea>
-          <label class="case"><input type="checkbox" id="inviter-tous" checked /> Envoyer l'invitation par mail à chacun</label>
-          <p class="erreur" id="erreur-import" role="alert" hidden></p>
-          <div class="ok" id="ok-import" role="status" hidden></div>
-          <button class="pri" type="button" id="importer">Créer les comptes</button>
-        </details>
 
         <section class="carte" id="z-commun">
           <h2>Mot de passe commun du club</h2>
@@ -214,26 +202,6 @@ MARTIN Claire claire.martin@orange.fr</pre>
     envoyer.disabled = false;
   });
 
-  $('importer').addEventListener('click', async () => {
-    const lignes = $<HTMLTextAreaElement>('lignes').value;
-    montrer($('ok-import'), '');
-    if (!lignes.trim()) return montrer($('erreur-import'), 'Collez au moins une ligne.');
-    montrer($('erreur-import'), '');
-    const b = $<HTMLButtonElement>('importer');
-    b.disabled = true; b.textContent = 'Création en cours…';
-    try {
-      const d = await poster({ action: 'importer', lignes, inviter: $<HTMLInputElement>('inviter-tous').checked });
-      const n = d.crees.length;
-      let h = `${n} compte${n > 1 ? 's' : ''} créé${n > 1 ? 's' : ''}.`;
-      if (d.refus.length) h += `<br>Non créés : ${d.refus.map((r: { ligne: string; raison: string }) => `${esc(r.ligne)} (${esc(r.raison)})`).join(', ')}.`;
-      if (d.liens.length) h += `<br>Mails non partis : envoyez ces liens vous-même.${d.liens.map(blocLien).join('')}`;
-      montrerHtml($('ok-import'), h);
-      if (n) $<HTMLTextAreaElement>('lignes').value = d.refus.map((r: { ligne: string }) => r.ligne).join('\n');
-      charger();
-    } catch (err) { montrer($('erreur-import'), (err as Error).message); }
-    b.disabled = false; b.textContent = 'Créer les comptes';
-  });
-
   $('commun-btn').addEventListener('click', async () => {
     const couper = communActif;
     if (couper && !confirm('Ne plus accepter le mot de passe commun du club ?\n\nLes membres qui n’ont pas encore de compte personnel ne pourront plus entrer, et les appareils connectés avec le mot de passe commun seront déconnectés.')) return;
@@ -308,14 +276,10 @@ MARTIN Claire claire.martin@orange.fr</pre>
   @media (max-width: 520px) { .deux { grid-template-columns: 1fr; gap: 0; } }
   .lbl { display: block; font-weight: 700; font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; }
   #z-mdp .lbl { margin-top: 0; }
-  input:not([type=checkbox]), textarea { width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; font: inherit; background: var(--surface-2, var(--surface)); color: var(--ink); box-sizing: border-box; }
-  textarea { margin-top: 10px; font-family: ui-monospace, Menlo, monospace; font-size: .88rem; resize: vertical; }
+  input:not([type=checkbox]) { width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; font: inherit; background: var(--surface-2, var(--surface)); color: var(--ink); box-sizing: border-box; }
   .case { display: flex; align-items: center; gap: 9px; margin: 14px 0 0; font-size: .92rem; cursor: pointer; }
   .case input { width: 19px; height: 19px; accent-color: var(--navy); }
   .aide-id { margin: 6px 0 0; font-size: .8rem; color: var(--muted); }
-  .ex { margin: 8px 0 0; background: var(--surface-2); border-radius: 8px; padding: 8px 12px; font-size: .82rem; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .plusieurs summary { cursor: pointer; font-weight: 800; font-size: 1.02rem; }
-  .plusieurs[open] summary { margin-bottom: 8px; }
   .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; }
   .ok { color: var(--ok); background: var(--ok-bg); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; font-weight: 650; }
   .pri { width: 100%; height: 50px; margin-top: 16px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; }
