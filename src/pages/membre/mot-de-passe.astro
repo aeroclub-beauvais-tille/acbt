@@ -1,0 +1,124 @@
+---
+// Choix du mot de passe depuis le lien reçu par mail (invitation d'un nouveau compte ou mot de passe oublié).
+// Page ouverte sans être connecté : le lien (?jeton=…) suffit, il ne sert qu'une fois.
+import MembreApp from '../../layouts/MembreApp.astro';
+import Logo from '../../components/Logo.astro';
+import { url } from '../../lib/utils';
+---
+<MembreApp title="Mot de passe">
+  <div class="ecran">
+    <header class="haut">
+      <Logo class="logo" />
+      <span>Espace membres</span>
+    </header>
+
+    <main class="corps">
+      <p class="carte attente" id="attente">Vérification du lien…</p>
+
+      <form class="carte" id="form" novalidate hidden>
+        <h1 id="titre">Choisir votre mot de passe</h1>
+        <p class="sous" id="bonjour"></p>
+        <p class="ident">Identifiant : <b id="ident"></b></p>
+        <input type="email" id="user" autocomplete="username" hidden />
+        <label for="mdp1">Nouveau mot de passe</label>
+        <div class="champ">
+          <input id="mdp1" type="password" autocomplete="new-password" minlength="8" required />
+          <button type="button" class="voir" id="voir" aria-label="Afficher le mot de passe">Voir</button>
+        </div>
+        <p class="regle">Au moins 8 caractères.</p>
+        <label for="mdp2">Confirmer le mot de passe</label>
+        <div class="champ">
+          <input id="mdp2" type="password" autocomplete="new-password" required />
+        </div>
+        <p class="erreur" id="erreur" role="alert" hidden></p>
+        <button class="pri" type="submit" id="envoyer">Enregistrer et me connecter</button>
+      </form>
+
+      <section class="carte" id="perime" hidden>
+        <h1>Lien plus valable</h1>
+        <p class="sous" id="perime-txt">Ce lien a déjà servi ou a expiré.</p>
+        <a class="pri lienbtn" href={url('/membre/connexion/')}>Aller à la connexion</a>
+        <p class="aide">Sur l'écran de connexion, touchez « Mot de passe oublié ? » pour recevoir un nouveau lien.</p>
+      </section>
+    </main>
+  </div>
+</MembreApp>
+
+<script>
+  import { url } from '../../lib/utils';
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  const API = url('/api/mot-de-passe');
+  const jeton = new URLSearchParams(location.search).get('jeton') || '';
+  const montrer = (el: HTMLElement, t: string) => { el.textContent = t; el.hidden = !t; };
+  const poster = async (corps: Record<string, unknown>) => {
+    const r = await fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...corps, jeton }) }).catch(() => null);
+    return { r, d: r ? await r.json().catch(() => ({})) : {} };
+  };
+  const perime = (t?: string) => { $('attente').hidden = true; $('form').hidden = true; $('perime').hidden = false; if (t) $('perime-txt').textContent = t; };
+
+  (async () => {
+    if (!jeton) return perime('Ce lien est incomplet. Ouvrez le lien reçu par mail en entier.');
+    const { r, d } = await poster({ action: 'verifier' });
+    if (!r) return perime('Vérification impossible pour le moment (pas de réseau ?). Réessayez dans un instant.');
+    if (!r.ok) return perime(d.erreur);
+    $('attente').hidden = true;
+    $('form').hidden = false;
+    $('titre').textContent = d.type === 'invitation' ? 'Bienvenue ! Choisissez votre mot de passe' : 'Choisir un nouveau mot de passe';
+    $('bonjour').textContent = d.prenom ? `Bonjour ${d.prenom}.` : '';
+    $('bonjour').hidden = !d.prenom;
+    $('ident').textContent = d.email;
+    $<HTMLInputElement>('user').value = d.email;
+    try { localStorage.setItem('acbt-membre-email', d.email); } catch { /* privé */ }
+    $('mdp1').focus();
+  })();
+
+  $('voir').addEventListener('click', (e) => {
+    const montre = $<HTMLInputElement>('mdp1').type === 'password';
+    for (const id of ['mdp1', 'mdp2']) $<HTMLInputElement>(id).type = montre ? 'text' : 'password';
+    (e.currentTarget as HTMLElement).textContent = montre ? 'Cacher' : 'Voir';
+  });
+
+  $('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const a = $<HTMLInputElement>('mdp1').value, b = $<HTMLInputElement>('mdp2').value;
+    const erreur = $('erreur');
+    if (a.length < 8) return montrer(erreur, 'Le mot de passe doit faire au moins 8 caractères.');
+    if (a !== b) return montrer(erreur, 'Les deux mots de passe ne sont pas identiques.');
+    montrer(erreur, '');
+    const btn = $<HTMLButtonElement>('envoyer');
+    btn.disabled = true; btn.textContent = 'Enregistrement…';
+    const { r, d } = await poster({ action: 'choisir', motDePasse: a });
+    if (r?.ok) {
+      try { localStorage.setItem('acbt-membre', 'serveur'); localStorage.removeItem('acbt-admin-alertes'); } catch { /* privé */ }
+      location.replace(url('/membre/connexion/?retour=') + encodeURIComponent(url('/membre/')));
+      return;
+    }
+    if (r?.status === 410) return perime(d.erreur);
+    btn.disabled = false; btn.textContent = 'Enregistrer et me connecter';
+    montrer(erreur, d.erreur || 'Enregistrement impossible pour le moment (pas de réseau ?).');
+  });
+</script>
+
+<style>
+  .ecran { min-height: 100svh; display: flex; flex-direction: column; background: var(--bg); }
+  .haut { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 10px; min-height: calc(54px + env(safe-area-inset-top, 0px)); padding: 0 16px; padding-top: env(safe-area-inset-top, 0px); background: var(--bar); color: var(--bar-ink); }
+  .haut :global(.logo) { --logo-h: 40px; --logo-rouge: var(--bar-rouge); color: var(--bar-ink); }
+  .haut span { font-weight: 800; font-size: 1.05rem; letter-spacing: -.01em; color: var(--bar-ink); }
+  .corps { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 32px 16px 40px; }
+  .carte { width: 100%; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 24px 20px; box-sizing: border-box; }
+  .attente { color: var(--muted); text-align: center; }
+  h1 { font-size: 1.3rem; margin: 0 0 8px; letter-spacing: -.01em; }
+  .sous { color: var(--muted); font-size: .93rem; margin: 0 0 6px; }
+  .ident { font-size: .92rem; margin: 0 0 14px; background: var(--surface-2, var(--bg)); border-radius: 10px; padding: 9px 12px; overflow-wrap: anywhere; }
+  label { display: block; font-weight: 700; font-size: .78rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin: 14px 0 7px; }
+  .champ { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface-2, var(--surface)); height: 48px; }
+  .champ:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .champ input { flex: 1; min-width: 0; border: 0; padding: 0 14px; font: inherit; font-size: 1.05rem; outline: none; background: transparent; color: var(--ink); }
+  .voir { border: 0; background: transparent; color: var(--accent); font: inherit; font-weight: 700; font-size: .88rem; padding: 0 14px; cursor: pointer; }
+  .regle { font-size: .8rem; color: var(--muted); margin: 6px 0 0; }
+  .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; }
+  .pri { display: grid; place-items: center; width: 100%; height: 50px; margin-top: 16px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; text-decoration: none; box-sizing: border-box; }
+  .pri:disabled { opacity: .7; cursor: wait; }
+  .aide { font-size: .85rem; color: var(--muted); margin: 12px 0 0; text-align: center; }
+  [hidden] { display: none !important; }
+</style>

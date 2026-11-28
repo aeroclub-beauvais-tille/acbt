@@ -1,0 +1,345 @@
+---
+// Comptes des membres (admin) : un identifiant (adresse e-mail) et un mot de passe par membre.
+// L'admin crée les comptes (un par un ou par liste), les désactive, les supprime et envoie un lien pour choisir
+// un nouveau mot de passe. Le mot de passe commun du club reste accepté jusqu'à ce que l'admin le coupe ici.
+// Tout est rangé sur Cloudflare (base D1, /membre/api/comptes).
+import MembreApp from '../../layouts/MembreApp.astro';
+import Logo from '../../components/Logo.astro';
+import { url } from '../../lib/utils';
+---
+<MembreApp title="Comptes des membres">
+  <div class="ecran" id="ecran" data-api={url('/membre/api/comptes')}>
+    <header class="haut">
+      <a href={url('/membre/#admin')} class="retour" aria-label="Retour à l'administration">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6" /></svg>
+      </a>
+      <Logo class="logo" />
+      <span>Comptes des membres</span>
+    </header>
+
+    <main class="corps">
+      <div class="col">
+        <section class="carte" id="z-mdp">
+          <label class="lbl" for="mdp">Mot de passe admin</label>
+          <input id="mdp" type="password" autocomplete="current-password" />
+        </section>
+
+        <p class="note" id="note-mail" hidden>Les mails ne sont pas encore branchés : après chaque création ou réinitialisation, le lien s'affiche ici. Copiez-le et envoyez-le vous-même au membre (SMS, WhatsApp, mail).</p>
+
+        <form class="carte" id="form" novalidate>
+          <h1 id="f-titre">Ajouter un membre</h1>
+          <p class="sous" id="f-sous">Le membre reçoit un mail pour choisir son mot de passe. Son identifiant est son adresse e-mail.</p>
+          <div class="deux">
+            <div>
+              <label class="lbl" for="prenom">Prénom</label>
+              <input id="prenom" type="text" autocomplete="off" autocapitalize="words" />
+            </div>
+            <div>
+              <label class="lbl" for="nom">Nom</label>
+              <input id="nom" type="text" autocomplete="off" autocapitalize="characters" />
+            </div>
+          </div>
+          <label class="lbl" for="email">Adresse e-mail</label>
+          <input id="email" type="email" inputmode="email" autocomplete="off" autocapitalize="off" spellcheck="false" />
+          <label class="case" id="z-inviter"><input type="checkbox" id="inviter" checked /> Envoyer l'invitation par mail maintenant</label>
+          <p class="erreur" id="erreur" role="alert" hidden></p>
+          <div class="ok" id="ok" role="status" hidden></div>
+          <button class="pri" type="submit" id="envoyer">Créer le compte</button>
+          <button class="sec" type="button" id="abandon" hidden>Ne pas modifier</button>
+        </form>
+
+        <details class="carte plusieurs" id="z-import">
+          <summary>Ajouter plusieurs membres d'un coup</summary>
+          <p class="sous">Une ligne par membre, avec son adresse e-mail. Le NOM en majuscules, le prénom ensuite. Par exemple :</p>
+          <pre class="ex">DUPONT Jean jean.dupont@gmail.com
+MARTIN Claire claire.martin@orange.fr</pre>
+          <textarea id="lignes" rows="6" spellcheck="false" placeholder="DUPONT Jean jean.dupont@gmail.com"></textarea>
+          <label class="case"><input type="checkbox" id="inviter-tous" checked /> Envoyer l'invitation par mail à chacun</label>
+          <p class="erreur" id="erreur-import" role="alert" hidden></p>
+          <div class="ok" id="ok-import" role="status" hidden></div>
+          <button class="pri" type="button" id="importer">Créer les comptes</button>
+        </details>
+
+        <section class="carte" id="z-commun">
+          <h2>Mot de passe commun du club</h2>
+          <p class="sous" id="commun-etat">Chargement…</p>
+          <button class="sec fort" type="button" id="commun-btn" hidden></button>
+        </section>
+      </div>
+
+      <section class="carte liste">
+        <div class="l-tete">
+          <h2 id="l-titre">Membres</h2>
+          <input id="cherche" type="search" placeholder="Rechercher un nom ou une adresse" aria-label="Rechercher un membre" />
+        </div>
+        <p class="resume" id="resume"></p>
+        <p class="sous" id="etat">Saisissez le mot de passe admin pour voir les comptes.</p>
+        <ul class="membres" id="membres"></ul>
+      </section>
+    </main>
+  </div>
+</MembreApp>
+
+<script>
+  type Membre = { id: string; email: string; prenom: string; nom: string; actif: number; cree: string; derniere: string | null; invite: string | null; a_mdp: number; appareils: number };
+  const API = document.getElementById('ecran')!.dataset.api!;
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  const mdp = $<HTMLInputElement>('mdp'), prenom = $<HTMLInputElement>('prenom'), nom = $<HTMLInputElement>('nom'), email = $<HTMLInputElement>('email');
+  const erreur = $('erreur'), ok = $('ok'), envoyer = $<HTMLButtonElement>('envoyer'), abandon = $<HTMLButtonElement>('abandon');
+  const esc = (t: unknown) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const montrer = (el: HTMLElement, t: string) => { el.textContent = t; el.hidden = !t; };
+  const montrerHtml = (el: HTMLElement, h: string) => { el.innerHTML = h; el.hidden = !h; };
+  const jourFr = (d: string) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/Paris' });
+  try { mdp.value = localStorage.getItem('acbt-admin-alertes') || ''; } catch { /* privé */ }
+
+  let membres: Membre[] = [];
+  let mailPret = true;
+  let edition: string | null = null;
+
+  async function poster(corps: Record<string, unknown>) {
+    if (!mdp.value) { mdp.focus(); throw new Error('Indiquez le mot de passe admin.'); }
+    const r = await fetch(API, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...corps, motDePasse: mdp.value }) }).catch(() => null);
+    const d = r ? await r.json().catch(() => ({})) : {};
+    if (!r || !r.ok) throw new Error(d.erreur || 'Envoi impossible (pas de réseau ?).');
+    try { localStorage.setItem('acbt-admin-alertes', mdp.value); } catch { /* privé */ }
+    return d;
+  }
+
+  // Lien à transmettre soi-même quand le mail n'est pas parti
+  const blocLien = (l: { email: string; nom?: string; lien: string }) => `<div class="a-copier"><span>${esc(l.nom || l.email)}</span>
+    <code>${esc(l.lien)}</code><button type="button" data-copier="${esc(l.lien)}">Copier le lien</button></div>`;
+
+  const statut = (m: Membre) => !m.actif ? ['off', 'Désactivé'] : !m.a_mdp ? ['att', m.invite ? 'Invitation en attente' : 'Pas encore invité'] : ['on', 'Actif'];
+  const detail = (m: Membre) => !m.actif ? `Désactivé · créé le ${jourFr(m.cree)}`
+    : m.derniere ? `Dernière connexion le ${jourFr(m.derniere)}${m.appareils > 1 ? ` · ${m.appareils} appareils` : ''}`
+    : m.invite ? `Invitation du ${jourFr(m.invite)} · lien valable 14 jours` : `Créé le ${jourFr(m.cree)}`;
+
+  function afficher() {
+    const q = $<HTMLInputElement>('cherche').value.trim().toLowerCase();
+    const vus = membres.filter((m) => !q || `${m.prenom} ${m.nom} ${m.email}`.toLowerCase().includes(q));
+    const actifs = membres.filter((m) => m.actif && m.a_mdp).length, attente = membres.filter((m) => m.actif && !m.a_mdp).length, off = membres.filter((m) => !m.actif).length;
+    $('l-titre').textContent = `Membres (${membres.length})`;
+    montrer($('resume'), membres.length ? `${actifs} actif${actifs > 1 ? 's' : ''} · ${attente} en attente de mot de passe · ${off} désactivé${off > 1 ? 's' : ''}` : '');
+    montrer($('etat'), !membres.length ? 'Aucun compte pour l’instant. Ajoutez le premier membre avec le formulaire.' : !vus.length ? 'Aucun membre ne correspond à la recherche.' : '');
+    $('membres').innerHTML = vus.map((m) => {
+      const [c, t] = statut(m);
+      return `<li class="m-${c}" data-id="${esc(m.id)}">
+        <div class="txt"><b>${esc(m.nom)} ${esc(m.prenom)}</b><span class="mail">${esc(m.email)}</span>
+        <span class="info"><i class="pastille p-${c}">${t}</i> ${esc(detail(m))}</span></div>
+        <div class="act">
+          ${m.actif ? `<button type="button" data-action="lien">${m.a_mdp ? 'Réinitialiser le mot de passe' : (m.invite ? 'Renvoyer l’invitation' : 'Envoyer l’invitation')}</button>` : ''}
+          <button type="button" data-action="modifier">Modifier</button>
+          <button type="button" data-action="actif">${m.actif ? 'Désactiver' : 'Réactiver'}</button>
+          <button type="button" class="b-suppr" data-action="supprimer">Supprimer</button>
+        </div>
+        <div class="retour-lien" hidden></div></li>`;
+    }).join('');
+  }
+
+  let communActif = true;
+  async function charger() {
+    if (!mdp.value) return;
+    try {
+      const d = await poster({ action: 'liste' });
+      membres = d.membres || [];
+      mailPret = !!d.mailPret;
+      communActif = !!d.mdpCommun;
+      $('note-mail').hidden = mailPret;
+      $('z-mdp').hidden = true;
+      const b = $<HTMLButtonElement>('commun-btn');
+      if (!d.mdpCommunRegle) {
+        montrer($('commun-etat'), 'Aucun mot de passe commun n’est réglé : seuls les comptes personnels ouvrent l’espace membres.'); b.hidden = true;
+      } else if (communActif) {
+        montrer($('commun-etat'), `Encore accepté : les membres sans compte peuvent toujours entrer avec le mot de passe du club${d.appareilsClub ? ` (${d.appareilsClub} appareil${d.appareilsClub > 1 ? 's' : ''} connecté${d.appareilsClub > 1 ? 's' : ''} ainsi depuis la création des comptes)` : ''}. Coupez-le quand tout le monde a son compte.`);
+        b.textContent = 'Ne plus accepter le mot de passe commun'; b.hidden = false; b.classList.add('danger');
+      } else {
+        montrer($('commun-etat'), 'Coupé : seuls les comptes personnels (et le mot de passe admin) ouvrent l’espace membres.');
+        b.textContent = 'Accepter à nouveau le mot de passe commun'; b.hidden = false; b.classList.remove('danger');
+      }
+      afficher();
+    } catch (err) {
+      $('z-mdp').hidden = false;
+      montrer($('etat'), (err as Error).message);
+    }
+  }
+  mdp.addEventListener('change', charger);
+
+  const viderForm = () => {
+    edition = null; prenom.value = ''; nom.value = ''; email.value = '';
+    $('f-titre').textContent = 'Ajouter un membre'; envoyer.textContent = 'Créer le compte'; abandon.hidden = true; $('z-inviter').hidden = false;
+    $('f-sous').textContent = 'Le membre reçoit un mail pour choisir son mot de passe. Son identifiant est son adresse e-mail.';
+  };
+  abandon.addEventListener('click', () => { viderForm(); montrer(erreur, ''); });
+
+  $('form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    montrer(ok, '');
+    const manque = !prenom.value.trim() && !nom.value.trim() ? 'Indiquez le nom et le prénom.' : !email.value.trim() || !email.checkValidity() ? 'Indiquez une adresse e-mail valide.' : '';
+    if (manque) return montrer(erreur, manque);
+    montrer(erreur, '');
+    envoyer.disabled = true;
+    try {
+      const champs = { prenom: prenom.value, nom: nom.value, email: email.value };
+      const qui = `${prenom.value.trim()} ${nom.value.trim().toUpperCase()}`.trim();
+      if (edition) {
+        await poster({ action: 'modifier', id: edition, ...champs });
+        montrerHtml(ok, `Compte de ${esc(qui)} modifié.`);
+      } else {
+        const inviter = $<HTMLInputElement>('inviter').checked;
+        const d = await poster({ action: 'creer', inviter, ...champs });
+        montrerHtml(ok, !inviter ? `Compte de ${esc(qui)} créé. Envoyez l’invitation depuis la liste quand vous voulez.`
+          : d.liens?.length ? `Compte de ${esc(qui)} créé. Le mail n’a pas pu partir : envoyez-lui ce lien vous-même.${blocLien(d.liens[0])}`
+          : `Compte de ${esc(qui)} créé. Invitation envoyée à ${esc(email.value.trim().toLowerCase())}.`);
+      }
+      viderForm();
+      charger();
+    } catch (err) { montrer(erreur, (err as Error).message); }
+    envoyer.disabled = false;
+  });
+
+  $('importer').addEventListener('click', async () => {
+    const lignes = $<HTMLTextAreaElement>('lignes').value;
+    montrer($('ok-import'), '');
+    if (!lignes.trim()) return montrer($('erreur-import'), 'Collez au moins une ligne.');
+    montrer($('erreur-import'), '');
+    const b = $<HTMLButtonElement>('importer');
+    b.disabled = true; b.textContent = 'Création en cours…';
+    try {
+      const d = await poster({ action: 'importer', lignes, inviter: $<HTMLInputElement>('inviter-tous').checked });
+      const n = d.crees.length;
+      let h = `${n} compte${n > 1 ? 's' : ''} créé${n > 1 ? 's' : ''}.`;
+      if (d.refus.length) h += `<br>Non créés : ${d.refus.map((r: { ligne: string; raison: string }) => `${esc(r.ligne)} (${esc(r.raison)})`).join(', ')}.`;
+      if (d.liens.length) h += `<br>Mails non partis : envoyez ces liens vous-même.${d.liens.map(blocLien).join('')}`;
+      montrerHtml($('ok-import'), h);
+      if (n) $<HTMLTextAreaElement>('lignes').value = d.refus.map((r: { ligne: string }) => r.ligne).join('\n');
+      charger();
+    } catch (err) { montrer($('erreur-import'), (err as Error).message); }
+    b.disabled = false; b.textContent = 'Créer les comptes';
+  });
+
+  $('commun-btn').addEventListener('click', async () => {
+    const couper = communActif;
+    if (couper && !confirm('Ne plus accepter le mot de passe commun du club ?\n\nLes membres qui n’ont pas encore de compte personnel ne pourront plus entrer, et les appareils connectés avec le mot de passe commun seront déconnectés.')) return;
+    try { await poster({ action: 'mdpCommun', actif: !couper }); charger(); } catch (err) { alert((err as Error).message); }
+  });
+
+  $('cherche').addEventListener('input', afficher);
+
+  document.querySelector('main')!.addEventListener('click', async (ev) => {
+    const copie = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-copier]');
+    if (copie) {
+      try { await navigator.clipboard.writeText(copie.dataset.copier!); copie.textContent = 'Copié'; } catch { prompt('Copiez ce lien :', copie.dataset.copier); }
+      return;
+    }
+    const b = (ev.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]');
+    const li = b?.closest<HTMLElement>('li[data-id]');
+    const m = li && membres.find((x) => x.id === li.dataset.id);
+    if (!b || !li || !m) return;
+    const qui = `${m.prenom} ${m.nom}`.trim() || m.email;
+    const zone = li.querySelector<HTMLElement>('.retour-lien')!;
+    try {
+      if (b.dataset.action === 'modifier') {
+        edition = m.id; prenom.value = m.prenom || ''; nom.value = m.nom || ''; email.value = m.email;
+        $('f-titre').textContent = `Modifier le compte`; $('f-sous').textContent = 'Le mot de passe du membre ne change pas.';
+        envoyer.textContent = 'Enregistrer'; abandon.hidden = false; $('z-inviter').hidden = true;
+        montrer(ok, ''); montrer(erreur, '');
+        $('form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      if (b.dataset.action === 'lien') {
+        b.disabled = true;
+        const d = await poster({ action: 'lien', id: m.id });
+        b.disabled = false;
+        montrerHtml(zone, d.envoye ? `Mail envoyé à ${esc(d.email)} : le lien est valable ${m.a_mdp ? '24 heures' : '14 jours'}.`
+          : `Le mail n’a pas pu partir. Envoyez ce lien à ${esc(qui)} vous-même :${blocLien({ email: m.email, nom: qui, lien: d.lien })}`);
+        charger().then(() => { const z = document.querySelector<HTMLElement>(`li[data-id="${CSS.escape(m.id)}"] .retour-lien`); if (z) montrerHtml(z, zone.innerHTML); });
+        return;
+      }
+      if (b.dataset.action === 'actif') {
+        if (m.actif && !confirm(`Désactiver le compte de ${qui} ?\n\nIl sera déconnecté de tous ses appareils et ne pourra plus entrer. Vous pourrez le réactiver plus tard.`)) return;
+        await poster({ action: 'actif', id: m.id, actif: !m.actif });
+        charger();
+        return;
+      }
+      if (b.dataset.action === 'supprimer') {
+        if (!confirm(`Supprimer définitivement le compte de ${qui} ?\n\nPour un départ temporaire, préférez « Désactiver ».`)) return;
+        await poster({ action: 'supprimer', id: m.id });
+        if (edition === m.id) viderForm();
+        charger();
+      }
+    } catch (err) { b.disabled = false; montrer(zone, (err as Error).message); zone.classList.add('err'); }
+  });
+
+  charger();
+</script>
+
+<style>
+  .ecran { min-height: 100svh; display: flex; flex-direction: column; background: var(--bg); }
+  .haut { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 10px; min-height: calc(54px + env(safe-area-inset-top, 0px)); padding: 0 16px 0 8px; padding-top: env(safe-area-inset-top, 0px); background: var(--bar); color: var(--bar-ink); }
+  .retour { display: grid; place-items: center; width: 34px; height: 34px; color: var(--bar-ic); }
+  .retour svg { width: 22px; height: 22px; }
+  .haut :global(.logo) { --logo-h: 40px; --logo-rouge: var(--bar-rouge); color: var(--bar-ink); }
+  .haut span { font-weight: 800; font-size: 1.05rem; }
+  .corps { flex: 1; width: 100%; max-width: 680px; margin: 0 auto; padding: 18px 16px 40px; display: grid; gap: 14px; align-content: start; box-sizing: border-box; }
+  .col { display: grid; gap: 14px; align-content: start; min-width: 0; }
+  .carte { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px 18px; min-width: 0; }
+  h1 { font-size: 1.25rem; margin: 0 0 6px; }
+  h2 { font-size: 1.1rem; margin: 0 0 6px; }
+  .sous { color: var(--muted); font-size: .9rem; margin: 0; }
+  .note { margin: 0; font-size: .88rem; color: var(--ink); background: var(--warn-bg, #fff4dc); border: 1px solid var(--warn-line, #f1d08a); border-radius: 12px; padding: 12px 14px; }
+  .deux { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 520px) { .deux { grid-template-columns: 1fr; gap: 0; } }
+  .lbl { display: block; font-weight: 700; font-size: .74rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; }
+  #z-mdp .lbl { margin-top: 0; }
+  input:not([type=checkbox]), textarea { width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 10px; padding: 10px 13px; font: inherit; background: var(--surface-2, var(--surface)); color: var(--ink); box-sizing: border-box; }
+  textarea { margin-top: 10px; font-family: ui-monospace, Menlo, monospace; font-size: .88rem; resize: vertical; }
+  .case { display: flex; align-items: center; gap: 9px; margin: 14px 0 0; font-size: .92rem; cursor: pointer; }
+  .case input { width: 19px; height: 19px; accent-color: var(--navy); }
+  .ex { margin: 8px 0 0; background: var(--surface-2); border-radius: 8px; padding: 8px 12px; font-size: .82rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .plusieurs summary { cursor: pointer; font-weight: 800; font-size: 1.02rem; }
+  .plusieurs[open] summary { margin-bottom: 8px; }
+  .erreur { color: var(--bad); background: var(--bad-bg); border: 1px solid var(--bad-line); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; }
+  .ok { color: var(--ok); background: var(--ok-bg); border-radius: 10px; padding: 9px 12px; margin: 12px 0 0; font-size: .9rem; font-weight: 650; }
+  .pri { width: 100%; height: 50px; margin-top: 16px; border: 0; border-radius: 10px; background: var(--navy); color: #fff; font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; }
+  .pri:disabled { opacity: .7; cursor: wait; }
+  .sec { width: 100%; min-height: 44px; margin-top: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); font: inherit; font-weight: 700; cursor: pointer; }
+  .sec.fort { margin-top: 12px; color: var(--ink); }
+  .sec.danger { border-color: var(--bad-line); background: var(--bad-bg); color: var(--bad); }
+  .l-tete { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; justify-content: space-between; }
+  .l-tete h2 { margin: 0; }
+  .l-tete input { flex: 1 1 220px; max-width: 340px; min-height: 42px; }
+  .resume { margin: 10px 0 0; font-size: .85rem; color: var(--muted); font-weight: 650; }
+  .membres { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+  .membres :global(li) { border: 1px solid var(--line); border-left: 4px solid var(--ok, #1f8a4c); border-radius: 10px; padding: 11px 12px; display: grid; gap: 9px; }
+  .membres :global(li.m-att) { border-left-color: var(--warn, #d08a00); }
+  .membres :global(li.m-off) { border-left-color: var(--muted); background: var(--surface-2); }
+  .membres :global(.txt) { min-width: 0; }
+  .membres :global(b) { display: block; font-size: .98rem; }
+  .membres :global(.mail) { display: block; font-size: .86rem; color: var(--muted); overflow-wrap: anywhere; }
+  .membres :global(.info) { display: block; font-size: .8rem; color: var(--muted); margin-top: 4px; }
+  .membres :global(.pastille) { font-style: normal; font-weight: 800; font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; border-radius: 99px; padding: 2px 8px; margin-right: 4px; }
+  .membres :global(.p-on) { background: var(--ok-bg); color: var(--ok); }
+  .membres :global(.p-att) { background: var(--warn-bg, #fff4dc); color: var(--warn, #9a6400); }
+  .membres :global(.p-off) { background: var(--line); color: var(--muted); }
+  .membres :global(.act) { display: flex; flex-wrap: wrap; gap: 6px; }
+  .membres :global(.act button) { border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-weight: 700; font-size: .8rem; border-radius: 8px; padding: 7px 11px; cursor: pointer; }
+  .membres :global(.act .b-suppr) { border-color: var(--bad-line); background: var(--bad-bg); color: var(--bad); }
+  .membres :global(.retour-lien) { font-size: .85rem; color: var(--ok); background: var(--ok-bg); border-radius: 8px; padding: 8px 10px; font-weight: 650; }
+  .membres :global(.retour-lien.err) { color: var(--bad); background: var(--bad-bg); }
+  :global(.a-copier) { margin-top: 8px; display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; color: var(--ink); font-weight: 600; }
+  :global(.a-copier code) { font-size: .76rem; overflow-wrap: anywhere; color: var(--muted); font-weight: 400; }
+  :global(.a-copier button) { justify-self: start; border: 0; background: var(--navy); color: #fff; font: inherit; font-weight: 700; font-size: .8rem; border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+  [hidden] { display: none !important; }
+
+  /* PC : deux colonnes, formulaires à gauche, liste à droite */
+  @media (min-width: 1100px) {
+    .haut { padding-inline: max(16px, calc((100% - 1400px) / 2 + 8px)); min-height: 64px; }
+    .haut span { font-size: 1.2rem; }
+    .corps { max-width: 1400px; padding: 26px 28px 48px; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 20px; align-items: start; }
+    .carte { padding: 24px 24px; }
+    .col { position: sticky; top: 84px; }
+    .membres :global(li) { grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+    .membres :global(.act) { justify-content: flex-end; max-width: 560px; }
+    .membres :global(.retour-lien) { grid-column: 1 / -1; }
+  }
+</style>
