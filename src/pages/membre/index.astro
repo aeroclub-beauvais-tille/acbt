@@ -737,6 +737,13 @@ const outilsAdmin = [
   .fl-liste { display: grid; gap: 12px; }
   @media (min-width: 640px) { .fl-liste { grid-template-columns: 1fr 1fr; } }
   :global(.fl-carte) { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; }
+  /* Avion réservé en ce moment : contour et bandeau marine */
+  :global(.fl-carte.fl-res) { border: 2px solid var(--navy); padding-top: 0; overflow: hidden; }
+  :global(.fl-ruban) { margin: 0 -16px 12px; background: var(--navy); color: #fff; padding: 9px 16px; display: flex; justify-content: space-between; align-items: center; gap: 8px; white-space: nowrap; }
+  :global(.fl-ruban b) { display: inline-flex; align-items: center; gap: 7px; font-size: .74rem; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+  :global(.fl-ruban b i) { width: 8px; height: 8px; border-radius: 50%; background: #fff; }
+  :global(.fl-ruban span) { font-family: var(--mono); font-size: .85rem; font-weight: 700; }
+  :global(.fl-carte.fl-res .fl-etat) { display: none; }
   :global(.fl-tete) { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
   :global(.fl-im) { font-family: var(--mono); font-size: 1.05rem; font-weight: 700; letter-spacing: .02em; }
   :global(.fl-tete small) { color: var(--muted); font-size: .78rem; font-weight: 600; margin-left: 8px; }

@@ -807,7 +807,10 @@ export function flotte() {
         const m = a.dernierVol.match(/^(\d\d)\/(\d\d)\/(\d{4})\s+(\d\d:\d\d)/);
         lignes.push(ligne('Dernier vol', '', m ? m[4] : a.dernierVol, m ? jourPasse(m[3] + m[2] + m[1]) : '', '', 'dernier'));
       } else lignes.push(ligne('Dernier vol', '', '—', '', '', 'dernier'));
-      return `<article class="fl-carte${a.indispo ? ' fl-hs' : ''}" data-q="${esc(a.immat.toLowerCase())}">
+      // Réservé en ce moment : bandeau marine en haut de la carte (choix A d'Hugo)
+      const resa = !hs && a.enCours;
+      const ruban = resa ? `<div class="fl-ruban"><b><i></i>Réservé en ce moment</b><span>jusqu’à ${lireAg(a.enCours!.fin).h}</span></div>` : '';
+      return `<article class="fl-carte${a.indispo ? ' fl-hs' : ''}${resa ? ' fl-res' : ''}" data-q="${esc(a.immat.toLowerCase())}">${ruban}
         <div class="fl-tete"><span class="fl-l"><b class="fl-im">${esc(a.immat)}</b>${modeles[a.immat] ? `<small>${esc(modeles[a.immat])}</small>` : ''}</span><span class="fl-etat fl-${etat[0]}"><i></i>${etat[1]}</span></div>
         <div class="fl-haut">
           <div class="fl-cadran fl-${niv}"><svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="17"/><circle class="fl-arc" cx="20" cy="20" r="17" stroke-dasharray="${(part * 106.8).toFixed(1)} 107"/></svg><div><b>${pot == null ? '—' : hhmm(pot)}</b><small>${pot != null && pot <= 0 ? 'visite dépassée' : 'avant visite'}</small></div></div>
