@@ -796,7 +796,7 @@ export function flotte() {
       // Libre dès maintenant (créneau d'aujourd'hui qui commence à l'heure actuelle) : « Dès maintenant » ou « Maintenant → 11:00 »
       const tout_de_suite = !!x && x[0] === jourParis(new Date()) && x[1] <= minutesParis(new Date()) + 1 && !toutJour;
       const creneau: [string, string] = !x ? ['', ''] : toutJour ? ['Toute la journée', apres ? suite : 'aucune réservation'] : finJour ? [tout_de_suite ? 'Dès maintenant' : `Dès ${hm(x[1])}`, suite] : [`${tout_de_suite ? 'Maintenant' : hm(x[1])} → ${hm(x[2])}`, duree(x[2] - x[1])];
-      if (!hs) lignes.push(x ? ligne('Prochaine dispo. > 30\'', jourTxt(x[0]), creneau[0], creneau[1], 'fl-vert', 'dispo') : ligne('Prochaine dispo. > 30\'', 'dans les 7 jours', 'Aucune', '', 'fl-vert', 'dispo'));
+      if (!hs) lignes.push(x ? ligne('Prochaine dispo.', jourTxt(x[0]), creneau[0], creneau[1], 'fl-vert', 'dispo') : ligne('Prochaine dispo.', 'dans les 7 jours', 'Aucune', '', 'fl-vert', 'dispo'));
       if (a.dernier) {
         const dd = lireAg(a.dernier.debut), ff = lireAg(a.dernier.fin);
         const [dj, dm] = jm(a.dernier.debut); const [fj, fm] = jm(a.dernier.fin);

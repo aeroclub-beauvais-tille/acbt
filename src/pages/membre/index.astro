@@ -787,7 +787,8 @@ const outilsAdmin = [
   :global(.fl-h small) { display: block; font-size: .7rem; color: var(--muted); font-weight: 700; }
   /* « Prochaine dispo. > 30' » toujours en entier : le petit texte de droite passe à la ligne si besoin */
   :global(.fl-r .fl-lbl) { overflow: visible; text-overflow: clip; }
-  :global(.fl-r .fl-g) { min-width: max-content; }
+  /* Noms (pilote + instructeur + type de vol) : retour à la ligne plutôt que coupés */
+  :global(.fl-l.fl-nom) { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
   :global(.fl-h) { min-width: 0; }
   :global(.fl-h small) { white-space: normal; }
   :global(.fl-tol) { margin: 8px 0 0; font-size: .72rem; color: var(--muted); font-weight: 600; }
